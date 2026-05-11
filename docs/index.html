@@ -785,7 +785,7 @@
         <div class="p-3 border-b" style="border-color:var(--border);">
           <div class="section-label">Kaart Overzicht</div>
         </div>
-        <div id="leaflet-map" style="height:220px;border-radius:0 0 12px 12px;"></div>
+        <div id="leaflet-map" style="height:440px;border-radius:0 0 12px 12px;"></div>
       </div>
 
       <!-- Chart -->
@@ -914,7 +914,16 @@
               </button>
             </div>
           </div>
-          <textarea id="f-desc" class="form-textarea px-3 py-3 text-sm" rows="4" placeholder="Beschrijf zo objectief mogelijk wat u waarneemt..."></textarea>
+          <textarea id="f-desc" class="form-textarea px-3 py-3 text-sm" rows="4" placeholder="Beschrijf zo objectief mogelijk wat u waarneemt..." list="desc-suggestions"></textarea>
+          <datalist id="desc-suggestions">
+            <option value="Spuiten binnen 50 meter van de woning waargenomen">
+            <option value="Spuitmachine actief op aangrenzend perceel">
+            <option value="Drift van gewasbeschermingsmiddel richting woning">
+            <option value="Chemische geur waargenomen bij open raam/deur">
+            <option value="Tractor met spuitmachine voorbij gereden op minder dan 50 meter">
+            <option value="Nachtelijke spuitactiviteit waargenomen">
+            <option value="Tank vullen met gewasbeschermingsmiddel naast perceel">
+          </datalist>
 
           <!-- [WIJZIGING 5] Snelle standaardzinnen -->
           <div class="mt-3">
@@ -2828,6 +2837,11 @@ async function submitMelding() {
     document.getElementById('geur-val').textContent = '1';
     document.getElementById('f-notes').value = '';
     document.querySelectorAll('.health-check, .activity-check').forEach(el => el.checked = false);
+    // Standaard activiteiten weer aanvinken
+    const tractor = document.querySelector('.activity-check[value="tractor"]');
+    const spuit   = document.querySelector('.activity-check[value="spuitmachine"]');
+    if (tractor) tractor.checked = true;
+    if (spuit)   spuit.checked   = true;
     document.getElementById('file-previews').innerHTML = '';
     pendingFiles = [];
     setCompassDegrees(0);
@@ -2857,9 +2871,12 @@ function showPage(name) {
   if (name === 'melding') {
     initFormDateTime();
     initFormMap();
-    // BUG FIX: Leaflet geeft grijze tiles als kaart geladen werd terwijl div niet zichtbaar was
-    // invalidateSize() forceert een herberekening van de kaartafmetingen
     setTimeout(() => { if (formMap) formMap.invalidateSize(); }, 120);
+    // Standaard aanvinken bij elke nieuwe melding
+    const tractor = document.querySelector('.activity-check[value="tractor"]');
+    const spuit   = document.querySelector('.activity-check[value="spuitmachine"]');
+    if (tractor) tractor.checked = true;
+    if (spuit)   spuit.checked   = true;
   }
   if (name === 'dashboard') {
     updateDashboard();
@@ -2980,9 +2997,14 @@ function updateDashboard() {
       if (!m.gps) return;
       const typeColors = { spuitactiviteit: '#f59e0b', drift: '#3b82f6', geur: '#8b5cf6', gezondheid: '#ef4444', geluid: '#f97316', overig: '#6b7280' };
       const color = typeColors[m.type] || '#6b7280';
+      const d = new Date(m.timestamp_local);
+      const dateLabel = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
       const icon = L.divIcon({
-        html: `<div style="width:10px;height:10px;background:${color};border-radius:50%;border:2px solid white;opacity:0.85;"></div>`,
-        iconSize: [10,10], className: ''
+        html: `<div style="position:relative;display:inline-block;">
+          <div style="width:10px;height:10px;background:${color};border-radius:50%;border:2px solid white;opacity:0.85;"></div>
+          <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:8px;color:white;background:rgba(0,0,0,0.65);padding:1px 3px;border-radius:3px;pointer-events:none;">${dateLabel}</div>
+        </div>`,
+        iconSize: [10, 10], iconAnchor: [5, 5], className: ''
       });
       const marker = L.marker([m.gps.lat, m.gps.lng], { icon }).addTo(dashMap);
       marker.on('click', () => showMeldingDetail(m.id));
@@ -3133,8 +3155,8 @@ function renderMeldingCard(m, compact = false) {
   const syncStatus = m.sync_status || (m.supabase_id ? 'synced' : 'lokaal');
 
   return `
-  <div class="card mb-3 overflow-hidden" onclick="showMeldingDetail('${m.id}')" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--border-bright)'" onmouseout="this.style.borderColor='var(--border)'">
-    <div class="p-3">
+  <div class="card mb-3 overflow-hidden" style="transition:border-color 0.2s;">
+    <div class="p-3" onclick="showMeldingDetail('${m.id}')" style="cursor:pointer;" onmouseover="this.parentElement.style.borderColor='var(--border-bright)'" onmouseout="this.parentElement.style.borderColor='var(--border)'">
       <div class="flex items-start justify-between gap-2 mb-2">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="badge ${typeBadgeClass(m.type)}">${typeLabel(m.type)}</span>
@@ -3151,12 +3173,36 @@ function renderMeldingCard(m, compact = false) {
       </div>
       ${!compact ? `<div class="hash-display mt-2">${m.hash}</div>` : ''}
     </div>
+    ${!compact ? `
+    <div style="border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:flex-end;">
+      <button onclick="verwijderMelding('${m.id}', event)" style="background:none;border:none;cursor:pointer;color:var(--danger);opacity:0.6;font-size:1.1rem;line-height:1;padding:2px 6px;border-radius:4px;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Verwijder registratie">✕</button>
+    </div>` : ''}
   </div>`;
 }
 
 // ============================================================
 // MELDING DETAIL MODAL
 // ============================================================
+function verwijderMelding(id, event) {
+  event.stopPropagation();
+  if (!confirm('Registratie verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+
+  const meldingen = getMeldingen().filter(m => m.id !== id);
+  saveMeldingen(meldingen);
+  idbDeleteBijlagen(id);
+
+  // Soft delete in Supabase
+  if (SUPABASE_ENABLED && _sbUser && navigator.onLine) {
+    const sb = sbClient();
+    if (sb) sb.from('entries').update({ deleted: true }).eq('id', id).eq('user_id', _sbUser.id)
+      .then(({ error }) => { if (error) console.warn('[Supabase] Soft delete mislukt:', error.message); });
+  }
+
+  renderTimeline();
+  updateDashboard();
+  toast('Registratie verwijderd', '');
+}
+
 function showMeldingDetail(id) {
   const meldingen = getMeldingen();
   const m = meldingen.find(x => x.id === id);
@@ -3391,7 +3437,7 @@ async function exportPDF() {
     .entry-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
     .timestamp { font-family: 'JetBrains Mono'; font-size: 8pt; color: #64748b; }
     .disclaimer { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px 16px; font-size: 9pt; color: #78350f; margin: 24px 0; }
-    img.evidence { max-width: 120px; max-height: 90px; border-radius: 6px; object-fit: cover; border: 1px solid #e2e8f0; }
+    img.evidence { max-width: 100%; max-height: 260px; border-radius: 8px; object-fit: contain; border: 1px solid #e2e8f0; display: block; margin: 0 auto; }
     .toc-item { display: flex; justify-content: space-between; font-family: 'JetBrains Mono'; font-size: 9pt; padding: 4px 0; border-bottom: 1px dotted #e2e8f0; }
     h1 { font-size: 18pt; font-weight: 800; margin-bottom: 4px; }
     h2 { font-size: 13pt; font-weight: 700; margin-bottom: 12px; color: #0f172a; }
@@ -3475,17 +3521,31 @@ async function exportPDF() {
           </div>
         </div>` : ''}
 
-        ${m.bestanden?.length ? `
-        <div style="border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px;">
-          <div class="label">Fotobewijs (${m.bestanden.length} bestand(en))</div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
-            ${m.bestanden.filter(f => f.type.startsWith('image/')).map(f => `<img class="evidence" src="${f.dataUrl}" alt="${f.name}">`).join('')}
-          </div>
-        </div>` : ''}
+        ${m.bestanden?.length ? `<div style="margin-top:8px;"><div class="label">📎 ${m.bestanden.length} bijlage(n) — zie Bijlage Fotobewijs achterin</div></div>` : ''}
 
         <div class="hash">SHA-256: ${m.hash}</div>
       </div>`;
     }).join('')}
+
+    ${verrijkt.some(m => m.bestanden?.some(f => f.type?.startsWith('image/') && f.dataUrl)) ? `
+    <div class="page-break">
+      <h2 style="margin-bottom:16px;">Bijlage — Fotobewijs</h2>
+      ${verrijkt.filter(m => m.bestanden?.some(f => f.type?.startsWith('image/') && f.dataUrl)).map(m => `
+        <div class="page-break">
+          <div style="margin-bottom:8px;">
+            <span class="badge badge-muted">${m.id}</span>
+            <span style="font-family:JetBrains Mono;font-size:8pt;color:#64748b;margin-left:8px;">${m.date} ${m.time}</span>
+          </div>
+          <p style="margin-bottom:16px;font-size:9pt;color:#475569;">${m.description.substring(0,160)}${m.description.length > 160 ? '...' : ''}</p>
+          ${m.bestanden.filter(f => f.type?.startsWith('image/') && f.dataUrl).map((f, fi, arr) => `
+            <div style="margin-bottom:28px;">
+              <img class="evidence" src="${f.dataUrl}" alt="${f.name}">
+              <div class="label" style="margin-top:6px;text-align:center;">${f.name} (${fi+1}/${arr.length}) — ${m.id}</div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>` : ''}
 
   </div>
 </body>
