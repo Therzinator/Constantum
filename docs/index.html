@@ -1655,19 +1655,36 @@ async function sbSyncBijlagen(meldingId, bestanden) {
 // Voeg een audit_log regel toe
 async function sbAuditLog(entryId, action, detail = {}) {
   const sb = sbClient();
-  if (!sb || !_sbUser) return;
-  try {
-    const { error } = await sb.from('audit_log').insert({
-      user_id:  _sbUser.id,
-      entry_id: entryId,
-      action,
-      detail
-      // user_agent bestaat niet in schema v3 — weggelaten
-    });
-    if (error) console.warn('[Supabase] audit_log mislukt:', error.message);
-  } catch (e) {
-    console.warn('[Supabase] audit_log fout:', e.message);
+  if (!sb || !_sbUser) {
+    console.warn('[Supabase] audit_log: geen client of user');
+    return;
   }
+  try {
+    const payload = {
+      user_id:  _sbUser.id,
+      entry_id: entryId || null,
+      action:   action  || 'unknown',
+      detail:   detail  || {}
+    };
+    console.log('[Supabase] audit_log insert:', payload);
+    const { data, error } = await sb.from('audit_log').insert(payload).select();
+    if (error) {
+      console.error('[Supabase] audit_log mislukt:', error.message, '| code:', error.code, '| details:', error.details);
+    } else {
+      console.log('[Supabase] audit_log OK:', data);
+    }
+  } catch (e) {
+    console.error('[Supabase] audit_log exception:', e.message);
+  }
+}
+
+// Directe testfunctie — aanroepen vanuit browser console: testAuditLog()
+async function testAuditLog() {
+  console.log('[TEST] audit_log test starten...');
+  console.log('[TEST] User:', _sbUser?.id);
+  console.log('[TEST] Supabase enabled:', SUPABASE_ENABLED);
+  await sbAuditLog('test-' + Date.now(), 'handmatige_test', { bron: 'browser_console', tijd: new Date().toISOString() });
+  console.log('[TEST] Klaar — controleer Supabase Table Editor → audit_log');
 }
 
 // Hoofd sync functie: verwerk offline queue
