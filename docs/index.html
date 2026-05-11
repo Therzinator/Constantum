@@ -710,7 +710,8 @@
 <div id="sync-status-bar">
   <div id="sync-spinner" class="spinner" style="width:14px;height:14px;border-width:2px;flex-shrink:0;"></div>
   <span id="sync-status-icon" style="display:none;font-size:14px;flex-shrink:0;"></span>
-  <span id="sync-status-text">Synchroniseren...</span>
+  <span id="sync-status-text" style="flex:1;">Synchroniseren...</span>
+  <button onclick="document.getElementById('sync-status-bar').classList.remove('active')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;line-height:1;padding:0 0 0 8px;opacity:0.7;flex-shrink:0;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'" title="Verbergen">✕</button>
 </div>
 
 <div id="app">
@@ -788,23 +789,23 @@
         <div id="leaflet-map" style="height:440px;border-radius:0 0 12px 12px;"></div>
       </div>
 
-      <!-- Chart -->
-      <div class="card mb-4">
-        <div class="p-3 border-b" style="border-color:var(--border);">
-          <div class="section-label">Meldingen per maand</div>
+      <!-- Charts naast elkaar -->
+      <div class="flex gap-3 mb-4">
+        <div class="card flex-1" style="min-width:0;">
+          <div class="p-2 border-b" style="border-color:var(--border);">
+            <div class="section-label" style="font-size:0.6rem;">Meldingen per maand</div>
+          </div>
+          <div class="p-2">
+            <canvas id="chart-monthly" height="80"></canvas>
+          </div>
         </div>
-        <div class="p-3">
-          <canvas id="chart-monthly" height="160"></canvas>
-        </div>
-      </div>
-
-      <!-- Type verdeling -->
-      <div class="card mb-4">
-        <div class="p-3 border-b" style="border-color:var(--border);">
-          <div class="section-label">Type Verdeling</div>
-        </div>
-        <div class="p-3">
-          <canvas id="chart-types" height="160"></canvas>
+        <div class="card flex-1" style="min-width:0;">
+          <div class="p-2 border-b" style="border-color:var(--border);">
+            <div class="section-label" style="font-size:0.6rem;">Type Verdeling</div>
+          </div>
+          <div class="p-2">
+            <canvas id="chart-types" height="80"></canvas>
+          </div>
         </div>
       </div>
 
@@ -929,6 +930,7 @@
           <div class="mt-3">
             <div class="section-label mb-2">Snelle standaardzinnen <span style="color:var(--text-muted);font-size:0.6rem;">(tik om toe te voegen)</span></div>
             <div class="chip-container">
+              <button type="button" class="chip" onclick="voegZinToe('Spuiten binnen 50 meter van de woning waargenomen.')" style="border-color:rgba(245,158,11,0.4);color:var(--warning);">🏠 Spuiten &lt;50m van woning</button>
               <button type="button" class="chip" onclick="voegZinToe('Sterke chemische geur waargenomen vanuit richting perceel.')">💨 Chemische geur vanuit perceel</button>
               <button type="button" class="chip" onclick="voegZinToe('Landbouwvoertuig actief zichtbaar nabij woning.')">🚜 Voertuig zichtbaar nabij woning</button>
               <button type="button" class="chip" onclick="voegZinToe('Fijne nevel/drift zichtbaar in de lucht.')">🌫 Nevel/drift zichtbaar</button>
@@ -3002,12 +3004,15 @@ function updateDashboard() {
       const icon = L.divIcon({
         html: `<div style="position:relative;display:inline-block;">
           <div style="width:10px;height:10px;background:${color};border-radius:50%;border:2px solid white;opacity:0.85;"></div>
-          <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:8px;color:white;background:rgba(0,0,0,0.65);padding:1px 3px;border-radius:3px;pointer-events:none;">${dateLabel}</div>
+          <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:8px;color:white;background:transparent;text-shadow:0 1px 2px rgba(0,0,0,0.9),0 0 4px rgba(0,0,0,0.7);padding:1px 2px;pointer-events:none;">${dateLabel}</div>
         </div>`,
         iconSize: [10, 10], iconAnchor: [5, 5], className: ''
       });
       const marker = L.marker([m.gps.lat, m.gps.lng], { icon }).addTo(dashMap);
-      marker.on('click', () => showMeldingDetail(m.id));
+      marker.on('click', () => {
+        showPage('tijdlijn');
+        setTimeout(() => showMeldingDetail(m.id), 150);
+      });
     });
   }
 
@@ -3521,31 +3526,20 @@ async function exportPDF() {
           </div>
         </div>` : ''}
 
-        ${m.bestanden?.length ? `<div style="margin-top:8px;"><div class="label">📎 ${m.bestanden.length} bijlage(n) — zie Bijlage Fotobewijs achterin</div></div>` : ''}
+        ${m.bestanden?.filter(f => f.type?.startsWith('image/') && f.dataUrl).length ? `
+        <div style="border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px;">
+          <div class="label" style="margin-bottom:10px;">Fotobewijs (${m.bestanden.filter(f => f.type?.startsWith('image/') && f.dataUrl).length} afbeelding(en))</div>
+          ${m.bestanden.filter(f => f.type?.startsWith('image/') && f.dataUrl).map((f, fi, arr) => `
+            <div style="page-break-inside:avoid;margin-bottom:16px;">
+              <img class="evidence" src="${f.dataUrl}" alt="${f.name}">
+              <div class="label" style="margin-top:5px;text-align:center;">${f.name} (${fi+1}/${arr.length})</div>
+            </div>
+          `).join('')}
+        </div>` : ''}
 
         <div class="hash">SHA-256: ${m.hash}</div>
       </div>`;
     }).join('')}
-
-    ${verrijkt.some(m => m.bestanden?.some(f => f.type?.startsWith('image/') && f.dataUrl)) ? `
-    <div class="page-break">
-      <h2 style="margin-bottom:16px;">Bijlage — Fotobewijs</h2>
-      ${verrijkt.filter(m => m.bestanden?.some(f => f.type?.startsWith('image/') && f.dataUrl)).map(m => `
-        <div class="page-break">
-          <div style="margin-bottom:8px;">
-            <span class="badge badge-muted">${m.id}</span>
-            <span style="font-family:JetBrains Mono;font-size:8pt;color:#64748b;margin-left:8px;">${m.date} ${m.time}</span>
-          </div>
-          <p style="margin-bottom:16px;font-size:9pt;color:#475569;">${m.description.substring(0,160)}${m.description.length > 160 ? '...' : ''}</p>
-          ${m.bestanden.filter(f => f.type?.startsWith('image/') && f.dataUrl).map((f, fi, arr) => `
-            <div style="margin-bottom:28px;">
-              <img class="evidence" src="${f.dataUrl}" alt="${f.name}">
-              <div class="label" style="margin-top:6px;text-align:center;">${f.name} (${fi+1}/${arr.length}) — ${m.id}</div>
-            </div>
-          `).join('')}
-        </div>
-      `).join('')}
-    </div>` : ''}
 
   </div>
 </body>
