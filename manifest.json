@@ -1,0 +1,26 @@
+{
+  "name": "DriftLog — Pesticide Drift Dossier",
+  "short_name": "DriftLog",
+  "description": "Juridisch dossieropbouw systeem voor pesticiden drift en spuitactiviteiten",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e17",
+  "theme_color": "#0a0e17",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%230a0e17'/><circle cx='96' cy='96' r='60' fill='none' stroke='%2300d4aa' stroke-width='8'/><line x1='96' y1='36' x2='96' y2='156' stroke='%2300d4aa' stroke-width='4'/><line x1='36' y1='96' x2='156' y2='96' stroke='%2300d4aa' stroke-width='4'/><circle cx='96' cy='96' r='12' fill='%2300d4aa'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%230a0e17'/><circle cx='256' cy='256' r='160' fill='none' stroke='%2300d4aa' stroke-width='16'/><line x1='256' y1='96' x2='256' y2='416' stroke='%2300d4aa' stroke-width='10'/><line x1='96' y1='256' x2='416' y2='256' stroke='%2300d4aa' stroke-width='10'/><circle cx='256' cy='256' r='32' fill='%2300d4aa'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "lang": "nl"
+}
