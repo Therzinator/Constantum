@@ -1609,45 +1609,60 @@ async function sbSyncBijlagen(meldingId, bestanden) {
       .eq('entry_id', meldingId)
       .eq('file_hash', bestand.hash)
       .maybeSingle();
-    if (bestaand) continue; // al gesynchroniseerd
-
-    // Haal dataUrl op uit IndexedDB
-    const idb = idbBijlagen.find(b => b.hash === bestand.hash || b.name === bestand.name);
-    if (!idb?.dataUrl) {
-      console.warn('[Supabase] Geen dataUrl voor bijlage:', bestand.name);
+    if (bestaand) {
+      console.log('[Supabase] Bijlage al aanwezig, overslaan:', bestand.name);
       continue;
     }
 
-    try {
-      // Converteer dataUrl naar Blob
-      const res   = await fetch(idb.dataUrl);
-      const blob  = await res.blob();
-      const path  = `${_sbUser.id}/${meldingId}/${bestand.hash}_${bestand.name}`;
+    // Haal dataUrl op uit IndexedDB
+    const idb = idbBijlagen.find(b => b.hash === bestand.hash || b.name === bestand.name);
 
-      // Upload naar Storage
-      const { error: upErr } = await sb.storage
-        .from('spuitlog-bijlagen')
-        .upload(path, blob, { contentType: bestand.type, upsert: true });
+    let storagePath = null;
 
-      if (upErr) {
-        console.error('[Supabase] Upload mislukt:', upErr.message);
-        continue;
+    // Upload naar Storage (optioneel — mislukking blokkeert metadata niet)
+    if (idb?.dataUrl) {
+      try {
+        const res  = await fetch(idb.dataUrl);
+        const blob = await res.blob();
+        const path = `${_sbUser.id}/${meldingId}/${bestand.hash}_${bestand.name}`;
+
+        const { error: upErr } = await sb.storage
+          .from('spuitlog-bijlagen')
+          .upload(path, blob, { contentType: bestand.type, upsert: true });
+
+        if (upErr) {
+          console.warn('[Supabase] Storage upload mislukt (metadata wordt toch opgeslagen):', upErr.message);
+        } else {
+          storagePath = path;
+          console.log('[Supabase] Storage upload OK:', path);
+        }
+      } catch (e) {
+        console.warn('[Supabase] Storage upload fout:', e.message);
       }
+    } else {
+      console.warn('[Supabase] Geen dataUrl voor bijlage:', bestand.name);
+    }
 
-      // Sla metadata op in attachments tabel
-      await sb.from('attachments').upsert({
-        entry_id:       meldingId,
-        user_id:        _sbUser.id,
-        filename:       bestand.name,
-        mime_type:      bestand.type,
-        file_size:      bestand.size,
-        last_modified:  bestand.lastModified,
-        storage_path:   path,
-        file_hash:      bestand.hash,
-      }, { onConflict: 'entry_id,file_hash' });
+    // Sla metadata altijd op in attachments tabel
+    // — ook als storage upload mislukte, zodat de rij er wel staat
+    // Kolommen exact volgens schema v3: id, entry_id, user_id, filename,
+    // mime_type, file_size, storage_bucket, storage_path, file_hash, uploaded_at
+    const { error: metaErr } = await sb.from('attachments').upsert({
+      entry_id:       meldingId,
+      user_id:        _sbUser.id,
+      filename:       bestand.name       || null,
+      mime_type:      bestand.type       || null,
+      file_size:      bestand.size       || null,
+      storage_bucket: 'spuitlog-bijlagen',
+      storage_path:   storagePath,
+      file_hash:      bestand.hash
+      // last_modified bestaat niet in schema v3 — weggelaten
+    }, { onConflict: 'entry_id,file_hash' });
 
-    } catch (e) {
-      console.error('[Supabase] Bijlage sync fout:', e.message);
+    if (metaErr) {
+      console.error('[Supabase] attachments insert mislukt:', metaErr.message, '| code:', metaErr.code);
+    } else {
+      console.log('[Supabase] attachments insert OK voor:', bestand.name);
     }
   }
 }
