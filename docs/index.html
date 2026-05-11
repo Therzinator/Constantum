@@ -1,0 +1,2205 @@
+<!DOCTYPE html>
+<html lang="nl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SpuitLog">
+  <meta name="description" content="Juridisch dossieropbouw systeem voor pesticiden drift en spuitactiviteiten registratie">
+  <title>SpuitLog — Pesticide Drift Dossier</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #0f1523;
+      --bg-card: #131927;
+      --bg-card-hover: #1a2133;
+      --border: #1e2d45;
+      --border-bright: #2a3f5f;
+      --accent: #00d4aa;
+      --accent-dim: #00a882;
+      --accent-glow: rgba(0,212,170,0.15);
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --text-primary: #e8edf5;
+      --text-secondary: #7a90b0;
+      --text-muted: #4a5d78;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
+    /* Layout */
+    #app { display: flex; flex-direction: column; height: 100dvh; }
+    #main-content { flex: 1; overflow-y: auto; }
+
+    /* Nav */
+    .nav-tab { transition: all 0.2s; position: relative; }
+    .nav-tab.active { color: var(--accent); }
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .card-accent { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+      font-family: var(--sans);
+      font-weight: 700;
+      border-radius: 10px;
+      transition: all 0.2s;
+      letter-spacing: 0.03em;
+    }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-bright);
+      color: var(--text-secondary);
+      border-radius: 10px;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Form elements */
+    .form-input, .form-select, .form-textarea {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 8px;
+      font-family: var(--sans);
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .form-select option { background: var(--bg-card); }
+
+    /* Mono text */
+    .mono { font-family: var(--mono); }
+
+    /* Tags/badges */
+    .badge {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+    .badge-accent { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent-dim); }
+    .badge-warning { background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+    .badge-danger { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+    .badge-info { background: rgba(59,130,246,0.1); color: var(--info); border: 1px solid rgba(59,130,246,0.3); }
+    .badge-muted { background: rgba(74,93,120,0.2); color: var(--text-secondary); border: 1px solid var(--border); }
+
+    /* Map */
+    #leaflet-map, #form-map { border-radius: 10px; border: 1px solid var(--border); }
+    .leaflet-container { background: #0d1520 !important; }
+    .leaflet-tile { filter: brightness(0.7) saturate(0.8); }
+
+    /* Compass */
+    .compass-ring { cursor: pointer; transition: opacity 0.2s; }
+    .compass-ring:hover { opacity: 0.85; }
+
+    /* Slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: var(--border);
+      height: 4px;
+      border-radius: 2px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Checkbox */
+    input[type=checkbox] {
+      accent-color: var(--accent);
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Timeline entry */
+    .timeline-entry {
+      position: relative;
+      padding-left: 20px;
+    }
+    .timeline-entry::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--border);
+    }
+    .timeline-entry::after {
+      content: '';
+      position: absolute;
+      left: 2px;
+      top: 20px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg-primary);
+    }
+
+    /* Page transitions */
+    .page { display: none; }
+    .page.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* Toast */
+    #toast-container {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border-bright);
+      color: var(--text-primary);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 10px 18px;
+      border-radius: 8px;
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+      white-space: nowrap;
+    }
+    .toast.success { border-color: var(--accent); color: var(--accent); }
+    .toast.error { border-color: var(--danger); color: var(--danger); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes toastOut { to { opacity: 0; transform: translateY(-10px); } }
+
+    /* Loading spinner */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Hash display */
+    .hash-display {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── [WIJZIGING 1] FOTO THUMBNAILS: groter, klikbaar grid ── */
+    .photo-thumb {
+      width: 64px; /* legacy, overschreven door .photo-grid-thumb */
+      height: 64px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    /* Foto grid – responsive 3-koloms */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .photo-grid-item {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      cursor: pointer;
+      transition: transform 0.18s, border-color 0.18s;
+      aspect-ratio: 1 / 1;
+    }
+    .photo-grid-item:active { transform: scale(0.95); }
+    .photo-grid-item:hover { border-color: var(--accent); }
+    .photo-grid-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-grid-video {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      min-height: 140px;
+    }
+    .photo-hash-badge {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      font-family: var(--mono);
+      font-size: 0.5rem;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: rgba(0,212,170,0.2);
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+      pointer-events: none;
+    }
+    .photo-remove-btn {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.65);
+      border: none;
+      color: white;
+      font-size: 0.7rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    /* ── LIGHTBOX ── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0,0,0,0.95);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox-img {
+      max-width: 94vw;
+      max-height: 78vh;
+      border-radius: 10px;
+      object-fit: contain;
+      touch-action: pinch-zoom;
+      user-select: none;
+    }
+    #lightbox-video {
+      max-width: 94vw;
+      max-height: 78vh;
+      border-radius: 10px;
+    }
+    .lightbox-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    }
+    .lightbox-close {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .lightbox-close:active { background: rgba(255,255,255,0.25); }
+    .lightbox-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .lightbox-nav:active { background: rgba(255,255,255,0.25); }
+    #lightbox-prev { left: 12px; }
+    #lightbox-next { right: 12px; }
+    .lightbox-footer {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 14px 16px;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      text-align: center;
+    }
+    .lightbox-counter {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.6);
+    }
+    .lightbox-filename {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.4);
+      margin-top: 2px;
+    }
+
+    /* Stat card */
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 4px;
+    }
+
+    /* Wind arrow on map */
+    .wind-arrow { transition: transform 0.5s; }
+
+    /* Disclaimer bar */
+    .disclaimer {
+      background: rgba(245,158,11,0.07);
+      border-top: 1px solid rgba(245,158,11,0.2);
+      font-size: 0.65rem;
+      color: rgba(245,158,11,0.7);
+      text-align: center;
+      padding: 6px 12px;
+    }
+
+    /* Section dividers */
+    .section-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    /* ── [WIJZIGING 5] SNELLE STANDAARDZINNEN CHIPS ── */
+    .chip-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 8px;
+    }
+    .chip {
+      font-family: var(--sans);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-bright);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.16s;
+      line-height: 1.2;
+      text-align: left;
+    }
+    .chip:active { transform: scale(0.96); }
+    .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+    /* ── [WIJZIGING 6] STICKY SAVE BUTTON ── */
+    .sticky-save-wrapper {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 0 6px;
+      background: linear-gradient(to top, var(--bg-primary) 70%, transparent);
+      z-index: 50;
+      margin-top: 20px;
+    }
+
+    /* ── [WIJZIGING 6] VERBETERD TOUCH TARGETS ── */
+    label.flex.items-center { min-height: 44px; padding: 4px 0; }
+    .btn-primary { min-height: 54px; font-size: 1rem; }
+
+    /* Safe area padding for bottom nav */
+    .bottom-nav {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <header style="background:var(--bg-secondary); border-bottom:1px solid var(--border);" class="px-4 py-3 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-3">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="13" stroke="#00d4aa" stroke-width="1.5"/>
+        <circle cx="14" cy="14" r="4" fill="#00d4aa"/>
+        <line x1="14" y1="2" x2="14" y2="8" stroke="#00d4aa" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="14" y1="20" x2="14" y2="26" stroke="#00d4aa" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="2" y1="14" x2="8" y2="14" stroke="#00d4aa" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="20" y1="14" x2="26" y2="14" stroke="#00d4aa" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em;">SpuitLog</div>
+        <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;">PESTICIDE DRIFT DOSSIER v1.0</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <div id="online-indicator" class="flex items-center gap-1">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);" id="online-dot"></div>
+        <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);" id="online-text">ONLINE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <div id="main-content" class="flex-1">
+
+    <!-- PAGE: Dashboard -->
+    <div id="page-dashboard" class="page active p-4">
+      <div class="mb-4">
+        <div style="font-size:1.4rem;font-weight:800;letter-spacing:-0.02em;" class="mb-1">Dossier Overzicht</div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">Hijkerweg 5 — Hooghalen — Nederland</div>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="card p-4">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Totaal meldingen</div>
+        </div>
+        <div class="card p-4">
+          <div class="stat-value" id="stat-month">0</div>
+          <div class="stat-label">Deze maand</div>
+        </div>
+        <div class="card p-4">
+          <div class="stat-value" id="stat-week">0</div>
+          <div class="stat-label">Deze week</div>
+        </div>
+        <div class="card p-4">
+          <div class="stat-value" id="stat-wind">—</div>
+          <div class="stat-label">Meest wind</div>
+        </div>
+      </div>
+
+      <!-- Map overview -->
+      <div class="card mb-4">
+        <div class="p-3 border-b" style="border-color:var(--border);">
+          <div class="section-label">Kaart Overzicht</div>
+        </div>
+        <div id="leaflet-map" style="height:220px;border-radius:0 0 12px 12px;"></div>
+      </div>
+
+      <!-- Chart -->
+      <div class="card mb-4">
+        <div class="p-3 border-b" style="border-color:var(--border);">
+          <div class="section-label">Meldingen per maand</div>
+        </div>
+        <div class="p-3">
+          <canvas id="chart-monthly" height="160"></canvas>
+        </div>
+      </div>
+
+      <!-- Type verdeling -->
+      <div class="card mb-4">
+        <div class="p-3 border-b" style="border-color:var(--border);">
+          <div class="section-label">Type Verdeling</div>
+        </div>
+        <div class="p-3">
+          <canvas id="chart-types" height="160"></canvas>
+        </div>
+      </div>
+
+      <!-- Recent entries -->
+      <div class="section-label mb-2">Recente Meldingen</div>
+      <div id="recent-entries"></div>
+
+      <!-- Disclaimer -->
+      <div class="card mt-4 p-3" style="border-color:rgba(245,158,11,0.25);background:rgba(245,158,11,0.04);">
+        <div style="font-size:0.65rem;color:rgba(245,158,11,0.8);line-height:1.5;">
+          ⚠️ <strong>Disclaimer:</strong> Deze applicatie registreert waarnemingen en objectieve meetgegevens. De gegevens vormen geen directe conclusie over causaliteit of gezondheidsschade.
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Nieuwe Melding -->
+    <div id="page-melding" class="page p-4">
+      <div class="mb-4">
+        <div style="font-size:1.4rem;font-weight:800;letter-spacing:-0.02em;" class="mb-1">Nieuwe Melding</div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">Alle velden worden vastgelegd met tijdstempel</div>
+      </div>
+
+      <!-- Auto-registered info (read-only) -->
+      <div class="card card-accent mb-4 p-4">
+        <div class="section-label mb-2">Automatisch Geregistreerd</div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <div class="section-label">Datum</div>
+            <div class="mono text-sm mt-1" id="auto-date" style="color:var(--accent);">—</div>
+          </div>
+          <div>
+            <div class="section-label">Tijd (lokaal)</div>
+            <div class="mono text-sm mt-1" id="auto-time" style="color:var(--accent);">—</div>
+          </div>
+          <div>
+            <div class="section-label">UTC</div>
+            <div class="mono text-xs mt-1" style="color:var(--text-secondary);" id="auto-utc">—</div>
+          </div>
+          <div>
+            <div class="section-label">Tijdzone</div>
+            <div class="mono text-xs mt-1" style="color:var(--text-secondary);" id="auto-tz">—</div>
+          </div>
+          <div class="col-span-2">
+            <div class="section-label">GPS Coördinaten</div>
+            <div class="mono text-xs mt-1" style="color:var(--text-secondary);" id="auto-gps">Ophalen...</div>
+          </div>
+          <div class="col-span-2">
+            <div class="section-label">Apparaat</div>
+            <div class="mono text-xs mt-1" style="color:var(--text-secondary);" id="auto-device">—</div>
+          </div>
+        </div>
+        <button onclick="refreshGPS()" class="btn-outline text-xs px-3 py-1 mt-3 font-mono flex items-center gap-2">
+          <span>📍</span> GPS vernieuwen
+        </button>
+      </div>
+
+      <!-- Weather auto-fetch -->
+      <div class="card mb-4 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <div class="section-label">Weerdata (Open-Meteo)</div>
+          <div id="weather-status" class="flex items-center gap-2">
+            <div class="spinner" id="weather-spinner"></div>
+            <span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);" id="weather-status-text">Laden...</span>
+          </div>
+        </div>
+        <div id="weather-display" class="grid grid-cols-2 gap-2 mt-2" style="display:none!important;">
+          <div><div class="section-label">Wind</div><div class="mono text-sm mt-1" id="wd-wind" style="color:var(--info);">—</div></div>
+          <div><div class="section-label">Windrichting</div><div class="mono text-sm mt-1" id="wd-dir">—</div></div>
+          <div><div class="section-label">Windstoten</div><div class="mono text-sm mt-1" id="wd-gust">—</div></div>
+          <div><div class="section-label">Temperatuur</div><div class="mono text-sm mt-1" id="wd-temp">—</div></div>
+          <div><div class="section-label">Luchtvochtigheid</div><div class="mono text-sm mt-1" id="wd-hum">—</div></div>
+          <div><div class="section-label">Neerslag</div><div class="mono text-sm mt-1" id="wd-precip">—</div></div>
+          <div><div class="section-label">Luchtdruk</div><div class="mono text-sm mt-1" id="wd-pressure">—</div></div>
+          <div><div class="section-label">Databron</div><div class="mono text-xs mt-1" style="color:var(--text-muted);" id="wd-source">—</div></div>
+        </div>
+        <button onclick="fetchWeather()" class="btn-outline text-xs px-3 py-1 mt-2 font-mono">↻ Weerdata vernieuwen</button>
+      </div>
+
+      <!-- Form fields -->
+      <div class="space-y-4">
+
+        <!-- Type waarneming -->
+        <div>
+          <label class="section-label block mb-2">Type Waarneming *</label>
+          <select id="f-type" class="form-select px-3 py-3 text-sm">
+            <option value="">Selecteer type...</option>
+            <option value="spuitactiviteit">🚜 Spuitactiviteit zichtbaar</option>
+            <option value="drift">💨 Drift/nevel zichtbaar</option>
+            <option value="geur">🌬️ Chemische geur</option>
+            <option value="geluid">🔊 Geluid landbouwvoertuigen</option>
+            <option value="gezondheid">🏥 Gezondheidsklachten</option>
+            <option value="overig">📝 Overige waarneming</option>
+          </select>
+        </div>
+
+        <!-- Omschrijving -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="section-label" for="f-desc">Omschrijving *</label>
+            <div class="flex gap-2">
+              <!-- [WIJZIGING 5] Kopieer en wis knoppen -->
+              <button type="button" onclick="kopieerOmschrijving()" class="btn-outline px-2 py-1 flex items-center gap-1" style="font-size:0.65rem;font-family:var(--mono);border-radius:6px;" title="Kopieer omschrijving">
+                📋 Kopieer
+              </button>
+              <button type="button" onclick="document.getElementById('f-desc').value=''" class="btn-outline px-2 py-1 flex items-center gap-1" style="font-size:0.65rem;font-family:var(--mono);border-radius:6px;border-color:rgba(239,68,68,0.35);color:var(--danger);" title="Wis omschrijving">
+                🗑 Wis
+              </button>
+            </div>
+          </div>
+          <textarea id="f-desc" class="form-textarea px-3 py-3 text-sm" rows="4" placeholder="Beschrijf zo objectief mogelijk wat u waarneemt..."></textarea>
+
+          <!-- [WIJZIGING 5] Snelle standaardzinnen -->
+          <div class="mt-3">
+            <div class="section-label mb-2">Snelle standaardzinnen <span style="color:var(--text-muted);font-size:0.6rem;">(tik om toe te voegen)</span></div>
+            <div class="chip-container">
+              <button type="button" class="chip" onclick="voegZinToe('Sterke chemische geur waargenomen vanuit richting perceel.')">💨 Chemische geur vanuit perceel</button>
+              <button type="button" class="chip" onclick="voegZinToe('Landbouwvoertuig actief zichtbaar nabij woning.')">🚜 Voertuig zichtbaar nabij woning</button>
+              <button type="button" class="chip" onclick="voegZinToe('Fijne nevel/drift zichtbaar in de lucht.')">🌫 Nevel/drift zichtbaar</button>
+              <button type="button" class="chip" onclick="voegZinToe('Windrichting stond richting woning.')">🏠 Wind richting woning</button>
+              <button type="button" class="chip" onclick="voegZinToe('Klachten begonnen kort na waarneming.')">⏱ Klachten na waarneming</button>
+              <button type="button" class="chip" onclick="voegZinToe('Spuitactiviteit vermoedelijk actief op perceel.')">💦 Spuitactiviteit op perceel</button>
+              <button type="button" class="chip" onclick="voegZinToe('Sterke geur bleef langere tijd hangen.')">⏳ Geur langere tijd aanwezig</button>
+              <button type="button" class="chip" onclick="voegZinToe('Ramen en deuren gesloten vanwege geurhinder.')">🪟 Ramen/deuren gesloten</button>
+              <button type="button" class="chip" onclick="voegZinToe('Irritatie aan ogen en luchtwegen ervaren.')">👁 Oog- en luchtwegirrritatie</button>
+              <button type="button" class="chip" onclick="voegZinToe('Waarneming visueel bevestigd vanaf erf.')">✅ Visueel bevestigd vanaf erf</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Geurintensiteit -->
+        <div>
+          <label class="section-label block mb-2">Geurintensiteit: <span id="geur-val" style="color:var(--accent);">1</span>/5</label>
+          <input type="range" id="f-geur" min="1" max="5" value="1" class="w-full" oninput="document.getElementById('geur-val').textContent=this.value">
+          <div class="flex justify-between" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:4px;">
+            <span>Nauwelijks</span><span>Matig</span><span>Intens</span>
+          </div>
+        </div>
+
+        <!-- Wind subjectief -->
+        <div>
+          <label class="section-label block mb-2">Wind Subjectief Ervaren</label>
+          <select id="f-wind-subj" class="form-select px-3 py-3 text-sm">
+            <option value="geen">Geen wind</option>
+            <option value="zwak">Zwakke wind</option>
+            <option value="matig">Matige wind</option>
+            <option value="sterk">Sterke wind</option>
+          </select>
+        </div>
+
+        <!-- Windrichting waarneming (kompas) -->
+        <div>
+          <label class="section-label block mb-2">Richting Waarneming: <span id="compass-val" style="color:var(--accent);">N</span></label>
+          <div class="flex justify-center my-2">
+            <svg id="compass-svg" width="160" height="160" viewBox="0 0 160 160" onclick="compassClick(event)" class="compass-ring cursor-pointer">
+              <circle cx="80" cy="80" r="75" fill="var(--bg-secondary)" stroke="var(--border)" stroke-width="2"/>
+              <circle cx="80" cy="80" r="55" fill="none" stroke="var(--border)" stroke-width="1"/>
+              <!-- Cardinal marks -->
+              <text x="80" y="18" text-anchor="middle" fill="var(--text-secondary)" font-size="12" font-family="var(--mono)" font-weight="700">N</text>
+              <text x="148" y="85" text-anchor="middle" fill="var(--text-secondary)" font-size="12" font-family="var(--mono)">O</text>
+              <text x="80" y="150" text-anchor="middle" fill="var(--text-secondary)" font-size="12" font-family="var(--mono)">Z</text>
+              <text x="12" y="85" text-anchor="middle" fill="var(--text-secondary)" font-size="12" font-family="var(--mono)">W</text>
+              <!-- Tick marks -->
+              <g stroke="var(--border)" stroke-width="1">
+                <line x1="80" y1="7" x2="80" y2="18"/>
+                <line x1="80" y1="142" x2="80" y2="153"/>
+                <line x1="7" y1="80" x2="18" y2="80"/>
+                <line x1="142" y1="80" x2="153" y2="80"/>
+              </g>
+              <!-- Arrow -->
+              <g id="compass-arrow" transform="rotate(0, 80, 80)">
+                <polygon points="80,28 75,80 85,80" fill="var(--accent)" opacity="0.9"/>
+                <polygon points="80,132 75,80 85,80" fill="var(--text-muted)" opacity="0.6"/>
+              </g>
+              <circle cx="80" cy="80" r="5" fill="var(--accent)"/>
+            </svg>
+          </div>
+          <input type="hidden" id="f-direction" value="0">
+        </div>
+
+        <!-- Gezondheidsklachten -->
+        <div>
+          <label class="section-label block mb-3">Gezondheidsklachten</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="hoofdpijn"> Hoofdpijn</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="misselijkheid"> Misselijkheid</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="benauwdheid"> Benauwdheid</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="oogirritatie"> Oogirritatie</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="keelirritatie"> Keelirritatie</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="darmklachten"> Darmklachten</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="duizeligheid"> Duizeligheid</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="vermoeidheid"> Vermoeidheid</label>
+          </div>
+        </div>
+
+        <!-- Activiteiten -->
+        <div>
+          <label class="section-label block mb-3">Activiteit Waargenomen</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="activity-check" value="tractor"> 🚜 Tractor</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="activity-check" value="spuitmachine"> 💦 Spuitmachine</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="activity-check" value="nachtelijk"> 🌙 Nachtelijke activ.</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="activity-check" value="tankvullen"> 🛢️ Tank vullen</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="activity-check" value="voertuigperceel"> 📍 Voertuig op perceel</label>
+          </div>
+        </div>
+
+        <!-- Locatie kaart -->
+        <div>
+          <label class="section-label block mb-2">Locatie Melding</label>
+          <div id="form-map" style="height:180px;"></div>
+          <div class="flex items-center gap-2 mt-2">
+            <input type="text" id="f-lat" class="form-input px-2 py-2 text-xs mono flex-1" placeholder="Breedtegraad" readonly>
+            <input type="text" id="f-lng" class="form-input px-2 py-2 text-xs mono flex-1" placeholder="Lengtegraad" readonly>
+          </div>
+          <p style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:4px;">Klik op kaart voor handmatige correctie</p>
+        </div>
+
+        <!-- Foto upload – [WIJZIGING 1] verbeterd grid -->
+        <div>
+          <label class="section-label block mb-2">Foto / Video Bewijs</label>
+          <div class="card p-3" style="border-style:dashed;border-color:var(--border-bright);">
+            <input type="file" id="f-files" multiple accept="image/*,video/*" class="hidden" onchange="handleFiles(event)">
+            <button type="button" onclick="document.getElementById('f-files').click()" class="btn-outline w-full py-3 text-sm flex items-center justify-center gap-2" style="min-height:52px;">
+              <span>📸</span> Foto's / Video's toevoegen
+            </button>
+          </div>
+          <!-- Foto grid preview -->
+          <div id="file-previews" class="photo-grid"></div>
+        </div>
+
+        <!-- Extra notities -->
+        <div>
+          <label class="section-label block mb-2">Extra Notities</label>
+          <textarea id="f-notes" class="form-textarea px-3 py-3 text-sm" rows="2" placeholder="Aanvullende opmerkingen..."></textarea>
+        </div>
+
+      </div>
+
+      <!-- [WIJZIGING 6] Sticky save knop -->
+      <div class="sticky-save-wrapper">
+        <button type="button" onclick="submitMelding()" class="btn-primary w-full py-4 text-base flex items-center justify-center gap-3" id="submit-btn">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm1 5a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z"/></svg>
+          Melding Opslaan
+        </button>
+      </div>
+
+      <div class="disclaimer mt-4 rounded-lg">
+        ⚠️ Melding wordt voorzien van SHA256 hash voor juridische betrouwbaarheid
+      </div>
+    </div>
+
+    <!-- PAGE: Tijdlijn -->
+    <div id="page-tijdlijn" class="page p-4">
+      <div class="mb-4">
+        <div style="font-size:1.4rem;font-weight:800;letter-spacing:-0.02em;" class="mb-1">Dossier Tijdlijn</div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);" id="tl-count">0 meldingen</div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card p-3 mb-4">
+        <div class="section-label mb-2">Filters & Zoeken</div>
+        <div class="space-y-2">
+          <input type="text" id="tl-search" class="form-input px-3 py-2 text-sm" placeholder="Zoeken in meldingen..." oninput="renderTimeline()">
+          <div class="grid grid-cols-2 gap-2">
+            <select id="tl-filter-type" class="form-select px-2 py-2 text-sm" onchange="renderTimeline()">
+              <option value="">Alle typen</option>
+              <option value="spuitactiviteit">Spuitactiviteit</option>
+              <option value="drift">Drift/nevel</option>
+              <option value="geur">Chemische geur</option>
+              <option value="geluid">Geluid</option>
+              <option value="gezondheid">Gezondheid</option>
+              <option value="overig">Overig</option>
+            </select>
+            <input type="month" id="tl-filter-month" class="form-input px-2 py-2 text-sm" style="color-scheme:dark;" onchange="renderTimeline()">
+          </div>
+        </div>
+      </div>
+
+      <div id="timeline-entries" class="space-y-3"></div>
+    </div>
+
+    <!-- PAGE: Export -->
+    <div id="page-export" class="page p-4">
+      <div class="mb-4">
+        <div style="font-size:1.4rem;font-weight:800;letter-spacing:-0.02em;" class="mb-1">Export & Backup</div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">Juridisch dossier exporteren</div>
+      </div>
+
+      <div class="space-y-3">
+
+        <div class="card p-4">
+          <div class="flex items-start gap-3">
+            <div style="font-size:1.5rem;">📄</div>
+            <div class="flex-1">
+              <div style="font-weight:700;font-size:0.95rem;">PDF Rapport</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">Volledig juridisch dossier met alle meldingen, weerdata, hashes en tijdlijn</div>
+              <button onclick="exportPDF()" class="btn-primary px-4 py-2 text-sm mt-3 inline-flex items-center gap-2">
+                📥 Exporteer PDF
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-4">
+          <div class="flex items-start gap-3">
+            <div style="font-size:1.5rem;">📊</div>
+            <div class="flex-1">
+              <div style="font-weight:700;font-size:0.95rem;">CSV Export</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">Spreadsheet formaat voor verdere analyse</div>
+              <button onclick="exportCSV()" class="btn-outline px-4 py-2 text-sm mt-3 inline-flex items-center gap-2">
+                📥 Exporteer CSV
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-4">
+          <div class="flex items-start gap-3">
+            <div style="font-size:1.5rem;">💾</div>
+            <div class="flex-1">
+              <div style="font-weight:700;font-size:0.95rem;">JSON Backup</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">Volledige ruwe data backup incl. weerdata JSON</div>
+              <button onclick="exportJSON()" class="btn-outline px-4 py-2 text-sm mt-3 inline-flex items-center gap-2">
+                📥 Exporteer JSON
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-4">
+          <div class="flex items-start gap-3">
+            <div style="font-size:1.5rem;">📥</div>
+            <div class="flex-1">
+              <div style="font-weight:700;font-size:0.95rem;">JSON Importeren</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">Herstel eerder gemaakte backup</div>
+              <input type="file" id="import-file" accept=".json" class="hidden" onchange="importJSON(event)">
+              <button onclick="document.getElementById('import-file').click()" class="btn-outline px-4 py-2 text-sm mt-3 inline-flex items-center gap-2">
+                📂 Importeer JSON
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dossier info -->
+        <div class="card p-4">
+          <div class="section-label mb-3">Dossier Informatie</div>
+          <div class="space-y-2 mono text-xs" style="color:var(--text-secondary);">
+            <div class="flex justify-between"><span>Totaal meldingen:</span><span id="exp-total" style="color:var(--accent);">0</span></div>
+            <div class="flex justify-between"><span>Eerste melding:</span><span id="exp-first">—</span></div>
+            <div class="flex justify-between"><span>Laatste melding:</span><span id="exp-last">—</span></div>
+            <div class="flex justify-between"><span>Opslag gebruikt:</span><span id="exp-storage">—</span></div>
+          </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="card p-4" style="border-color:rgba(239,68,68,0.3);">
+          <div class="section-label mb-2" style="color:var(--danger);">⚠️ Gevaarzone</div>
+          <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px;">Verwijder alle lokaal opgeslagen meldingen. Dit kan niet ongedaan worden gemaakt.</div>
+          <button onclick="clearAllData()" style="background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:8px 16px;font-size:0.8rem;font-family:var(--mono);">
+            🗑️ Alle data verwijderen
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end main-content -->
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav flex-shrink-0" style="background:var(--bg-secondary);border-top:1px solid var(--border);">
+    <div class="flex">
+      <button onclick="showPage('dashboard')" class="nav-tab active flex-1 flex flex-col items-center py-3 gap-1" id="tab-dashboard">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z"/></svg>
+        <span style="font-size:0.6rem;font-family:var(--mono);">DASHBOARD</span>
+      </button>
+      <button onclick="showPage('melding')" class="nav-tab flex-1 flex flex-col items-center py-3 gap-1" id="tab-melding">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+        <span style="font-size:0.6rem;font-family:var(--mono);">MELDING</span>
+      </button>
+      <button onclick="showPage('tijdlijn')" class="nav-tab flex-1 flex flex-col items-center py-3 gap-1" id="tab-tijdlijn">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 000 2h.01a1 1 0 000-2H3zm3.5 0a1 1 0 000 2h8a1 1 0 000-2h-8zm-3.5 5a1 1 0 000 2h.01a1 1 0 000-2H3zm3.5 0a1 1 0 000 2h8a1 1 0 000-2h-8zm-3.5 5a1 1 0 000 2h.01a1 1 0 000-2H3zm3.5 0a1 1 0 000 2h8a1 1 0 000-2h-8z" clip-rule="evenodd"/></svg>
+        <span style="font-size:0.6rem;font-family:var(--mono);">TIJDLIJN</span>
+      </button>
+      <button onclick="showPage('export')" class="nav-tab flex-1 flex flex-col items-center py-3 gap-1" id="tab-export">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        <span style="font-size:0.6rem;font-family:var(--mono);">EXPORT</span>
+      </button>
+    </div>
+  </nav>
+
+</div><!-- end app -->
+
+<!-- [WIJZIGING 1] LIGHTBOX voor foto's -->
+<div id="lightbox" role="dialog" aria-modal="true" aria-label="Foto viewer">
+  <!-- Topbalk -->
+  <div class="lightbox-bar">
+    <div style="font-family:var(--mono);font-size:0.7rem;color:rgba(255,255,255,0.5);">SpuitLog Fotobewijs</div>
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="Sluiten">✕</button>
+  </div>
+  <!-- Inhoud -->
+  <img id="lightbox-img" src="" alt="" style="display:none;">
+  <video id="lightbox-video" controls style="display:none;"></video>
+  <!-- Navigatiepijlen -->
+  <button class="lightbox-nav" id="lightbox-prev" onclick="lightboxNav(-1)" aria-label="Vorige">‹</button>
+  <button class="lightbox-nav" id="lightbox-next" onclick="lightboxNav(1)" aria-label="Volgende">›</button>
+  <!-- Onderbalk -->
+  <div class="lightbox-footer">
+    <div class="lightbox-counter" id="lightbox-counter"></div>
+    <div class="lightbox-filename" id="lightbox-filename"></div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Melding Detail Modal -->
+<div id="modal-overlay" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.85);overflow-y:auto;" onclick="closeModal(event)">
+  <div id="modal-content" style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;margin:16px;padding:20px;min-height:200px;" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-4">
+      <div style="font-weight:700;font-size:1rem;">Melding Detail</div>
+      <button onclick="document.getElementById('modal-overlay').style.display='none'" style="color:var(--text-muted);font-size:1.2rem;">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// ============================================================
+// STATE & CONSTANTS
+// ============================================================
+
+// [WIJZIGING 2] Standaard locatie: Hijkerweg 5, Hooghalen
+const DEFAULT_LOCATION = {
+  lat: 52.912383,
+  lng: 6.526362,
+  label: 'Hijkerweg 5, Hooghalen'
+};
+const HOME_LAT  = DEFAULT_LOCATION.lat;
+const HOME_LNG  = DEFAULT_LOCATION.lng;
+const HOME_NAME = DEFAULT_LOCATION.label;
+
+// [WIJZIGING 1] Lightbox state
+let lightboxFiles = [];   // array van { dataUrl, type, name } voor huidige melding-preview
+let lightboxIndex = 0;    // huidig getoond item
+
+let currentGPS = { lat: HOME_LAT, lng: HOME_LNG, accuracy: null };
+let currentWeather = null;
+let weatherRaw = null;
+let formMap = null;
+let formMarker = null;
+let dashMap = null;
+let compassDeg = 0;
+let pendingFiles = [];
+let chartMonthly = null;
+let chartTypes = null;
+
+// ============================================================
+// STORAGE
+// ============================================================
+function getMeldingen() {
+  try {
+    // [COMPATIBILITEIT] Lees ook oude 'driftlog_meldingen' sleutel bij migratie
+    const old = localStorage.getItem('driftlog_meldingen');
+    if (old && !localStorage.getItem('spuitlog_meldingen')) {
+      localStorage.setItem('spuitlog_meldingen', old);
+    }
+    return JSON.parse(localStorage.getItem('spuitlog_meldingen') || '[]');
+  } catch { return []; }
+}
+
+function saveMeldingen(data) {
+  localStorage.setItem('spuitlog_meldingen', JSON.stringify(data));
+}
+
+function getStorageSize() {
+  let total = 0;
+  for (let key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      total += localStorage[key].length + key.length;
+    }
+  }
+  return (total / 1024).toFixed(1) + ' KB';
+}
+
+// ============================================================
+// SHA256 HASH
+// ============================================================
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hashFile(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const buffer = e.target.result;
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      resolve(hashArray.map(b => b.toString(16).padStart(2, '0')).join(''));
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ============================================================
+// UUID
+// ============================================================
+function generateId() {
+  return 'DL-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2,5).toUpperCase();
+}
+
+// ============================================================
+// GPS
+// ============================================================
+function refreshGPS() {
+  const el = document.getElementById('auto-gps');
+  el.textContent = 'Ophalen...';
+  if (!navigator.geolocation) {
+    el.textContent = 'GPS niet beschikbaar — standaard locatie gebruikt';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+      el.textContent = `${pos.coords.latitude.toFixed(6)}°N  ${pos.coords.longitude.toFixed(6)}°E  (±${pos.coords.accuracy?.toFixed(0)}m)`;
+      // [WIJZIGING 2] GPS knop verplaatst marker naar werkelijke GPS positie
+      document.getElementById('f-lat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('f-lng').value = pos.coords.longitude.toFixed(6);
+      if (formMarker) formMarker.setLatLng([pos.coords.latitude, pos.coords.longitude]);
+      if (formMap) formMap.setView([pos.coords.latitude, pos.coords.longitude], 16);
+      fetchWeather();
+      toast('✓ GPS locatie bijgewerkt', 'success');
+    },
+    (err) => {
+      el.textContent = `GPS fout: ${err.message} — standaard locatie`;
+      document.getElementById('f-lat').value = DEFAULT_LOCATION.lat.toFixed(6);
+      document.getElementById('f-lng').value = DEFAULT_LOCATION.lng.toFixed(6);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+// ============================================================
+// WEATHER
+// ============================================================
+async function fetchWeather() {
+  const lat = currentGPS.lat || HOME_LAT;
+  const lng = currentGPS.lng || HOME_LNG;
+  const spinner = document.getElementById('weather-spinner');
+  const statusText = document.getElementById('weather-status-text');
+  const display = document.getElementById('weather-display');
+
+  spinner.style.display = 'block';
+  statusText.textContent = 'Laden...';
+
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kmh&timezone=auto`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    weatherRaw = data;
+    const c = data.current;
+
+    currentWeather = {
+      wind_speed: c.wind_speed_10m,
+      wind_dir: c.wind_direction_10m,
+      wind_gusts: c.wind_gusts_10m,
+      temperature: c.temperature_2m,
+      humidity: c.relative_humidity_2m,
+      precipitation: c.precipitation,
+      pressure: c.surface_pressure,
+      source: 'Open-Meteo API',
+      timestamp: new Date().toISOString(),
+      lat, lng
+    };
+
+    document.getElementById('wd-wind').textContent = `${c.wind_speed_10m} km/h`;
+    document.getElementById('wd-dir').textContent = `${c.wind_direction_10m}° (${degToCompass(c.wind_direction_10m)})`;
+    document.getElementById('wd-gust').textContent = `${c.wind_gusts_10m} km/h`;
+    document.getElementById('wd-temp').textContent = `${c.temperature_2m}°C`;
+    document.getElementById('wd-hum').textContent = `${c.relative_humidity_2m}%`;
+    document.getElementById('wd-precip').textContent = `${c.precipitation} mm`;
+    document.getElementById('wd-pressure').textContent = `${c.surface_pressure} hPa`;
+    document.getElementById('wd-source').textContent = `Open-Meteo · ${new Date().toLocaleTimeString('nl-NL')}`;
+
+    // [WIJZIGING 3] Stel windroos automatisch in op gemeten windrichting
+    setCompassDegrees(c.wind_direction_10m);
+
+    display.style.removeProperty('display');
+    spinner.style.display = 'none';
+    statusText.textContent = 'Actueel';
+    statusText.style.color = 'var(--accent)';
+
+  } catch (e) {
+    spinner.style.display = 'none';
+    statusText.textContent = 'Fout bij ophalen';
+    statusText.style.color = 'var(--danger)';
+  }
+}
+
+function degToCompass(deg) {
+  const dirs = ['N','NNO','NO','ONO','O','OZO','ZO','ZZO','Z','ZZW','ZW','WZW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+// ============================================================
+// [WIJZIGING 3] WINDROOS AUTO-KOPPELING – stel kompas in vanuit API
+// ============================================================
+function setCompassDegrees(deg) {
+  deg = Math.round(((deg % 360) + 360) % 360); // normaliseer 0-359
+  compassDeg = deg;
+  const arrow = document.getElementById('compass-arrow');
+  const valEl = document.getElementById('compass-val');
+  const hidden = document.getElementById('f-direction');
+  if (arrow) arrow.setAttribute('transform', `rotate(${deg}, 80, 80)`);
+  if (valEl) valEl.textContent = `${deg}° ${degToCompass(deg)}`;
+  if (hidden) hidden.value = deg;
+}
+
+// ============================================================
+// [WIJZIGING 5] SNELLE ZINNEN HELPERS
+// ============================================================
+function voegZinToe(zin) {
+  const ta = document.getElementById('f-desc');
+  if (!ta) return;
+  const huidig = ta.value.trim();
+  ta.value = huidig ? huidig + ' ' + zin : zin;
+  ta.focus();
+  // Scroll naar einde textarea
+  ta.scrollTop = ta.scrollHeight;
+}
+
+function kopieerOmschrijving() {
+  const ta = document.getElementById('f-desc');
+  if (!ta || !ta.value) { toast('Geen tekst om te kopiëren', 'error'); return; }
+  navigator.clipboard.writeText(ta.value)
+    .then(() => toast('✓ Omschrijving gekopieerd', 'success'))
+    .catch(() => {
+      // Fallback voor oudere browsers
+      ta.select();
+      document.execCommand('copy');
+      toast('✓ Omschrijving gekopieerd', 'success');
+    });
+}
+
+// ============================================================
+// COMPASS
+// ============================================================
+function compassClick(e) {
+  const svg = document.getElementById('compass-svg');
+  const rect = svg.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dx = e.clientX - cx;
+  const dy = e.clientY - cy;
+  let angle = Math.atan2(dx, -dy) * (180 / Math.PI);
+  if (angle < 0) angle += 360;
+  compassDeg = Math.round(angle);
+  document.getElementById('compass-arrow').setAttribute('transform', `rotate(${compassDeg}, 80, 80)`);
+  document.getElementById('f-direction').value = compassDeg;
+  document.getElementById('compass-val').textContent = `${compassDeg}° ${degToCompass(compassDeg)}`;
+}
+
+// ============================================================
+// FILE HANDLING – [WIJZIGING 1] groter grid + lightbox
+// ============================================================
+async function handleFiles(event) {
+  const files = Array.from(event.target.files);
+  const previewEl = document.getElementById('file-previews');
+
+  for (const file of files) {
+    const hash = await hashFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const isVideo = file.type.startsWith('video/');
+      const obj = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified,
+        hash: hash,
+        dataUrl: e.target.result
+      };
+      pendingFiles.push(obj);
+      const fileIndex = pendingFiles.length - 1;
+
+      // Bouw grid item
+      const item = document.createElement('div');
+      item.className = 'photo-grid-item';
+      item.dataset.fileIndex = fileIndex;
+
+      if (isVideo) {
+        item.innerHTML = `
+          <div class="photo-grid-video">🎥</div>
+          <div class="photo-hash-badge">SHA256</div>
+          <button class="photo-remove-btn" onclick="removePendingFile(${fileIndex}, event)" title="Verwijder">✕</button>`;
+      } else {
+        item.innerHTML = `
+          <img src="${e.target.result}" class="photo-grid-thumb" alt="${file.name}">
+          <div class="photo-hash-badge">SHA256</div>
+          <button class="photo-remove-btn" onclick="removePendingFile(${fileIndex}, event)" title="Verwijder">✕</button>`;
+      }
+
+      // Klik opent lightbox
+      item.addEventListener('click', (ev) => {
+        if (ev.target.classList.contains('photo-remove-btn')) return;
+        openLightboxFromPending(fileIndex);
+      });
+
+      previewEl.appendChild(item);
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+// Verwijder bestand uit pending list en preview grid
+function removePendingFile(index, event) {
+  event.stopPropagation();
+  pendingFiles[index] = null; // null = verwijderd (houd indexen intact)
+  const previewEl = document.getElementById('file-previews');
+  const items = previewEl.querySelectorAll('.photo-grid-item');
+  items.forEach(item => {
+    if (parseInt(item.dataset.fileIndex) === index) item.remove();
+  });
+}
+
+// ============================================================
+// LIGHTBOX – [WIJZIGING 1]
+// ============================================================
+function openLightboxFromPending(index) {
+  // Bouw array van niet-verwijderde bestanden
+  lightboxFiles = pendingFiles
+    .map((f, i) => f ? { ...f, _origIndex: i } : null)
+    .filter(Boolean);
+  // Vind positie in lightboxFiles die overeenkomt met origIndex
+  lightboxIndex = lightboxFiles.findIndex(f => f._origIndex === index);
+  if (lightboxIndex < 0) lightboxIndex = 0;
+  showLightboxItem();
+}
+
+function openLightboxFromSaved(files, startIndex) {
+  lightboxFiles = files.map(f => ({ ...f }));
+  lightboxIndex = startIndex || 0;
+  showLightboxItem();
+}
+
+function showLightboxItem() {
+  const lb = document.getElementById('lightbox');
+  const img = document.getElementById('lightbox-img');
+  const vid = document.getElementById('lightbox-video');
+  const counter = document.getElementById('lightbox-counter');
+  const fname = document.getElementById('lightbox-filename');
+  const prevBtn = document.getElementById('lightbox-prev');
+  const nextBtn = document.getElementById('lightbox-next');
+
+  if (!lightboxFiles.length) return;
+
+  const f = lightboxFiles[lightboxIndex];
+  const isVideo = f.type && f.type.startsWith('video/');
+
+  if (isVideo) {
+    img.style.display = 'none';
+    vid.style.display = 'block';
+    vid.src = f.dataUrl;
+  } else {
+    vid.style.display = 'none';
+    vid.src = '';
+    img.style.display = 'block';
+    img.src = f.dataUrl;
+    img.alt = f.name;
+  }
+
+  counter.textContent = `${lightboxIndex + 1} / ${lightboxFiles.length}`;
+  fname.textContent = f.name || '';
+
+  // Pijlen verbergen indien 1 bestand
+  prevBtn.style.display = lightboxFiles.length > 1 ? 'flex' : 'none';
+  nextBtn.style.display = lightboxFiles.length > 1 ? 'flex' : 'none';
+
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  const lb = document.getElementById('lightbox');
+  const vid = document.getElementById('lightbox-video');
+  lb.classList.remove('open');
+  vid.pause();
+  vid.src = '';
+  document.body.style.overflow = '';
+}
+
+function lightboxNav(dir) {
+  if (!lightboxFiles.length) return;
+  lightboxIndex = (lightboxIndex + dir + lightboxFiles.length) % lightboxFiles.length;
+  showLightboxItem();
+}
+
+// Toetsenbord & swipe ondersteuning voor lightbox — gekoppeld na DOM-load
+function initLightboxEvents() {
+  document.addEventListener('keydown', (e) => {
+    const lb = document.getElementById('lightbox');
+    if (!lb || !lb.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') lightboxNav(-1);
+    if (e.key === 'ArrowRight') lightboxNav(1);
+  });
+
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => {
+    const lb = document.getElementById('lightbox');
+    if (!lb || !lb.classList.contains('open')) return;
+    touchStartX = e.touches[0].clientX;
+  }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    const lb = document.getElementById('lightbox');
+    if (!lb || !lb.classList.contains('open')) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) lightboxNav(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  // Klik buiten media sluit lightbox
+  const lb = document.getElementById('lightbox');
+  if (lb) lb.addEventListener('click', (e) => {
+    if (e.target.id === 'lightbox') closeLightbox();
+  });
+}
+
+// ============================================================
+// SUBMIT MELDING
+// ============================================================
+async function submitMelding() {
+  const type = document.getElementById('f-type').value;
+  const desc = document.getElementById('f-desc').value.trim();
+
+  if (!type) { toast('Selecteer een type waarneming', 'error'); return; }
+  if (!desc) { toast('Voer een omschrijving in', 'error'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Opslaan...';
+
+  const now = new Date();
+  const healthChecks = Array.from(document.querySelectorAll('.health-check:checked')).map(el => el.value);
+  const activityChecks = Array.from(document.querySelectorAll('.activity-check:checked')).map(el => el.value);
+
+  const melding = {
+    id: generateId(),
+    timestamp_local: now.toISOString(),
+    timestamp_utc: new Date(now.toUTCString()).toISOString(),
+    date: now.toLocaleDateString('nl-NL'),
+    time: now.toLocaleTimeString('nl-NL'),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    device: navigator.userAgent.substring(0, 120),
+    platform: navigator.platform,
+
+    // GPS
+    gps: {
+      lat: parseFloat(document.getElementById('f-lat').value) || HOME_LAT,
+      lng: parseFloat(document.getElementById('f-lng').value) || HOME_LNG,
+      accuracy: currentGPS.accuracy
+    },
+
+    // Form data
+    type: type,
+    description: desc,
+    geur_intensiteit: parseInt(document.getElementById('f-geur').value),
+    wind_subjectief: document.getElementById('f-wind-subj').value,
+    richting_deg: parseInt(document.getElementById('f-direction').value),
+    richting_compass: degToCompass(parseInt(document.getElementById('f-direction').value)),
+    gezondheidsklachten: healthChecks,
+    activiteiten: activityChecks,
+    notities: document.getElementById('f-notes').value.trim(),
+
+    // Weather
+    weather: currentWeather,
+    weather_raw: weatherRaw,
+
+    // Files
+    bestanden: pendingFiles.map(f => ({
+      name: f.name,
+      type: f.type,
+      size: f.size,
+      lastModified: f.lastModified,
+      hash: f.hash,
+      dataUrl: f.dataUrl
+    })),
+
+    // Metadata
+    version: '1.0.0',
+    hash: null // computed below
+  };
+
+  // Generate hash (excluding hash field itself)
+  const hashInput = JSON.stringify({ ...melding, hash: null, weather_raw: null, bestanden: melding.bestanden.map(f => ({ ...f, dataUrl: null })) });
+  melding.hash = await sha256(hashInput);
+
+  // Save
+  const meldingen = getMeldingen();
+  meldingen.unshift(melding);
+  saveMeldingen(meldingen);
+
+  toast(`✓ Melding opgeslagen — ${melding.id}`, 'success');
+
+  // Reset form
+  document.getElementById('f-type').value = '';
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-geur').value = 1;
+  document.getElementById('geur-val').textContent = '1';
+  document.getElementById('f-notes').value = '';
+  document.querySelectorAll('.health-check, .activity-check').forEach(el => el.checked = false);
+  document.getElementById('file-previews').innerHTML = '';
+  pendingFiles = [];
+  // [WIJZIGING 3] Reset kompas naar 0 na opslaan
+  setCompassDegrees(0);
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm1 5a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z"/></svg> Melding Opslaan';
+
+  updateDashboard();
+  renderTimeline();
+  showPage('tijdlijn');
+}
+
+// ============================================================
+// PAGES
+// ============================================================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+
+  if (name === 'melding') {
+    initFormDateTime();
+    initFormMap();
+  }
+  if (name === 'dashboard') {
+    updateDashboard();
+  }
+  if (name === 'tijdlijn') {
+    renderTimeline();
+  }
+  if (name === 'export') {
+    updateExportInfo();
+  }
+}
+
+// ============================================================
+// FORM INIT
+// ============================================================
+function initFormDateTime() {
+  const now = new Date();
+  document.getElementById('auto-date').textContent = now.toLocaleDateString('nl-NL', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('auto-time').textContent = now.toLocaleTimeString('nl-NL');
+  document.getElementById('auto-utc').textContent = now.toISOString();
+  document.getElementById('auto-tz').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById('auto-device').textContent = navigator.userAgent.substring(0, 80) + '...';
+  setInterval(() => {
+    const n = new Date();
+    document.getElementById('auto-time').textContent = n.toLocaleTimeString('nl-NL');
+    document.getElementById('auto-utc').textContent = n.toISOString();
+  }, 1000);
+}
+
+function initFormMap() {
+  if (formMap) return;
+  setTimeout(() => {
+    // [WIJZIGING 2] Gebruik DEFAULT_LOCATION als startpunt
+    formMap = L.map('form-map').setView([DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OSM', maxZoom: 19
+    }).addTo(formMap);
+
+    const homeIcon = L.divIcon({
+      html: '<div style="width:14px;height:14px;background:#00d4aa;border-radius:50%;border:3px solid white;box-shadow:0 0 6px rgba(0,212,170,0.5);"></div>',
+      iconSize: [14,14], className: ''
+    });
+    L.marker([DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lng], { icon: homeIcon })
+      .addTo(formMap)
+      .bindPopup('🏠 ' + DEFAULT_LOCATION.label);
+
+    const meldIcon = L.divIcon({
+      html: '<div style="width:14px;height:14px;background:#f59e0b;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(245,158,11,0.5);"></div>',
+      iconSize: [14,14], className: ''
+    });
+
+    // [WIJZIGING 2] Marker begint op DEFAULT_LOCATION, niet GPS
+    formMarker = L.marker([DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lng], { icon: meldIcon, draggable: true }).addTo(formMap);
+    document.getElementById('f-lat').value = DEFAULT_LOCATION.lat.toFixed(6);
+    document.getElementById('f-lng').value = DEFAULT_LOCATION.lng.toFixed(6);
+
+    formMarker.on('dragend', (e) => {
+      const p = e.target.getLatLng();
+      document.getElementById('f-lat').value = p.lat.toFixed(6);
+      document.getElementById('f-lng').value = p.lng.toFixed(6);
+    });
+    formMap.on('click', (e) => {
+      formMarker.setLatLng(e.latlng);
+      document.getElementById('f-lat').value = e.latlng.lat.toFixed(6);
+      document.getElementById('f-lng').value = e.latlng.lng.toFixed(6);
+    });
+  }, 100);
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function initDashMap() {
+  dashMap = L.map('leaflet-map').setView([HOME_LAT, HOME_LNG], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OSM', maxZoom: 19
+  }).addTo(dashMap);
+
+  const homeIcon = L.divIcon({
+    html: '<div style="width:16px;height:16px;background:#00d4aa;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(0,212,170,0.5)"></div>',
+    iconSize: [16,16], className: ''
+  });
+  L.marker([HOME_LAT, HOME_LNG], { icon: homeIcon }).addTo(dashMap).bindPopup('🏠 ' + HOME_NAME);
+}
+
+function updateDashboard() {
+  const meldingen = getMeldingen();
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  const weekAgo = new Date(now - 7*24*60*60*1000);
+
+  document.getElementById('stat-total').textContent = meldingen.length;
+  document.getElementById('stat-month').textContent = meldingen.filter(m => {
+    const d = new Date(m.timestamp_local);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  }).length;
+  document.getElementById('stat-week').textContent = meldingen.filter(m => new Date(m.timestamp_local) > weekAgo).length;
+
+  // Wind stats
+  const windDirs = meldingen.filter(m => m.weather?.wind_dir !== undefined).map(m => degToCompass(m.weather.wind_dir));
+  if (windDirs.length) {
+    const freq = {};
+    windDirs.forEach(d => freq[d] = (freq[d] || 0) + 1);
+    const top = Object.entries(freq).sort((a,b) => b[1]-a[1])[0];
+    document.getElementById('stat-wind').textContent = top[0];
+  }
+
+  // Add markers to dash map
+  if (dashMap) {
+    meldingen.slice(0, 50).forEach(m => {
+      if (!m.gps) return;
+      const typeColors = { spuitactiviteit: '#f59e0b', drift: '#3b82f6', geur: '#8b5cf6', gezondheid: '#ef4444', geluid: '#f97316', overig: '#6b7280' };
+      const color = typeColors[m.type] || '#6b7280';
+      const icon = L.divIcon({
+        html: `<div style="width:10px;height:10px;background:${color};border-radius:50%;border:2px solid white;opacity:0.85;"></div>`,
+        iconSize: [10,10], className: ''
+      });
+      const marker = L.marker([m.gps.lat, m.gps.lng], { icon }).addTo(dashMap);
+      marker.on('click', () => showMeldingDetail(m.id));
+    });
+  }
+
+  // Charts
+  renderCharts(meldingen);
+
+  // Recent
+  const recentEl = document.getElementById('recent-entries');
+  recentEl.innerHTML = '';
+  meldingen.slice(0, 5).forEach(m => {
+    recentEl.innerHTML += renderMeldingCard(m, true);
+  });
+}
+
+function renderCharts(meldingen) {
+  // Monthly chart
+  const months = {};
+  meldingen.forEach(m => {
+    const d = new Date(m.timestamp_local);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    months[key] = (months[key] || 0) + 1;
+  });
+  const sortedMonths = Object.keys(months).sort().slice(-12);
+  const monthLabels = sortedMonths.map(k => {
+    const [y,m] = k.split('-');
+    return new Date(y, m-1).toLocaleDateString('nl-NL', { month:'short', year:'2-digit' });
+  });
+
+  const ctx1 = document.getElementById('chart-monthly').getContext('2d');
+  if (chartMonthly) chartMonthly.destroy();
+  chartMonthly = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        data: sortedMonths.map(k => months[k]),
+        backgroundColor: 'rgba(0,212,170,0.3)',
+        borderColor: '#00d4aa',
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#7a90b0', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#1e2d45' } },
+        y: { ticks: { color: '#7a90b0', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#1e2d45' } }
+      }
+    }
+  });
+
+  // Types chart
+  const typeCount = {};
+  meldingen.forEach(m => { typeCount[m.type] = (typeCount[m.type] || 0) + 1; });
+  const typeLabels = { spuitactiviteit: 'Spuiten', drift: 'Drift', geur: 'Geur', geluid: 'Geluid', gezondheid: 'Gezondheid', overig: 'Overig' };
+  const typeColors = ['#f59e0b','#3b82f6','#8b5cf6','#f97316','#ef4444','#6b7280'];
+
+  const ctx2 = document.getElementById('chart-types').getContext('2d');
+  if (chartTypes) chartTypes.destroy();
+  if (Object.keys(typeCount).length > 0) {
+    chartTypes = new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(typeCount).map(k => typeLabels[k] || k),
+        datasets: [{
+          data: Object.values(typeCount),
+          backgroundColor: Object.keys(typeCount).map((k,i) => typeColors[i % typeColors.length] + '99'),
+          borderColor: Object.keys(typeCount).map((k,i) => typeColors[i % typeColors.length]),
+          borderWidth: 1.5,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#7a90b0', font: { family: 'JetBrains Mono', size: 10 } } }
+        }
+      }
+    });
+  }
+}
+
+// ============================================================
+// TIMELINE
+// ============================================================
+function renderTimeline() {
+  const meldingen = getMeldingen();
+  const search = document.getElementById('tl-search')?.value?.toLowerCase() || '';
+  const filterType = document.getElementById('tl-filter-type')?.value || '';
+  const filterMonth = document.getElementById('tl-filter-month')?.value || '';
+
+  let filtered = meldingen.filter(m => {
+    if (filterType && m.type !== filterType) return false;
+    if (filterMonth) {
+      const d = new Date(m.timestamp_local);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if (key !== filterMonth) return false;
+    }
+    if (search) {
+      const text = (m.description + ' ' + m.type + ' ' + m.id).toLowerCase();
+      if (!text.includes(search)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('tl-count').textContent = `${filtered.length} meldingen`;
+
+  const el = document.getElementById('timeline-entries');
+  if (filtered.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted);font-family:var(--mono);font-size:0.75rem;">Geen meldingen gevonden</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(m => renderMeldingCard(m)).join('');
+}
+
+function typeLabel(type) {
+  const m = { spuitactiviteit:'🚜 Spuitactiviteit', drift:'💨 Drift/nevel', geur:'🌬️ Chemische geur', geluid:'🔊 Geluid', gezondheid:'🏥 Gezondheid', overig:'📝 Overig' };
+  return m[type] || type;
+}
+
+function typeBadgeClass(type) {
+  const m = { spuitactiviteit:'badge-warning', drift:'badge-info', geur:'badge-muted', gezondheid:'badge-danger', geluid:'badge-muted', overig:'badge-muted' };
+  return m[type] || 'badge-muted';
+}
+
+function renderMeldingCard(m, compact = false) {
+  const d = new Date(m.timestamp_local);
+  const dateStr = d.toLocaleDateString('nl-NL', { day:'2-digit', month:'short', year:'numeric' });
+  const timeStr = d.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+
+  return `
+  <div class="card mb-3 overflow-hidden" onclick="showMeldingDetail('${m.id}')" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--border-bright)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div class="p-3">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <span class="badge ${typeBadgeClass(m.type)}">${typeLabel(m.type)}</span>
+        <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);">${dateStr} ${timeStr}</span>
+      </div>
+      <div style="font-size:0.85rem;color:var(--text-primary);line-height:1.4;" class="mb-2">${m.description.substring(0, compact ? 80 : 120)}${m.description.length > (compact ? 80 : 120) ? '...' : ''}</div>
+      <div class="flex items-center gap-3 flex-wrap">
+        ${m.weather ? `<span style="font-family:var(--mono);font-size:0.65rem;color:var(--info);">💨 ${m.weather.wind_speed} km/h ${degToCompass(m.weather.wind_dir)}</span>` : ''}
+        ${m.gezondheidsklachten?.length ? `<span style="font-family:var(--mono);font-size:0.65rem;color:var(--danger);">🏥 ${m.gezondheidsklachten.length} klacht(en)</span>` : ''}
+        ${m.bestanden?.length ? `<span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">📎 ${m.bestanden.length} bestand(en)</span>` : ''}
+        <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-left:auto;">${m.id}</span>
+      </div>
+      ${!compact ? `<div class="hash-display mt-2">${m.hash}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// MELDING DETAIL MODAL
+// ============================================================
+function showMeldingDetail(id) {
+  const meldingen = getMeldingen();
+  const m = meldingen.find(x => x.id === id);
+  if (!m) return;
+
+  const d = new Date(m.timestamp_local);
+  const body = document.getElementById('modal-body');
+
+  body.innerHTML = `
+    <div class="space-y-4">
+      <div class="flex flex-wrap gap-2 mb-2">
+        <span class="badge ${typeBadgeClass(m.type)}">${typeLabel(m.type)}</span>
+        <span class="badge badge-muted">${m.id}</span>
+      </div>
+
+      <!-- Timestamps -->
+      <div class="card p-3">
+        <div class="section-label mb-2">Tijdregistratie</div>
+        <div class="mono text-xs space-y-1" style="color:var(--text-secondary);">
+          <div><span style="color:var(--text-muted);">Lokaal:  </span>${m.date} ${m.time}</div>
+          <div><span style="color:var(--text-muted);">UTC:     </span>${m.timestamp_utc}</div>
+          <div><span style="color:var(--text-muted);">Tijdzone:</span>${m.timezone}</div>
+        </div>
+      </div>
+
+      <!-- GPS -->
+      <div class="card p-3">
+        <div class="section-label mb-2">Locatie</div>
+        <div class="mono text-xs" style="color:var(--text-secondary);">
+          ${m.gps.lat.toFixed(6)}°N  ${m.gps.lng.toFixed(6)}°E
+          ${m.gps.accuracy ? `(±${m.gps.accuracy.toFixed(0)}m)` : ''}
+        </div>
+      </div>
+
+      <!-- Beschrijving -->
+      <div class="card p-3">
+        <div class="section-label mb-2">Omschrijving</div>
+        <div style="font-size:0.85rem;line-height:1.6;">${m.description}</div>
+      </div>
+
+      <!-- Observaties -->
+      <div class="card p-3">
+        <div class="section-label mb-2">Observaties</div>
+        <div class="grid grid-cols-2 gap-2 mono text-xs" style="color:var(--text-secondary);">
+          <div><span style="color:var(--text-muted);">Geur:</span> ${m.geur_intensiteit}/5</div>
+          <div><span style="color:var(--text-muted);">Wind:</span> ${m.wind_subjectief}</div>
+          <div><span style="color:var(--text-muted);">Richting:</span> ${m.richting_deg}° (${m.richting_compass})</div>
+        </div>
+        ${m.gezondheidsklachten?.length ? `<div class="mt-2"><div class="section-label">Gezondheid</div><div style="color:var(--danger);font-size:0.75rem;margin-top:4px;">${m.gezondheidsklachten.join(', ')}</div></div>` : ''}
+        ${m.activiteiten?.length ? `<div class="mt-2"><div class="section-label">Activiteiten</div><div style="color:var(--warning);font-size:0.75rem;margin-top:4px;">${m.activiteiten.join(', ')}</div></div>` : ''}
+      </div>
+
+      <!-- Weerdata -->
+      ${m.weather ? `
+      <div class="card p-3">
+        <div class="section-label mb-2">Weerdata (${m.weather.source})</div>
+        <div class="grid grid-cols-2 gap-1 mono text-xs" style="color:var(--text-secondary);">
+          <div>🌬️ ${m.weather.wind_speed} km/h</div>
+          <div>↗️ ${m.weather.wind_dir}° ${degToCompass(m.weather.wind_dir)}</div>
+          <div>💨 stoten: ${m.weather.wind_gusts} km/h</div>
+          <div>🌡️ ${m.weather.temperature}°C</div>
+          <div>💧 ${m.weather.humidity}%</div>
+          <div>🌂 ${m.weather.precipitation} mm</div>
+          <div>📊 ${m.weather.pressure} hPa</div>
+        </div>
+      </div>` : ''}
+
+      <!-- Bestanden – [WIJZIGING 1] klikbare foto grid -->
+      ${m.bestanden?.length ? `
+      <div class="card p-3">
+        <div class="section-label mb-2">Bestanden (${m.bestanden.length})</div>
+        <div class="photo-grid">
+          ${m.bestanden.map((f, idx) => `
+            <div class="photo-grid-item" onclick="openLightboxFromSaved(${JSON.stringify(m.bestanden).replace(/"/g,'&quot;')}, ${idx})">
+              ${f.type && f.type.startsWith('image/') 
+                ? `<img src="${f.dataUrl}" class="photo-grid-thumb" alt="${f.name}">`
+                : `<div class="photo-grid-video">🎥</div>`}
+              <div class="photo-hash-badge">SHA256</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Hash -->
+      <div class="card p-3">
+        <div class="section-label mb-2">Integriteitsverificatie</div>
+        <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:4px;">SHA-256 Hash</div>
+        <div class="hash-display">${m.hash}</div>
+        <div class="section-label mt-3 mb-1">Apparaat</div>
+        <div class="mono" style="font-size:0.6rem;color:var(--text-muted);word-break:break-all;">${m.device?.substring(0,120)}...</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('modal-overlay').style.display = 'block';
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').style.display = 'none';
+  }
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function updateExportInfo() {
+  const meldingen = getMeldingen();
+  document.getElementById('exp-total').textContent = meldingen.length;
+  if (meldingen.length) {
+    const dates = meldingen.map(m => new Date(m.timestamp_local)).sort((a,b) => a-b);
+    document.getElementById('exp-first').textContent = dates[0].toLocaleDateString('nl-NL');
+    document.getElementById('exp-last').textContent = dates[dates.length-1].toLocaleDateString('nl-NL');
+  } else {
+    document.getElementById('exp-first').textContent = '—';
+    document.getElementById('exp-last').textContent = '—';
+  }
+  document.getElementById('exp-storage').textContent = getStorageSize();
+}
+
+function exportCSV() {
+  const meldingen = getMeldingen();
+  if (!meldingen.length) { toast('Geen meldingen om te exporteren', 'error'); return; }
+
+  const headers = ['ID','Datum','Tijd','UTC','Type','Omschrijving','Geur Intensiteit','Wind Subjectief','Richting (deg)','Richting (kompas)','Gezondheidsklachten','Activiteiten','GPS Lat','GPS Lng','GPS Accuracy','Wind (km/h)','Windrichting (deg)','Windstoten (km/h)','Temperatuur (C)','Luchtvochtigheid (%)','Neerslag (mm)','Luchtdruk (hPa)','Weerdata Bron','Aantal Bestanden','Hash SHA256'];
+
+  const rows = meldingen.map(m => [
+    m.id, m.date, m.time, m.timestamp_utc, m.type,
+    `"${m.description.replace(/"/g,'""')}"`,
+    m.geur_intensiteit, m.wind_subjectief, m.richting_deg, m.richting_compass,
+    `"${m.gezondheidsklachten?.join(';')}"`,
+    `"${m.activiteiten?.join(';')}"`,
+    m.gps?.lat, m.gps?.lng, m.gps?.accuracy,
+    m.weather?.wind_speed, m.weather?.wind_dir, m.weather?.wind_gusts,
+    m.weather?.temperature, m.weather?.humidity, m.weather?.precipitation, m.weather?.pressure,
+    m.weather?.source, m.bestanden?.length || 0, m.hash
+  ].join(','));
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  downloadFile(csv, `spuitlog_export_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+  toast('✓ CSV gedownload', 'success');
+}
+
+function exportJSON() {
+  const meldingen = getMeldingen();
+  if (!meldingen.length) { toast('Geen meldingen om te exporteren', 'error'); return; }
+
+  const backup = {
+    export_timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    source: 'SpuitLog PWA',
+    location: HOME_NAME,
+    total_meldingen: meldingen.length,
+    meldingen
+  };
+  downloadFile(JSON.stringify(backup, null, 2), `spuitlog_backup_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+  toast('✓ JSON backup gedownload', 'success');
+}
+
+function exportPDF() {
+  const meldingen = getMeldingen();
+  if (!meldingen.length) { toast('Geen meldingen om te exporteren', 'error'); return; }
+
+  toast('PDF wordt gegenereerd...', 'success');
+
+  const typeColors = { spuitactiviteit:'#f59e0b', drift:'#3b82f6', geur:'#8b5cf6', gezondheid:'#ef4444', geluid:'#f97316', overig:'#6b7280' };
+
+  const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>SpuitLog — Juridisch Dossier</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Syne:wght@400;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Syne', sans-serif; background: white; color: #1a1a2e; font-size: 11pt; line-height: 1.6; }
+    .page-break { page-break-before: always; }
+    .header { background: #0a0e17; color: white; padding: 32px; display: flex; align-items: center; gap: 16px; }
+    .header-title { font-size: 24pt; font-weight: 800; letter-spacing: -0.02em; color: #00d4aa; }
+    .header-sub { font-family: 'JetBrains Mono'; font-size: 8pt; color: #7a90b0; margin-top: 4px; }
+    .content { padding: 24px; }
+    .section-title { font-family: 'JetBrains Mono'; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.15em; color: #7a90b0; margin-bottom: 8px; }
+    .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .badge { display: inline-block; font-family: 'JetBrains Mono'; font-size: 7pt; padding: 3px 10px; border-radius: 4px; font-weight: 500; }
+    .badge-warning { background: #fef3c7; color: #b45309; border: 1px solid #fbbf24; }
+    .badge-info { background: #dbeafe; color: #1d4ed8; border: 1px solid #3b82f6; }
+    .badge-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #ef4444; }
+    .badge-muted { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+    .hash { font-family: 'JetBrains Mono'; font-size: 7pt; color: #94a3b8; word-break: break-all; background: #f8fafc; padding: 6px; border-radius: 4px; border: 1px solid #e2e8f0; margin-top: 8px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .label { font-family: 'JetBrains Mono'; font-size: 7pt; color: #94a3b8; }
+    .value { font-family: 'JetBrains Mono'; font-size: 9pt; color: #1e293b; }
+    .entry-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .timestamp { font-family: 'JetBrains Mono'; font-size: 8pt; color: #64748b; }
+    .disclaimer { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px 16px; font-size: 9pt; color: #78350f; margin: 24px 0; }
+    img.evidence { max-width: 120px; max-height: 90px; border-radius: 6px; object-fit: cover; border: 1px solid #e2e8f0; }
+    .toc-item { display: flex; justify-content: space-between; font-family: 'JetBrains Mono'; font-size: 9pt; padding: 4px 0; border-bottom: 1px dotted #e2e8f0; }
+    h1 { font-size: 18pt; font-weight: 800; margin-bottom: 4px; }
+    h2 { font-size: 13pt; font-weight: 700; margin-bottom: 12px; color: #0f172a; }
+    h3 { font-size: 11pt; font-weight: 700; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+  <!-- Cover -->
+  <div class="header">
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="22" stroke="#00d4aa" stroke-width="2"/>
+      <circle cx="24" cy="24" r="8" fill="#00d4aa"/>
+      <line x1="24" y1="4" x2="24" y2="14" stroke="#00d4aa" stroke-width="2"/>
+      <line x1="24" y1="34" x2="24" y2="44" stroke="#00d4aa" stroke-width="2"/>
+      <line x1="4" y1="24" x2="14" y2="24" stroke="#00d4aa" stroke-width="2"/>
+      <line x1="34" y1="24" x2="44" y2="24" stroke="#00d4aa" stroke-width="2"/>
+    </svg>
+    <div>
+      <div class="header-title">SpuitLog</div>
+      <div class="header-sub">JURIDISCH DOSSIER — PESTICIDE DRIFT REGISTRATIE</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="disclaimer">
+      ⚠️ <strong>Disclaimer:</strong> Deze applicatie registreert waarnemingen en objectieve meetgegevens. De gegevens vormen geen directe conclusie over causaliteit of gezondheidsschade.
+    </div>
+
+    <!-- Dossier info -->
+    <div class="card">
+      <h2>Dossier Informatie</h2>
+      <div class="grid-2">
+        <div><div class="label">Locatie</div><div class="value">${HOME_NAME}</div></div>
+        <div><div class="label">Export datum</div><div class="value">${new Date().toLocaleDateString('nl-NL')}</div></div>
+        <div><div class="label">Totaal meldingen</div><div class="value">${meldingen.length}</div></div>
+        <div><div class="label">Periode</div><div class="value">${meldingen.length ? new Date(meldingen[meldingen.length-1].timestamp_local).toLocaleDateString('nl-NL') + ' — ' + new Date(meldingen[0].timestamp_local).toLocaleDateString('nl-NL') : '—'}</div></div>
+        <div><div class="label">Dossier versie</div><div class="value">SpuitLog v1.0.0</div></div>
+      </div>
+    </div>
+
+    <!-- Meldingen -->
+    <h2 style="margin-top:24px;">Alle Meldingen (${meldingen.length})</h2>
+
+    ${meldingen.map((m, i) => {
+      const typeBadge = { spuitactiviteit:'badge-warning', drift:'badge-info', geur:'badge-muted', gezondheid:'badge-danger', geluid:'badge-muted', overig:'badge-muted' }[m.type] || 'badge-muted';
+      return `
+      <div class="card ${i > 0 && i % 3 === 0 ? 'page-break' : ''}">
+        <div class="entry-header">
+          <div>
+            <span class="badge ${typeBadge}">${typeLabel(m.type)}</span>
+            <span style="font-family:JetBrains Mono;font-size:8pt;color:#64748b;margin-left:8px;">${m.id}</span>
+          </div>
+          <div class="timestamp">${m.date} ${m.time}</div>
+        </div>
+
+        <p style="margin-bottom:12px;">${m.description}</p>
+
+        <div class="grid-2" style="margin-bottom:12px;">
+          <div><div class="label">UTC</div><div class="value" style="font-size:8pt;">${m.timestamp_utc}</div></div>
+          <div><div class="label">Tijdzone</div><div class="value">${m.timezone}</div></div>
+          <div><div class="label">GPS</div><div class="value">${m.gps?.lat?.toFixed(6)}°N  ${m.gps?.lng?.toFixed(6)}°E</div></div>
+          <div><div class="label">Geur intensiteit</div><div class="value">${m.geur_intensiteit}/5</div></div>
+          <div><div class="label">Richting</div><div class="value">${m.richting_deg}° (${m.richting_compass})</div></div>
+          <div><div class="label">Wind (subjectief)</div><div class="value">${m.wind_subjectief}</div></div>
+        </div>
+
+        ${m.gezondheidsklachten?.length ? `<div style="margin-bottom:8px;"><div class="label">Gezondheidsklachten</div><div style="color:#b91c1c;font-size:9pt;">${m.gezondheidsklachten.join(', ')}</div></div>` : ''}
+        ${m.activiteiten?.length ? `<div style="margin-bottom:8px;"><div class="label">Activiteiten</div><div style="color:#b45309;font-size:9pt;">${m.activiteiten.join(', ')}</div></div>` : ''}
+
+        ${m.weather ? `
+        <div style="border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px;">
+          <div class="label">Weerdata (${m.weather.source})</div>
+          <div class="grid-2" style="margin-top:4px;">
+            <div><span class="label">Wind: </span><span class="value">${m.weather.wind_speed} km/h</span></div>
+            <div><span class="label">Richting: </span><span class="value">${m.weather.wind_dir}° ${degToCompass(m.weather.wind_dir)}</span></div>
+            <div><span class="label">Stoten: </span><span class="value">${m.weather.wind_gusts} km/h</span></div>
+            <div><span class="label">Temp: </span><span class="value">${m.weather.temperature}°C</span></div>
+            <div><span class="label">Vochtigheid: </span><span class="value">${m.weather.humidity}%</span></div>
+            <div><span class="label">Neerslag: </span><span class="value">${m.weather.precipitation} mm</span></div>
+          </div>
+        </div>` : ''}
+
+        ${m.bestanden?.length ? `
+        <div style="border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px;">
+          <div class="label">Fotobewijs (${m.bestanden.length} bestand(en))</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+            ${m.bestanden.filter(f => f.type.startsWith('image/')).map(f => `<img class="evidence" src="${f.dataUrl}" alt="${f.name}">`).join('')}
+          </div>
+        </div>` : ''}
+
+        <div class="hash">SHA-256: ${m.hash}</div>
+      </div>`;
+    }).join('')}
+
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (win) {
+    win.addEventListener('load', () => setTimeout(() => win.print(), 500));
+  }
+  toast('✓ PDF-rapport geopend (gebruik Afdrukken → Opslaan als PDF)', 'success');
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const meldingen = data.meldingen || data;
+      if (!Array.isArray(meldingen)) { toast('Ongeldig backup formaat', 'error'); return; }
+      if (confirm(`${meldingen.length} meldingen importeren? Bestaande data blijft behouden.`)) {
+        const existing = getMeldingen();
+        const existingIds = new Set(existing.map(m => m.id));
+        const newOnes = meldingen.filter(m => !existingIds.has(m.id));
+        saveMeldingen([...newOnes, ...existing].sort((a,b) => new Date(b.timestamp_local) - new Date(a.timestamp_local)));
+        toast(`✓ ${newOnes.length} nieuwe meldingen geïmporteerd`, 'success');
+        updateDashboard();
+        renderTimeline();
+      }
+    } catch (err) {
+      toast('Fout bij importeren: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  if (confirm('⚠️ WAARSCHUWING: Alle meldingen worden permanent verwijderd. Maak eerst een backup!\n\nDoorgaan?')) {
+    if (confirm('Weet u het zeker? Dit kan NIET ongedaan worden gemaakt.')) {
+      localStorage.removeItem('spuitlog_meldingen');
+      localStorage.removeItem('driftlog_meldingen'); // ook oude sleutel opruimen
+      toast('Alle data verwijderd', 'error');
+      updateDashboard();
+      renderTimeline();
+      updateExportInfo();
+    }
+  }
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(message, type = '') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+}
+
+// ============================================================
+// ONLINE/OFFLINE
+// ============================================================
+function updateOnlineStatus() {
+  const dot = document.getElementById('online-dot');
+  const text = document.getElementById('online-text');
+  if (navigator.onLine) {
+    dot.style.background = 'var(--accent)';
+    text.textContent = 'ONLINE';
+  } else {
+    dot.style.background = 'var(--warning)';
+    text.textContent = 'OFFLINE';
+  }
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// ============================================================
+// PWA SERVICE WORKER
+// ============================================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW failed:', err));
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  updateOnlineStatus();
+  initDashMap();
+  updateDashboard();
+  initLightboxEvents(); // [WIJZIGING 1] Lightbox events
+
+  // Init GPS silently
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+      },
+      () => {} // silent fail
+    );
+  }
+
+  // Fetch weather on load for form
+  fetchWeather();
+});
+</script>
+
+</body>
+</html>
