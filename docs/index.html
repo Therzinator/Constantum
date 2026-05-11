@@ -553,6 +553,107 @@
     .sw-debug-val.ok  { color: var(--accent); }
     .sw-debug-val.warn { color: var(--warning); }
     .sw-debug-val.err  { color: var(--danger); }
+
+    /* ── SYNC STATUS BADGES ── */
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .sync-lokaal   { background: rgba(74,93,120,0.25); color: var(--text-muted);  border: 1px solid var(--border); }
+    .sync-synced   { background: rgba(0,212,170,0.12); color: var(--accent);      border: 1px solid var(--accent-dim); }
+    .sync-pending  { background: rgba(245,158,11,0.12); color: var(--warning);    border: 1px solid rgba(245,158,11,0.35); }
+    .sync-error    { background: rgba(239,68,68,0.1);  color: var(--danger);      border: 1px solid rgba(239,68,68,0.35); }
+    .sync-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* ── LOGIN OVERLAY ── */
+    #auth-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 30000;
+      background: var(--bg-primary);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #auth-overlay.visible { display: flex; }
+    .auth-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .auth-title {
+      font-family: var(--sans);
+      font-weight: 800;
+      font-size: 1.3rem;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .auth-sub {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    .auth-error {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--danger);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-top: 12px;
+      display: none;
+    }
+    .auth-skip {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 16px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* ── SYNC STATUS BALK ── */
+    #sync-status-bar {
+      display: none;
+      position: fixed;
+      bottom: 70px;
+      left: 12px; right: 12px;
+      z-index: 5000;
+      background: var(--bg-card);
+      border: 1px solid var(--border-bright);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: fadeIn 0.2s ease;
+      pointer-events: none;
+    }
+    #sync-status-bar.active { display: flex; }
   </style>
 </head>
 
@@ -568,6 +669,47 @@
     <button class="update-dismiss-btn" onclick="dismissUpdateBanner()" aria-label="Sluiten">Later</button>
     <button class="update-reload-btn" onclick="reloadApp()" aria-label="Herladen">↻ Herladen</button>
   </div>
+</div>
+
+<!-- ── AUTH OVERLAY ── -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-title">SpuitLog</div>
+    <div class="auth-sub">PESTICIDE DRIFT DOSSIER — INLOGGEN</div>
+
+    <!-- Tabs: inloggen / registreren -->
+    <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border);">
+      <button id="auth-tab-login"  onclick="authTab('login')"  style="flex:1;padding:8px;font-family:var(--mono);font-size:0.7rem;background:none;border:none;color:var(--accent);border-bottom:2px solid var(--accent);cursor:pointer;">Inloggen</button>
+      <button id="auth-tab-signup" onclick="authTab('signup')" style="flex:1;padding:8px;font-family:var(--mono);font-size:0.7rem;background:none;border:none;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;">Registreren</button>
+    </div>
+
+    <div class="space-y-3">
+      <div>
+        <label class="section-label block mb-1">E-mailadres</label>
+        <input type="email" id="auth-email" class="form-input px-3 py-3 text-sm" placeholder="naam@voorbeeld.nl" autocomplete="email">
+      </div>
+      <div>
+        <label class="section-label block mb-1">Wachtwoord</label>
+        <input type="password" id="auth-password" class="form-input px-3 py-3 text-sm" placeholder="••••••••" autocomplete="current-password">
+      </div>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <button id="auth-submit-btn" onclick="authSubmit()" class="btn-primary w-full py-3 mt-5 text-sm">
+      Inloggen
+    </button>
+
+    <div class="auth-skip" onclick="authSkip()" id="auth-skip-link">
+      Overslaan — alleen lokaal werken (geen sync)
+    </div>
+  </div>
+</div>
+
+<!-- ── SYNC STATUS BALK ── -->
+<div id="sync-status-bar">
+  <div class="spinner" style="width:14px;height:14px;border-width:2px;flex-shrink:0;"></div>
+  <span id="sync-status-text">Synchroniseren...</span>
 </div>
 
 <div id="app">
@@ -592,6 +734,17 @@
       <div id="online-indicator" class="flex items-center gap-1">
         <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);" id="online-dot"></div>
         <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);" id="online-text">ONLINE</span>
+      </div>
+      <!-- Sync indicator -->
+      <div id="header-sync-indicator" style="display:none;align-items:center;gap:4px;" title="Sync status">
+        <div id="header-sync-dot" style="width:6px;height:6px;border-radius:50%;background:var(--accent);"></div>
+        <span id="header-sync-label" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);">SYNC</span>
+      </div>
+      <!-- Gebruiker -->
+      <div id="header-user" style="display:none;cursor:pointer;" onclick="showPage('export')" title="Account">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--accent-glow);border:1px solid var(--accent-dim);display:flex;align-items:center;justify-content:center;">
+          <span id="header-user-initial" style="font-family:var(--mono);font-size:0.6rem;font-weight:700;color:var(--accent);">?</span>
+        </div>
       </div>
     </div>
   </header>
@@ -941,6 +1094,42 @@
 
       <div class="space-y-3">
 
+        <!-- Account & Sync kaart -->
+        <div class="card p-4" id="account-card">
+          <div class="section-label mb-3">☁️ Account & Synchronisatie</div>
+          <!-- Niet ingelogd -->
+          <div id="account-logged-out">
+            <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;">
+              Log in om meldingen automatisch te synchroniseren tussen apparaten.
+            </div>
+            <button onclick="showAuthOverlay()" class="btn-primary px-4 py-2 text-sm inline-flex items-center gap-2">
+              🔐 Inloggen / Registreren
+            </button>
+          </div>
+          <!-- Ingelogd -->
+          <div id="account-logged-in" style="display:none;">
+            <div class="space-y-2 mono text-xs" style="color:var(--text-secondary);">
+              <div class="flex justify-between"><span>Ingelogd als:</span><span id="acc-email" style="color:var(--accent);">—</span></div>
+              <div class="flex justify-between"><span>Lokaal:</span><span id="acc-local-count" style="color:var(--accent);">—</span></div>
+              <div class="flex justify-between"><span>Gesynchroniseerd:</span><span id="acc-synced-count" style="color:var(--accent);">—</span></div>
+              <div class="flex justify-between"><span>In wachtrij:</span><span id="acc-pending-count" style="color:var(--warning);">—</span></div>
+              <div class="flex justify-between"><span>Sync mislukt:</span><span id="acc-error-count" style="color:var(--danger);">—</span></div>
+              <div class="flex justify-between"><span>Laatste sync:</span><span id="acc-last-sync">—</span></div>
+            </div>
+            <div class="flex gap-2 mt-3 flex-wrap">
+              <button onclick="syncNu()" class="btn-primary px-4 py-2 text-sm inline-flex items-center gap-2">
+                ↻ Sync nu
+              </button>
+              <button onclick="laadVanSupabase()" class="btn-outline px-4 py-2 text-sm inline-flex items-center gap-2">
+                ⬇ Laden van cloud
+              </button>
+              <button onclick="authUitloggen()" style="background:transparent;border:1px solid var(--border-bright);color:var(--text-muted);border-radius:10px;padding:8px 12px;font-size:0.75rem;font-family:var(--mono);">
+                Uitloggen
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="card p-4">
           <div class="flex items-start gap-3">
             <div style="font-size:1.5rem;">📄</div>
@@ -1115,8 +1304,22 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+// ============================================================
+// ⚙️  SUPABASE CONFIGURATIE — vul hier jouw project-gegevens in
+// ============================================================
+// Stap 1: Maak een project aan op https://supabase.com
+// Stap 2: Ga naar Project Settings → API
+// Stap 3: Kopieer "Project URL" en "anon public" key hieronder
+// ============================================================
+const SUPABASE_URL  = 'https://xremwdadzfsfvevrekji.supabase.co'    // bijv. https://abcxyz.supabase.co
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyZW13ZGFkemZzZnZldnJla2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0Nzg4NzUsImV4cCI6MjA5NDA1NDg3NX0.FwwzyOKy543aqWoHICQ6Kc6zvaxqcTzpNkA4w606enA';         // begint met eyJ...
+
+// Zet op false om Supabase volledig uit te schakelen (puur lokale modus)
+const SUPABASE_ENABLED = (SUPABASE_URL !== 'JOUW_SUPABASE_URL_HIER');
+
 // ============================================================
 // STATE & CONSTANTS
 // ============================================================
@@ -1132,8 +1335,8 @@ const HOME_LNG  = DEFAULT_LOCATION.lng;
 const HOME_NAME = DEFAULT_LOCATION.label;
 
 // [WIJZIGING 1] Lightbox state
-let lightboxFiles = [];   // array van { dataUrl, type, name } voor huidige melding-preview
-let lightboxIndex = 0;    // huidig getoond item
+let lightboxFiles = [];
+let lightboxIndex = 0;
 
 let currentGPS = { lat: HOME_LAT, lng: HOME_LNG, accuracy: null };
 let currentWeather = null;
@@ -1145,6 +1348,502 @@ let compassDeg = 0;
 let pendingFiles = [];
 let chartMonthly = null;
 let chartTypes = null;
+
+// ============================================================
+// SUPABASE CLIENT & SYNC MODULE
+// ============================================================
+
+// ── Client initialisatie ──────────────────────────────────────
+let _sb = null;          // Supabase client instance
+let _sbUser = null;      // ingelogde gebruiker
+let _offlineQueue = [];  // wachtrij van meldingen die nog gesynchroniseerd moeten worden
+let _syncRunning = false; // voorkom dubbele sync
+
+function sbClient() {
+  if (!SUPABASE_ENABLED) return null;
+  if (_sb) return _sb;
+  try {
+    _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+    return _sb;
+  } catch (e) {
+    console.error('[Supabase] Client aanmaken mislukt:', e);
+    return null;
+  }
+}
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function authInit() {
+  const sb = sbClient();
+  if (!sb) return;
+
+  // Herstel sessie uit localStorage
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    _sbUser = session.user;
+    authUpdateUI(session.user);
+    return;
+  }
+
+  // Luister op auth state changes (bijv. na email-link login)
+  sb.auth.onAuthStateChange((event, session) => {
+    _sbUser = session?.user || null;
+    authUpdateUI(_sbUser);
+    if (event === 'SIGNED_IN') {
+      toast('✓ Ingelogd als ' + (_sbUser?.email || ''), 'success');
+      document.getElementById('auth-overlay').classList.remove('visible');
+      syncNu();
+    }
+    if (event === 'SIGNED_OUT') {
+      toast('Uitgelogd', '');
+    }
+  });
+
+  // Toon auth overlay alleen als Supabase geconfigureerd is en niet ingelogd
+  if (SUPABASE_ENABLED && !session) {
+    // Kleine vertraging zodat app eerst laadt
+    setTimeout(() => {
+      if (!_sbUser) document.getElementById('auth-overlay').classList.add('visible');
+    }, 800);
+  }
+}
+
+async function authSubmit() {
+  const sb = sbClient();
+  if (!sb) return;
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-password').value;
+  const isLogin = document.getElementById('auth-tab-login').style.borderBottomColor !== 'transparent';
+  const errEl = document.getElementById('auth-error');
+  const btn   = document.getElementById('auth-submit-btn');
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = isLogin ? 'Inloggen...' : 'Registreren...';
+
+  try {
+    let result;
+    if (isLogin) {
+      result = await sb.auth.signInWithPassword({ email, password: pass });
+    } else {
+      result = await sb.auth.signUp({ email, password: pass });
+    }
+    if (result.error) throw result.error;
+    if (!isLogin && !result.data?.session) {
+      errEl.textContent = '✓ Bevestigingsmail verstuurd. Controleer uw inbox.';
+      errEl.style.cssText = 'display:block;color:var(--accent);background:var(--accent-glow);border-color:var(--accent-dim);padding:8px 12px;border-radius:8px;font-family:var(--mono);font-size:0.7rem;margin-top:12px;';
+    }
+  } catch (err) {
+    errEl.textContent = err.message || 'Inloggen mislukt';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = isLogin ? 'Inloggen' : 'Registreren';
+  }
+}
+
+function authTab(tab) {
+  const loginBtn  = document.getElementById('auth-tab-login');
+  const signupBtn = document.getElementById('auth-tab-signup');
+  const submitBtn = document.getElementById('auth-submit-btn');
+  const active = 'border-bottom:2px solid var(--accent);color:var(--accent);';
+  const inactive = 'border-bottom:2px solid transparent;color:var(--text-muted);';
+  if (tab === 'login') {
+    loginBtn.style.cssText  += active;
+    signupBtn.style.cssText += inactive;
+    submitBtn.textContent = 'Inloggen';
+  } else {
+    loginBtn.style.cssText  += inactive;
+    signupBtn.style.cssText += active;
+    submitBtn.textContent = 'Registreren';
+  }
+}
+
+function authSkip() {
+  document.getElementById('auth-overlay').classList.remove('visible');
+  toast('Lokale modus — geen synchronisatie', '');
+}
+
+async function authUitloggen() {
+  const sb = sbClient();
+  if (sb) await sb.auth.signOut();
+  _sbUser = null;
+  authUpdateUI(null);
+}
+
+function showAuthOverlay() {
+  document.getElementById('auth-overlay').classList.add('visible');
+}
+
+function authUpdateUI(user) {
+  const loggedOut = document.getElementById('account-logged-out');
+  const loggedIn  = document.getElementById('account-logged-in');
+  const headerUser = document.getElementById('header-user');
+  const headerUserInitial = document.getElementById('header-user-initial');
+  const headerSyncIndicator = document.getElementById('header-sync-indicator');
+
+  if (user) {
+    if (loggedOut) loggedOut.style.display = 'none';
+    if (loggedIn)  loggedIn.style.display  = 'block';
+    if (headerUser) headerUser.style.display = 'block';
+    if (headerSyncIndicator) headerSyncIndicator.style.display = 'flex';
+    const initial = (user.email || '?')[0].toUpperCase();
+    if (headerUserInitial) headerUserInitial.textContent = initial;
+    const emailEl = document.getElementById('acc-email');
+    if (emailEl) emailEl.textContent = user.email || '—';
+  } else {
+    if (loggedOut) loggedOut.style.display = 'block';
+    if (loggedIn)  loggedIn.style.display  = 'none';
+    if (headerUser) headerUser.style.display = 'none';
+    if (headerSyncIndicator) headerSyncIndicator.style.display = 'none';
+  }
+  updateSyncStats();
+}
+
+// ── OFFLINE QUEUE ─────────────────────────────────────────────
+function laadOfflineQueue() {
+  try {
+    _offlineQueue = JSON.parse(localStorage.getItem('spuitlog_sync_queue') || '[]');
+  } catch { _offlineQueue = []; }
+}
+
+function slaOfflineQueueOp() {
+  try {
+    safeSetLocalStorage('spuitlog_sync_queue', _offlineQueue);
+  } catch { /* queue te groot — negeer */ }
+}
+
+function voegToeAanQueue(meldingId) {
+  if (!_offlineQueue.includes(meldingId)) {
+    _offlineQueue.push(meldingId);
+    slaOfflineQueueOp();
+  }
+}
+
+function verwijderUitQueue(meldingId) {
+  _offlineQueue = _offlineQueue.filter(id => id !== meldingId);
+  slaOfflineQueueOp();
+}
+
+// ── SYNC CORE ─────────────────────────────────────────────────
+function toonSyncBalk(tekst) {
+  const bar = document.getElementById('sync-status-bar');
+  const txt = document.getElementById('sync-status-text');
+  if (!bar) return;
+  if (txt) txt.textContent = tekst;
+  bar.classList.add('active');
+}
+
+function verbergSyncBalk() {
+  setTimeout(() => {
+    const bar = document.getElementById('sync-status-bar');
+    if (bar) bar.classList.remove('active');
+  }, 2000);
+}
+
+function updateSyncHeaderDot(status) {
+  // status: 'ok' | 'bezig' | 'fout' | 'offline'
+  const dot = document.getElementById('header-sync-dot');
+  const lbl = document.getElementById('header-sync-label');
+  const colors = { ok: 'var(--accent)', bezig: 'var(--warning)', fout: 'var(--danger)', offline: 'var(--text-muted)' };
+  const labels = { ok: 'SYNC', bezig: 'SYNC…', fout: 'ERR', offline: 'OFF' };
+  if (dot) dot.style.background = colors[status] || colors.ok;
+  if (lbl) lbl.textContent = labels[status] || 'SYNC';
+}
+
+// Sla een melding op in Supabase entries tabel
+async function sbSyncMelding(melding) {
+  const sb = sbClient();
+  if (!sb || !_sbUser) return false;
+
+  const record = {
+    id:                melding.id,
+    user_id:           _sbUser.id,
+    timestamp_local:   melding.timestamp_local,
+    timestamp_utc:     melding.timestamp_utc,
+    timezone:          melding.timezone,
+    device:            melding.device,
+    platform:          melding.platform,
+    app_version:       melding.version || '1.0.0',
+    gps_lat:           melding.gps?.lat,
+    gps_lng:           melding.gps?.lng,
+    gps_accuracy:      melding.gps?.accuracy,
+    gps_status:        melding.gps?.status,
+    type:              melding.type,
+    description:       melding.description,
+    geur_intensiteit:  melding.geur_intensiteit,
+    wind_subjectief:   melding.wind_subjectief,
+    richting_deg:      melding.richting_deg,
+    richting_compass:  melding.richting_compass,
+    gezondheidsklachten: melding.gezondheidsklachten || [],
+    activiteiten:      melding.activiteiten || [],
+    notities:          melding.notities || '',
+    weather:           melding.weather || null,
+    client_hash:       melding.hash,
+    sync_status:       'synced',
+    warnings:          melding.warnings || [],
+    version:           melding.version || '1.0.0'
+  };
+
+  const { error } = await sb.from('entries').upsert(record, { onConflict: 'id' });
+  if (error) {
+    console.error('[Supabase] Entry sync mislukt:', error.message);
+    return false;
+  }
+  return true;
+}
+
+// Upload bijlagen naar Supabase Storage + sla metadata op in attachments
+async function sbSyncBijlagen(meldingId, bestanden) {
+  const sb = sbClient();
+  if (!sb || !_sbUser || !bestanden?.length) return;
+
+  const idbBijlagen = await idbGetBijlagen(meldingId);
+
+  for (const bestand of bestanden) {
+    if (!bestand.hash) continue;
+
+    // Controleer of al geüpload
+    const { data: bestaand } = await sb.from('attachments')
+      .select('id')
+      .eq('entry_id', meldingId)
+      .eq('file_hash', bestand.hash)
+      .maybeSingle();
+    if (bestaand) continue; // al gesynchroniseerd
+
+    // Haal dataUrl op uit IndexedDB
+    const idb = idbBijlagen.find(b => b.hash === bestand.hash || b.name === bestand.name);
+    if (!idb?.dataUrl) {
+      console.warn('[Supabase] Geen dataUrl voor bijlage:', bestand.name);
+      continue;
+    }
+
+    try {
+      // Converteer dataUrl naar Blob
+      const res   = await fetch(idb.dataUrl);
+      const blob  = await res.blob();
+      const path  = `${_sbUser.id}/${meldingId}/${bestand.hash}_${bestand.name}`;
+
+      // Upload naar Storage
+      const { error: upErr } = await sb.storage
+        .from('spuitlog-bijlagen')
+        .upload(path, blob, { contentType: bestand.type, upsert: true });
+
+      if (upErr) {
+        console.error('[Supabase] Upload mislukt:', upErr.message);
+        continue;
+      }
+
+      // Sla metadata op in attachments tabel
+      await sb.from('attachments').upsert({
+        entry_id:       meldingId,
+        user_id:        _sbUser.id,
+        filename:       bestand.name,
+        mime_type:      bestand.type,
+        file_size:      bestand.size,
+        last_modified:  bestand.lastModified,
+        storage_path:   path,
+        file_hash:      bestand.hash,
+      }, { onConflict: 'entry_id,file_hash' });
+
+    } catch (e) {
+      console.error('[Supabase] Bijlage sync fout:', e.message);
+    }
+  }
+}
+
+// Voeg een audit_log regel toe
+async function sbAuditLog(entryId, action, detail = {}) {
+  const sb = sbClient();
+  if (!sb || !_sbUser) return;
+  try {
+    await sb.from('audit_log').insert({
+      user_id:    _sbUser.id,
+      entry_id:   entryId,
+      action,
+      detail,
+      user_agent: navigator.userAgent.substring(0, 200)
+    });
+  } catch {}
+}
+
+// Hoofd sync functie: verwerk offline queue
+async function syncNu(toonStatus = true) {
+  if (!SUPABASE_ENABLED || !_sbUser || _syncRunning) return;
+  if (!navigator.onLine) {
+    updateSyncHeaderDot('offline');
+    if (toonStatus) toast('Offline — sync gepauzeerd', '');
+    return;
+  }
+
+  _syncRunning = true;
+  updateSyncHeaderDot('bezig');
+  if (toonStatus) toonSyncBalk('Synchroniseren...');
+
+  laadOfflineQueue();
+
+  const meldingen = getMeldingen();
+  const teSync = meldingen.filter(m =>
+    m.sync_status === 'lokaal' ||
+    m.sync_status === 'sync_mislukt' ||
+    _offlineQueue.includes(m.id)
+  );
+
+  let geslaagd = 0;
+  let mislukt  = 0;
+
+  for (const melding of teSync) {
+    try {
+      if (toonStatus) toonSyncBalk(`Syncing ${melding.id}…`);
+
+      const ok = await sbSyncMelding(melding);
+      if (ok) {
+        await sbSyncBijlagen(melding.id, melding.bestanden);
+        await sbAuditLog(melding.id, 'sync', { device: navigator.platform });
+
+        // Update lokale sync_status
+        const alle = getMeldingen();
+        const idx  = alle.findIndex(m => m.id === melding.id);
+        if (idx >= 0) {
+          alle[idx].sync_status = 'synced';
+          alle[idx].sync_at     = new Date().toISOString();
+          saveMeldingen(alle);
+        }
+        verwijderUitQueue(melding.id);
+        geslaagd++;
+      } else {
+        // Markeer als mislukt
+        const alle = getMeldingen();
+        const idx  = alle.findIndex(m => m.id === melding.id);
+        if (idx >= 0) { alle[idx].sync_status = 'sync_mislukt'; saveMeldingen(alle); }
+        voegToeAanQueue(melding.id);
+        mislukt++;
+      }
+    } catch (e) {
+      console.error('[Supabase] Sync fout voor', melding.id, ':', e.message);
+      voegToeAanQueue(melding.id);
+      mislukt++;
+    }
+  }
+
+  _syncRunning = false;
+  updateSyncHeaderDot(mislukt > 0 ? 'fout' : 'ok');
+  verbergSyncBalk();
+  updateSyncStats();
+  renderTimeline();
+  updateDashboard();
+
+  if (toonStatus && teSync.length > 0) {
+    const msg = mislukt > 0
+      ? `Sync: ${geslaagd} geslaagd, ${mislukt} mislukt`
+      : `✓ ${geslaagd} melding(en) gesynchroniseerd`;
+    toast(msg, mislukt > 0 ? 'error' : 'success');
+  }
+}
+
+// Laad meldingen van Supabase (andere apparaten)
+async function laadVanSupabase() {
+  const sb = sbClient();
+  if (!sb || !_sbUser) { toast('Niet ingelogd', 'error'); return; }
+  if (!navigator.onLine) { toast('Offline', 'error'); return; }
+
+  toonSyncBalk('Laden van cloud...');
+
+  try {
+    const { data: entries, error } = await sb
+      .from('entries')
+      .select('*')
+      .eq('user_id', _sbUser.id)
+      .is('deleted_at', null)
+      .order('timestamp_local', { ascending: false });
+
+    if (error) throw error;
+
+    const lokaal = getMeldingen();
+    const lokaalIds = new Set(lokaal.map(m => m.id));
+    let nieuw = 0;
+
+    for (const entry of entries) {
+      if (lokaalIds.has(entry.id)) continue;
+
+      // Converteer Supabase record naar lokaal formaat
+      const melding = {
+        id:               entry.id,
+        timestamp_local:  entry.timestamp_local,
+        timestamp_utc:    entry.timestamp_utc,
+        date:             new Date(entry.timestamp_local).toLocaleDateString('nl-NL'),
+        time:             new Date(entry.timestamp_local).toLocaleTimeString('nl-NL'),
+        timezone:         entry.timezone,
+        device:           entry.device,
+        platform:         entry.platform,
+        gps: {
+          lat:      entry.gps_lat,
+          lng:      entry.gps_lng,
+          accuracy: entry.gps_accuracy,
+          status:   entry.gps_status
+        },
+        type:                entry.type,
+        description:         entry.description,
+        geur_intensiteit:    entry.geur_intensiteit,
+        wind_subjectief:     entry.wind_subjectief,
+        richting_deg:        entry.richting_deg,
+        richting_compass:    entry.richting_compass,
+        gezondheidsklachten: entry.gezondheidsklachten || [],
+        activiteiten:        entry.activiteiten || [],
+        notities:            entry.notities || '',
+        weather:             entry.weather,
+        weather_raw:         null,
+        bestanden:           [],  // bijlagen metadata apart laden indien gewenst
+        warnings:            entry.warnings || [],
+        version:             entry.app_version || '1.0.0',
+        hash:                entry.client_hash,
+        sync_status:         'synced',
+        sync_at:             entry.sync_at,
+        supabase_id:         entry.id
+      };
+      lokaal.push(melding);
+      nieuw++;
+    }
+
+    if (nieuw > 0) {
+      lokaal.sort((a, b) => new Date(b.timestamp_local) - new Date(a.timestamp_local));
+      saveMeldingen(lokaal);
+      toast(`✓ ${nieuw} nieuwe melding(en) geladen van cloud`, 'success');
+      renderTimeline();
+      updateDashboard();
+    } else {
+      toast('Alles al up-to-date', 'success');
+    }
+  } catch (e) {
+    console.error('[Supabase] Laden mislukt:', e.message);
+    toast('Laden mislukt: ' + e.message, 'error');
+  } finally {
+    verbergSyncBalk();
+    updateSyncStats();
+  }
+}
+
+// Update sync statistieken in de UI
+function updateSyncStats() {
+  const meldingen = getMeldingen();
+  const lokaal   = meldingen.filter(m => !m.sync_status || m.sync_status === 'lokaal').length;
+  const synced   = meldingen.filter(m => m.sync_status === 'synced').length;
+  const pending  = _offlineQueue.length;
+  const errors   = meldingen.filter(m => m.sync_status === 'sync_mislukt').length;
+  const lastSync = meldingen.find(m => m.sync_at)?.sync_at;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('acc-local-count',   lokaal);
+  set('acc-synced-count',  synced);
+  set('acc-pending-count', pending);
+  set('acc-error-count',   errors);
+  set('acc-last-sync',     lastSync ? new Date(lastSync).toLocaleString('nl-NL') : 'Nog niet');
+}
 
 // ============================================================
 // STORAGE — ARCHITECTUUR
@@ -1833,7 +2532,9 @@ async function submitMelding() {
       })),
       warnings,
       version: '1.0.0',
-      hash: null
+      hash: null,
+      sync_status: SUPABASE_ENABLED && _sbUser ? 'lokaal' : 'lokaal',  // wordt 'synced' na sync
+      sync_at: null
     };
 
     // SHA256 van licht object (zonder dataUrls — dit is de juridische hash)
@@ -1881,6 +2582,16 @@ async function submitMelding() {
     }
 
     toast(`✓ Melding opgeslagen — ${meldingId}`, 'success');
+
+    // ── FASE 4: Supabase synchronisatie (asynchroon, blokkeert niet) ──
+    if (SUPABASE_ENABLED && _sbUser && navigator.onLine) {
+      voegToeAanQueue(meldingId);
+      syncNu(false).catch(e => console.warn('[Supabase] Achtergrond sync fout:', e.message));
+    } else if (SUPABASE_ENABLED && _sbUser) {
+      // Offline: voeg toe aan queue voor later
+      voegToeAanQueue(meldingId);
+      toast('⚡ Offline — melding in sync-wachtrij', '');
+    }
 
     // ── Reset formulier ────────────────────────────────────────
     document.getElementById('f-type').value = '';
@@ -2172,21 +2883,36 @@ function typeBadgeClass(type) {
   return m[type] || 'badge-muted';
 }
 
+function syncBadgeHtml(status) {
+  const map = {
+    'synced':       ['sync-synced',  '●', 'Gesynchroniseerd'],
+    'lokaal':       ['sync-lokaal',  '○', 'Alleen lokaal'],
+    'sync_mislukt': ['sync-error',   '✕', 'Sync mislukt'],
+    'pending':      ['sync-pending', '↻', 'In wachtrij'],
+  };
+  const [cls, dot, label] = map[status] || map['lokaal'];
+  return `<span class="sync-badge ${cls}"><span class="sync-dot"></span>${label}</span>`;
+}
+
 function renderMeldingCard(m, compact = false) {
   const d = new Date(m.timestamp_local);
   const dateStr = d.toLocaleDateString('nl-NL', { day:'2-digit', month:'short', year:'numeric' });
   const timeStr = d.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+  const syncStatus = m.sync_status || (m.supabase_id ? 'synced' : 'lokaal');
 
   return `
   <div class="card mb-3 overflow-hidden" onclick="showMeldingDetail('${m.id}')" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--border-bright)'" onmouseout="this.style.borderColor='var(--border)'">
     <div class="p-3">
       <div class="flex items-start justify-between gap-2 mb-2">
-        <span class="badge ${typeBadgeClass(m.type)}">${typeLabel(m.type)}</span>
-        <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);">${dateStr} ${timeStr}</span>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="badge ${typeBadgeClass(m.type)}">${typeLabel(m.type)}</span>
+          ${SUPABASE_ENABLED ? syncBadgeHtml(syncStatus) : ''}
+        </div>
+        <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);white-space:nowrap;">${dateStr} ${timeStr}</span>
       </div>
       <div style="font-size:0.85rem;color:var(--text-primary);line-height:1.4;" class="mb-2">${m.description.substring(0, compact ? 80 : 120)}${m.description.length > (compact ? 80 : 120) ? '...' : ''}</div>
       <div class="flex items-center gap-3 flex-wrap">
-        ${m.weather ? `<span style="font-family:var(--mono);font-size:0.65rem;color:var(--info);">💨 ${m.weather.wind_speed} km/h ${degToCompass(m.weather.wind_dir)}</span>` : ''}
+        ${m.weather?.wind_speed != null ? `<span style="font-family:var(--mono);font-size:0.65rem;color:var(--info);">💨 ${m.weather.wind_speed} km/h ${degToCompass(m.weather.wind_dir)}</span>` : ''}
         ${m.gezondheidsklachten?.length ? `<span style="font-family:var(--mono);font-size:0.65rem;color:var(--danger);">🏥 ${m.gezondheidsklachten.length} klacht(en)</span>` : ''}
         ${m.bestanden?.length ? `<span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">📎 ${m.bestanden.length} bestand(en)</span>` : ''}
         <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-left:auto;">${m.id}</span>
@@ -2861,6 +3587,10 @@ window.addEventListener('DOMContentLoaded', () => {
   initDashMap();
   updateDashboard();
   initLightboxEvents();
+  laadOfflineQueue();
+
+  // Supabase initialisatie
+  authInit().catch(e => console.warn('[Supabase] authInit fout:', e));
 
   // Init GPS silently
   if (navigator.geolocation) {
@@ -2874,8 +3604,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
   fetchWeather();
 
-  // Initieel SW debug paneel vullen (kleine vertraging zodat SW tijd heeft)
+  // Initieel SW debug paneel vullen
   setTimeout(swDebugRefresh, 1500);
+});
+
+// Sync achtergrond-queue wanneer verbinding herstelt
+window.addEventListener('online', () => {
+  updateOnlineStatus();
+  updateSyncHeaderDot('bezig');
+  if (SUPABASE_ENABLED && _sbUser && _offlineQueue.length > 0) {
+    setTimeout(() => syncNu(true), 1500);
+  }
 });
 </script>
 
