@@ -1601,26 +1601,34 @@ async function sbSyncBijlagen(meldingId, bestanden) {
   const idbBijlagen = await idbGetBijlagen(meldingId);
 
   for (const bestand of bestanden) {
-    if (!bestand.hash) continue;
-
-    // Controleer of al geüpload
-    const { data: bestaand } = await sb.from('attachments')
-      .select('id')
-      .eq('entry_id', meldingId)
-      .eq('file_hash', bestand.hash)
-      .maybeSingle();
-    if (bestaand) {
-      console.log('[Supabase] Bijlage al aanwezig, overslaan:', bestand.name);
+    if (!bestand.hash) {
+      console.warn('[Supabase] Bijlage overgeslagen: geen hash voor', bestand.name);
       continue;
     }
 
-    // Haal dataUrl op uit IndexedDB
-    const idb = idbBijlagen.find(b => b.hash === bestand.hash || b.name === bestand.name);
+    // Controleer of al geüpload én storage_path aanwezig is
+    const { data: bestaand } = await sb.from('attachments')
+      .select('id, storage_path')
+      .eq('entry_id', meldingId)
+      .eq('file_hash', bestand.hash)
+      .maybeSingle();
 
-    let storagePath = null;
+    // Als metadata bestaat én storage_path gevuld is: niets te doen
+    if (bestaand?.storage_path) {
+      console.log('[Supabase] Bijlage al volledig aanwezig, overslaan:', bestand.name);
+      continue;
+    }
 
-    // Upload naar Storage (optioneel — mislukking blokkeert metadata niet)
-    if (idb?.dataUrl) {
+    // Haal dataUrl op uit IndexedDB — match uitsluitend op hash
+    const idb = idbBijlagen.find(b => b.hash === bestand.hash);
+    if (!idb?.dataUrl) {
+      console.warn('[Supabase] Geen dataUrl in IDB voor bijlage:', bestand.name, '(hash:', bestand.hash, ')');
+    }
+
+    let storagePath = bestaand?.storage_path || null;
+
+    // Upload naar Storage (opnieuw proberen als storage_path nog null was)
+    if (idb?.dataUrl && !storagePath) {
       try {
         const res  = await fetch(idb.dataUrl);
         const blob = await res.blob();
@@ -1639,14 +1647,9 @@ async function sbSyncBijlagen(meldingId, bestanden) {
       } catch (e) {
         console.warn('[Supabase] Storage upload fout:', e.message);
       }
-    } else {
-      console.warn('[Supabase] Geen dataUrl voor bijlage:', bestand.name);
     }
 
-    // Sla metadata altijd op in attachments tabel
-    // — ook als storage upload mislukte, zodat de rij er wel staat
-    // Kolommen exact volgens schema v3: id, entry_id, user_id, filename,
-    // mime_type, file_size, storage_bucket, storage_path, file_hash, uploaded_at
+    // Upsert metadata — ook als storage upload mislukte
     const { error: metaErr } = await sb.from('attachments').upsert({
       entry_id:       meldingId,
       user_id:        _sbUser.id,
@@ -1656,13 +1659,12 @@ async function sbSyncBijlagen(meldingId, bestanden) {
       storage_bucket: 'spuitlog-bijlagen',
       storage_path:   storagePath,
       file_hash:      bestand.hash
-      // last_modified bestaat niet in schema v3 — weggelaten
     }, { onConflict: 'entry_id,file_hash' });
 
     if (metaErr) {
-      console.error('[Supabase] attachments insert mislukt:', metaErr.message, '| code:', metaErr.code);
+      console.error('[Supabase] attachments upsert mislukt:', metaErr.message, '| code:', metaErr.code);
     } else {
-      console.log('[Supabase] attachments insert OK voor:', bestand.name);
+      console.log('[Supabase] attachments upsert OK voor:', bestand.name);
     }
   }
 }
@@ -1789,7 +1791,7 @@ async function laadVanSupabase() {
       .from('entries')
       .select('*')
       .eq('user_id', _sbUser.id)
-      .eq('deleted', false)          // schema v3: deleted is BOOLEAN, niet deleted_at
+      .eq('deleted', false)
       .order('timestamp_local', { ascending: false });
 
     if (error) throw error;
@@ -1801,7 +1803,9 @@ async function laadVanSupabase() {
     for (const entry of entries) {
       if (lokaalIds.has(entry.id)) continue;
 
-      // Converteer naar lokaal formaat — alleen kolommen die in schema v3 bestaan
+      // Haal bijlage-metadata op uit attachments tabel
+      const bestanden = await laadBijlagenVanSupabase(entry.id);
+
       const tsLocal = entry.timestamp_local || entry.created_at;
       const melding = {
         id:                  entry.id,
@@ -1829,7 +1833,7 @@ async function laadVanSupabase() {
         notities:            '',
         weather:             entry.weather    || null,
         weather_raw:         null,
-        bestanden:           [],
+        bestanden,           // gevuld vanuit attachments tabel
         warnings:            entry.warnings   || [],
         version:             '1.0.0',
         hash:                entry.client_hash || null,
@@ -1856,6 +1860,100 @@ async function laadVanSupabase() {
   } finally {
     verbergSyncBalk();
     updateSyncStats();
+  }
+}
+
+// Haal bijlage-metadata + dataUrl op van Supabase voor één entry
+// Slaat de dataUrl ook op in IDB zodat de lightbox offline werkt
+async function laadBijlagenVanSupabase(meldingId) {
+  const sb = sbClient();
+  if (!sb || !_sbUser) return [];
+
+  try {
+    const { data: rows, error } = await sb
+      .from('attachments')
+      .select('filename, mime_type, file_size, storage_path, file_hash')
+      .eq('entry_id', meldingId)
+      .eq('user_id', _sbUser.id);
+
+    if (error) {
+      console.warn('[Supabase] attachments ophalen mislukt voor', meldingId, ':', error.message);
+      return [];
+    }
+    if (!rows?.length) return [];
+
+    const bestaandIdb = await idbGetBijlagen(meldingId);
+
+    const bestanden = await Promise.all(rows.map(async row => {
+      const bestand = {
+        name:      row.filename  || 'bijlage',
+        type:      row.mime_type || 'application/octet-stream',
+        size:      row.file_size || 0,
+        hash:      row.file_hash || null,
+        thumbnail: null,
+        dataUrl:   null
+      };
+
+      // Controleer of al in IDB (voorkom dubbele downloads)
+      const idbMatch = bestaandIdb.find(b => b.hash === row.file_hash);
+      if (idbMatch?.dataUrl) {
+        bestand.dataUrl   = idbMatch.dataUrl;
+        bestand.thumbnail = idbMatch.thumbnail || null;
+        return bestand;
+      }
+
+      // Download van Supabase Storage via signed URL (1 uur geldig)
+      if (row.storage_path) {
+        try {
+          const { data: signed, error: signErr } = await sb.storage
+            .from('spuitlog-bijlagen')
+            .createSignedUrl(row.storage_path, 3600);
+
+          if (signErr) {
+            console.warn('[Supabase] Signed URL mislukt:', signErr.message, 'pad:', row.storage_path);
+          } else if (signed?.signedUrl) {
+            const res = await fetch(signed.signedUrl);
+            if (res.ok) {
+              const blob   = await res.blob();
+              const dataUrl = await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.readAsDataURL(blob);
+              });
+              bestand.dataUrl = dataUrl;
+
+              // Maak thumbnail voor afbeeldingen
+              if (bestand.type.startsWith('image/')) {
+                bestand.thumbnail = await compressToThumbnail(dataUrl, bestand.type);
+              }
+
+              // Sla op in IDB voor offline gebruik
+              const idbRecord = {
+                id:        `${meldingId}_${row.filename}_${row.file_hash}`,
+                meldingId,
+                name:      bestand.name,
+                type:      bestand.type,
+                size:      bestand.size,
+                hash:      bestand.hash,
+                thumbnail: bestand.thumbnail,
+                dataUrl
+              };
+              await idbSaveBijlage(idbRecord);
+              console.log('[Supabase] Bijlage gedownload en in IDB opgeslagen:', bestand.name);
+            }
+          }
+        } catch (e) {
+          console.warn('[Supabase] Download bijlage mislukt:', e.message, 'bestand:', bestand.name);
+        }
+      }
+
+      return bestand;
+    }));
+
+    return bestanden;
+  } catch (e) {
+    console.warn('[Supabase] laadBijlagenVanSupabase fout:', e.message);
+    return [];
   }
 }
 
@@ -1965,7 +2063,7 @@ function saveMeldingen(data) {
 
 // ── IndexedDB: bijlagen (dataUrls) ───────────────────────────
 const IDB_NAME    = 'spuitlog_idb';
-const IDB_VERSION = 2;             // verhoogd → forceert heraan maken van store
+const IDB_VERSION = 3;             // v3: meldingId index toegevoegd
 const IDB_STORE   = 'bijlagen';
 let _idb = null;
 
@@ -1987,9 +2085,10 @@ async function openIDB() {
         db.deleteObjectStore(IDB_STORE);
         console.log('[IDB] Oude store verwijderd');
       }
-      // Maak store opnieuw aan
-      db.createObjectStore(IDB_STORE, { keyPath: 'id' });
-      console.log('[IDB] Store bijlagen aangemaakt');
+      // Maak store opnieuw aan met meldingId index voor snelle lookups
+      const store = db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+      store.createIndex('meldingId', 'meldingId', { unique: false });
+      console.log('[IDB] Store bijlagen aangemaakt (v3, met meldingId index)');
     };
 
     req.onsuccess = e => {
@@ -2026,24 +2125,33 @@ async function idbSaveBijlage(record) {
   }
 }
 
-// Haal bijlagen op voor een melding-id
+// Haal bijlagen op voor een melding-id (via index — geen full scan)
 async function idbGetBijlagen(meldingId) {
   try {
     const db = await openIDB();
     return new Promise((resolve, reject) => {
       const tx    = db.transaction(IDB_STORE, 'readonly');
       const store = tx.objectStore(IDB_STORE);
-      const results = [];
-      store.openCursor().onsuccess = e => {
-        const cursor = e.target.result;
-        if (cursor) {
-          if (cursor.value.meldingId === meldingId) results.push(cursor.value);
-          cursor.continue();
-        } else {
-          resolve(results);
-        }
-      };
-      tx.onerror = e => reject(e.target.error);
+      // Gebruik meldingId index als die bestaat (IDB v3+), anders fallback op cursor
+      if (store.indexNames.contains('meldingId')) {
+        const idx = store.index('meldingId');
+        const req = idx.getAll(meldingId);
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror   = e => reject(e.target.error);
+      } else {
+        // Fallback voor bestaande IDB v2 instanties (tot upgrade klaar is)
+        const results = [];
+        store.openCursor().onsuccess = e => {
+          const cursor = e.target.result;
+          if (cursor) {
+            if (cursor.value.meldingId === meldingId) results.push(cursor.value);
+            cursor.continue();
+          } else {
+            resolve(results);
+          }
+        };
+        tx.onerror = e => reject(e.target.error);
+      }
     });
   } catch (err) {
     console.warn('[SpuitLog] IndexedDB ophalen mislukt:', err);
@@ -2431,7 +2539,19 @@ async function openLightboxFromSaved(files, startIndex, meldingId) {
   showLightboxItem();
 }
 
-function showLightboxItem() {
+// Afhandeling van klik op foto in timeline — gebruikt data-attributen i.p.v. inline JSON
+function handleTimelineFotoKlik(el) {
+  const meldingId = el.dataset.meldingId;
+  const fileIdx   = parseInt(el.dataset.fileIdx) || 0;
+  const melding   = window._meldingMap?.[meldingId];
+  if (!melding?.bestanden?.length) {
+    console.warn('[Lightbox] Melding niet gevonden in _meldingMap:', meldingId);
+    return;
+  }
+  openLightboxFromSaved(melding.bestanden, fileIdx, meldingId);
+}
+
+
   const lb = document.getElementById('lightbox');
   const img = document.getElementById('lightbox-img');
   const vid = document.getElementById('lightbox-video');
@@ -2902,6 +3022,10 @@ function renderCharts(meldingen) {
 // ============================================================
 function renderTimeline() {
   const meldingen = getMeldingen();
+
+  // Bouw een ID→melding map zodat onclick handlers geen JSON in HTML-attributen nodig hebben
+  window._meldingMap = Object.fromEntries(meldingen.map(m => [m.id, m]));
+
   const search = document.getElementById('tl-search')?.value?.toLowerCase() || '';
   const filterType = document.getElementById('tl-filter-type')?.value || '';
   const filterMonth = document.getElementById('tl-filter-month')?.value || '';
@@ -3057,10 +3181,10 @@ function showMeldingDetail(id) {
           ${m.bestanden.map((f, idx) => {
             const previewSrc = f.thumbnail || f.dataUrl;
             return `
-            <div class="photo-grid-item" onclick="openLightboxFromSaved(${JSON.stringify(m.bestanden).replace(/"/g,'&quot;')}, ${idx}, '${m.id}')">
+            <div class="photo-grid-item" data-melding-id="${m.id}" data-file-idx="${idx}" onclick="handleTimelineFotoKlik(this)">
               ${f.type && f.type.startsWith('image/')
                 ? (previewSrc
-                    ? `<img src="${previewSrc}" class="photo-grid-thumb" alt="${f.name}">`
+                    ? `<img src="${previewSrc}" class="photo-grid-thumb" alt="${(f.name||'').replace(/"/g,'')}">`
                     : `<div class="photo-grid-video" style="font-size:0.7rem;color:var(--text-muted);">Laden...</div>`)
                 : `<div class="photo-grid-video">🎥</div>`}
               <div class="photo-hash-badge">SHA256</div>
