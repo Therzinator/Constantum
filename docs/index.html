@@ -1557,37 +1557,32 @@ function updateSyncHeaderDot(status) {
 }
 
 // Sla een melding op in Supabase entries tabel
+// Kolommen komen exact overeen met schema-v3-clean.sql
 async function sbSyncMelding(melding) {
   const sb = sbClient();
   if (!sb || !_sbUser) return false;
 
+  // ALLEEN kolommen die bestaan in de entries tabel (schema v3):
+  // id, user_id, created_at, timestamp_local, timestamp_utc,
+  // type, description, gps_lat, gps_lng, weather,
+  // gezondheidsklachten, activiteiten, client_hash,
+  // sync_status, warnings, deleted
   const record = {
-    id:                melding.id,
-    user_id:           _sbUser.id,
-    timestamp_local:   melding.timestamp_local,
-    timestamp_utc:     melding.timestamp_utc,
-    timezone:          melding.timezone,
-    device:            melding.device,
-    platform:          melding.platform,
-    app_version:       melding.version || '1.0.0',
-    gps_lat:           melding.gps?.lat,
-    gps_lng:           melding.gps?.lng,
-    gps_accuracy:      melding.gps?.accuracy,
-    gps_status:        melding.gps?.status,
-    type:              melding.type,
-    description:       melding.description,
-    geur_intensiteit:  melding.geur_intensiteit,
-    wind_subjectief:   melding.wind_subjectief,
-    richting_deg:      melding.richting_deg,
-    richting_compass:  melding.richting_compass,
-    gezondheidsklachten: melding.gezondheidsklachten || [],
-    activiteiten:      melding.activiteiten || [],
-    notities:          melding.notities || '',
-    weather:           melding.weather || null,
-    client_hash:       melding.hash,
-    sync_status:       'synced',
-    warnings:          melding.warnings || [],
-    version:           melding.version || '1.0.0'
+    id:                   melding.id,
+    user_id:              _sbUser.id,
+    timestamp_local:      melding.timestamp_local  || null,
+    timestamp_utc:        melding.timestamp_utc    || null,
+    type:                 melding.type             || 'overig',
+    description:          melding.description      || '',
+    gps_lat:              melding.gps?.lat         ?? null,
+    gps_lng:              melding.gps?.lng         ?? null,
+    weather:              melding.weather          || null,
+    gezondheidsklachten:  melding.gezondheidsklachten || [],
+    activiteiten:         melding.activiteiten     || [],
+    client_hash:          melding.hash             || null,
+    sync_status:          'synced',
+    warnings:             melding.warnings         || [],
+    deleted:              false
   };
 
   const { error } = await sb.from('entries').upsert(record, { onConflict: 'id' });
@@ -1759,51 +1754,52 @@ async function laadVanSupabase() {
       .from('entries')
       .select('*')
       .eq('user_id', _sbUser.id)
-      .is('deleted_at', null)
+      .eq('deleted', false)          // schema v3: deleted is BOOLEAN, niet deleted_at
       .order('timestamp_local', { ascending: false });
 
     if (error) throw error;
 
-    const lokaal = getMeldingen();
+    const lokaal    = getMeldingen();
     const lokaalIds = new Set(lokaal.map(m => m.id));
     let nieuw = 0;
 
     for (const entry of entries) {
       if (lokaalIds.has(entry.id)) continue;
 
-      // Converteer Supabase record naar lokaal formaat
+      // Converteer naar lokaal formaat — alleen kolommen die in schema v3 bestaan
+      const tsLocal = entry.timestamp_local || entry.created_at;
       const melding = {
-        id:               entry.id,
-        timestamp_local:  entry.timestamp_local,
-        timestamp_utc:    entry.timestamp_utc,
-        date:             new Date(entry.timestamp_local).toLocaleDateString('nl-NL'),
-        time:             new Date(entry.timestamp_local).toLocaleTimeString('nl-NL'),
-        timezone:         entry.timezone,
-        device:           entry.device,
-        platform:         entry.platform,
+        id:                  entry.id,
+        timestamp_local:     tsLocal,
+        timestamp_utc:       entry.timestamp_utc || tsLocal,
+        date:                new Date(tsLocal).toLocaleDateString('nl-NL'),
+        time:                new Date(tsLocal).toLocaleTimeString('nl-NL'),
+        timezone:            null,
+        device:              null,
+        platform:            null,
         gps: {
-          lat:      entry.gps_lat,
-          lng:      entry.gps_lng,
-          accuracy: entry.gps_accuracy,
-          status:   entry.gps_status
+          lat:      entry.gps_lat  ?? null,
+          lng:      entry.gps_lng  ?? null,
+          accuracy: null,
+          status:   'van cloud'
         },
-        type:                entry.type,
-        description:         entry.description,
-        geur_intensiteit:    entry.geur_intensiteit,
-        wind_subjectief:     entry.wind_subjectief,
-        richting_deg:        entry.richting_deg,
-        richting_compass:    entry.richting_compass,
+        type:                entry.type        || 'overig',
+        description:         entry.description || '',
+        geur_intensiteit:    null,
+        wind_subjectief:     null,
+        richting_deg:        null,
+        richting_compass:    null,
         gezondheidsklachten: entry.gezondheidsklachten || [],
-        activiteiten:        entry.activiteiten || [],
-        notities:            entry.notities || '',
-        weather:             entry.weather,
+        activiteiten:        entry.activiteiten        || [],
+        notities:            '',
+        weather:             entry.weather    || null,
         weather_raw:         null,
-        bestanden:           [],  // bijlagen metadata apart laden indien gewenst
-        warnings:            entry.warnings || [],
-        version:             entry.app_version || '1.0.0',
-        hash:                entry.client_hash,
+        bestanden:           [],
+        warnings:            entry.warnings   || [],
+        version:             '1.0.0',
+        hash:                entry.client_hash || null,
         sync_status:         'synced',
-        sync_at:             entry.sync_at,
+        sync_at:             entry.created_at,
         supabase_id:         entry.id
       };
       lokaal.push(melding);
