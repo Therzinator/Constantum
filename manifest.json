@@ -1,6 +1,6 @@
 {
-  "name": "DriftLog — Pesticide Drift Dossier",
-  "short_name": "DriftLog",
+  "name": "SpuitLog — Pesticide Drift Dossier",
+  "short_name": "SpuitLog",
   "description": "Juridisch dossieropbouw systeem voor pesticiden drift en spuitactiviteiten",
   "start_url": "./index.html",
   "display": "standalone",
