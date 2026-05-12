@@ -726,8 +726,8 @@
         <line x1="20" y1="14" x2="26" y2="14" stroke="#00d4aa" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
       <div>
-        <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em;">SpuitLog</div>
-        <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">PESTICIDE DRIFT DOSSIER v8</div>
+        <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em;">SpuitLogger</div>
+        <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUIT PESTICIDE DOSSIER</div>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -1423,6 +1423,7 @@ let _sb = null;          // Supabase client instance
 let _sbUser = null;      // ingelogde gebruiker
 let _sessieHersteld = true; // voorkomt toast bij sessie-herstel bij laden
 let _offlineQueue = [];  // wachtrij van meldingen die nog gesynchroniseerd moeten worden
+let _deleteQueue  = [];  // wachtrij van verwijderde meldingen
 let _syncRunning = false; // voorkom dubbele sync
 
 function sbClient() {
@@ -1590,11 +1591,15 @@ function laadOfflineQueue() {
   try {
     _offlineQueue = JSON.parse(localStorage.getItem('spuitlog_sync_queue') || '[]');
   } catch { _offlineQueue = []; }
+  try {
+    _deleteQueue = JSON.parse(localStorage.getItem('spuitlog_delete_queue') || '[]');
+  } catch { _deleteQueue = []; }
 }
 
 function slaOfflineQueueOp() {
   try {
     safeSetLocalStorage('spuitlog_sync_queue', _offlineQueue);
+    safeSetLocalStorage('spuitlog_delete_queue', _deleteQueue);
   } catch { /* queue te groot — negeer */ }
 }
 
@@ -1605,8 +1610,16 @@ function voegToeAanQueue(meldingId) {
   }
 }
 
+function voegToeAanDeleteQueue(meldingId) {
+  if (!_deleteQueue.includes(meldingId)) {
+    _deleteQueue.push(meldingId);
+    slaOfflineQueueOp();
+  }
+}
+
 function verwijderUitQueue(meldingId) {
   _offlineQueue = _offlineQueue.filter(id => id !== meldingId);
+  _deleteQueue  = _deleteQueue.filter(id => id !== meldingId);
   slaOfflineQueueOp();
 }
 
@@ -1841,6 +1854,28 @@ async function syncNu(toonStatus = true) {
 
   laadOfflineQueue();
 
+  // ── Verwerk delete queue eerst ────────────────────────────
+  if (_deleteQueue.length > 0) {
+    const sb = sbClient();
+    if (sb) {
+      if (toonStatus) toonSyncBalk(`Verwijderingen doorzetten (${_deleteQueue.length})…`);
+      const teVerwijderen = [..._deleteQueue];
+      for (const delId of teVerwijderen) {
+        const { error } = await sb.from('entries')
+          .update({ deleted: true })
+          .eq('id', delId)
+          .eq('user_id', _sbUser.id);
+        if (!error) {
+          _deleteQueue = _deleteQueue.filter(id => id !== delId);
+          slaOfflineQueueOp();
+          console.log('[Supabase] Delete queue verwerkt:', delId);
+        } else {
+          console.warn('[Supabase] Delete queue mislukt voor:', delId, error.message);
+        }
+      }
+    }
+  }
+
   const meldingen = getMeldingen();
   const teSync = meldingen.filter(m =>
     m.sync_status === 'lokaal' ||
@@ -2004,8 +2039,7 @@ async function laadBijlagenVanSupabase(meldingId) {
     const { data: rows, error } = await sb
       .from('attachments')
       .select('filename, mime_type, file_size, storage_path, file_hash')
-      .eq('entry_id', meldingId)
-      .eq('user_id', _sbUser.id);
+      .eq('entry_id', meldingId);
 
     if (error) {
       console.warn('[Supabase] attachments ophalen mislukt voor', meldingId, ':', error.message);
@@ -3329,17 +3363,32 @@ function verwijderMelding(id, event) {
   const meldingen = getMeldingen().filter(m => m.id !== id);
   saveMeldingen(meldingen);
   idbDeleteBijlagen(id);
+  verwijderUitQueue(id);          // niet meer syncen als nieuwe melding
+  voegToeAanDeleteQueue(id);      // wel verwijderen in Supabase
 
-  // Soft delete in Supabase
+  // Direct proberen te verwijderen in Supabase
   if (SUPABASE_ENABLED && _sbUser && navigator.onLine) {
     const sb = sbClient();
-    if (sb) sb.from('entries').update({ deleted: true }).eq('id', id).eq('user_id', _sbUser.id)
-      .then(({ error }) => { if (error) console.warn('[Supabase] Soft delete mislukt:', error.message); });
+    if (sb) {
+      sb.from('entries').update({ deleted: true }).eq('id', id).eq('user_id', _sbUser.id)
+        .then(({ error }) => {
+          if (error) {
+            console.warn('[Supabase] Soft delete mislukt, blijft in queue:', error.message);
+          } else {
+            verwijderUitQueue(id);
+            console.log('[Supabase] Entry verwijderd:', id);
+          }
+        });
+    }
+  } else if (SUPABASE_ENABLED && _sbUser && !navigator.onLine) {
+    toast('⚠️ Offline — synchroniseer zodra je verbinding hebt om de verwijdering door te voeren in de cloud', '');
+  } else if (SUPABASE_ENABLED && _sbUser) {
+    toast('⚠️ Synchroniseer om de verwijdering door te voeren in de cloud', '');
   }
 
   renderTimeline();
   updateDashboard();
-  toast('Registratie verwijderd', '');
+  toast('Registratie lokaal verwijderd', '');
 }
 
 function showMeldingDetail(id) {
