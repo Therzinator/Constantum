@@ -727,7 +727,7 @@
       </svg>
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em;">SpuitLog</div>
-        <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">PESTICIDE DRIFT DOSSIER v4</div>
+        <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">PESTICIDE DRIFT DOSSIER v8</div>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -1504,7 +1504,17 @@ async function authSubmit() {
       result = await sb.auth.signUp({ email, password: pass });
     }
     if (result.error) throw result.error;
-    if (!isLogin && !result.data?.session) {
+
+    if (result.data?.session) {
+      // Sessie direct beschikbaar — sluit overlay meteen zonder te wachten op onAuthStateChange
+      _sbUser = result.data.session.user;
+      _sessieHersteld = false;
+      authUpdateUI(_sbUser);
+      document.getElementById('auth-overlay').classList.remove('visible');
+      toast('✓ Ingelogd als ' + (_sbUser?.email || ''), 'success');
+      syncNu();
+    } else if (!isLogin) {
+      // Registratie zonder directe sessie (email-bevestiging vereist)
       errEl.textContent = '✓ Bevestigingsmail verstuurd. Controleer uw inbox.';
       errEl.style.cssText = 'display:block;color:var(--accent);background:var(--accent-glow);border-color:var(--accent-dim);padding:8px 12px;border-radius:8px;font-family:var(--mono);font-size:0.7rem;margin-top:12px;';
     }
