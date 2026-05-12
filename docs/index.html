@@ -801,8 +801,8 @@
           <div class="p-2 border-b" style="border-color:var(--border);">
             <div class="section-label" style="font-size:0.6rem;">Type Verdeling</div>
           </div>
-          <div class="p-2" style="position:relative;height:80px;">
-            <canvas id="chart-types"></canvas>
+          <div class="p-2" style="position:relative;height:80px;display:flex;align-items:center;justify-content:center;">
+            <canvas id="chart-types" style="max-height:80px;"></canvas>
           </div>
         </div>
       </div>
@@ -1163,6 +1163,44 @@
             <div class="flex-1">
               <div style="font-weight:700;font-size:0.95rem;">PDF Rapport</div>
               <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">Volledig juridisch dossier met alle meldingen, weerdata, hashes en tijdlijn</div>
+              <div class="space-y-2 mt-3">
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">VAN maand</div>
+                    <select id="pdf-van-maand" class="form-select px-2 py-1 text-sm w-full">
+                      <option value="">Begin</option>
+                      <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maart</option>
+                      <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
+                      <option value="07">Juli</option><option value="08">Augustus</option><option value="09">September</option>
+                      <option value="10">Oktober</option><option value="11">November</option><option value="12">December</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">VAN jaar</div>
+                    <select id="pdf-van-jaar" class="form-select px-2 py-1 text-sm w-full">
+                      <option value="">—</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">TOT maand</div>
+                    <select id="pdf-tot-maand" class="form-select px-2 py-1 text-sm w-full">
+                      <option value="">Einde</option>
+                      <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maart</option>
+                      <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
+                      <option value="07">Juli</option><option value="08">Augustus</option><option value="09">September</option>
+                      <option value="10">Oktober</option><option value="11">November</option><option value="12">December</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">TOT jaar</div>
+                    <select id="pdf-tot-jaar" class="form-select px-2 py-1 text-sm w-full">
+                      <option value="">—</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
               <button onclick="exportPDF()" class="btn-primary px-4 py-2 text-sm mt-3 inline-flex items-center gap-2">
                 📥 Exporteer PDF
               </button>
@@ -1353,8 +1391,8 @@ const SUPABASE_ENABLED = (SUPABASE_URL !== 'JOUW_SUPABASE_URL_HIER');
 
 // [WIJZIGING 2] Standaard locatie: Hijkerweg 5, Hooghalen
 const DEFAULT_LOCATION = {
-  lat: 52.912383,
-  lng: 6.526362,
+  lat: 52.912290,
+  lng: 6.526136,
   label: 'Hijkerweg 5, Hooghalen'
 };
 const HOME_LAT  = DEFAULT_LOCATION.lat;
@@ -1383,6 +1421,7 @@ let chartTypes = null;
 // ── Client initialisatie ──────────────────────────────────────
 let _sb = null;          // Supabase client instance
 let _sbUser = null;      // ingelogde gebruiker
+let _sessieHersteld = true; // voorkomt toast bij sessie-herstel bij laden
 let _offlineQueue = [];  // wachtrij van meldingen die nog gesynchroniseerd moeten worden
 let _syncRunning = false; // voorkom dubbele sync
 
@@ -1414,6 +1453,7 @@ async function authInit() {
   if (session?.user) {
     _sbUser = session.user;
     authUpdateUI(session.user);
+    document.getElementById('auth-overlay').classList.remove('visible');
     return;
   }
 
@@ -1422,8 +1462,12 @@ async function authInit() {
     _sbUser = session?.user || null;
     authUpdateUI(_sbUser);
     if (event === 'SIGNED_IN') {
-      toast('✓ Ingelogd als ' + (_sbUser?.email || ''), 'success');
+      // Toast en overlay sluiten alleen bij een échte nieuwe login actie
       document.getElementById('auth-overlay').classList.remove('visible');
+      if (!_sessieHersteld) {
+        toast('✓ Ingelogd als ' + (_sbUser?.email || ''), 'success');
+      }
+      _sessieHersteld = false;
       syncNu();
     }
     if (event === 'SIGNED_OUT') {
@@ -1433,7 +1477,6 @@ async function authInit() {
 
   // Toon auth overlay alleen als Supabase geconfigureerd is en niet ingelogd
   if (SUPABASE_ENABLED && !session) {
-    // Kleine vertraging zodat app eerst laadt
     setTimeout(() => {
       if (!_sbUser) document.getElementById('auth-overlay').classList.add('visible');
     }, 800);
@@ -1886,8 +1929,8 @@ async function laadVanSupabase() {
         id:                  entry.id,
         timestamp_local:     tsLocal,
         timestamp_utc:       entry.timestamp_utc || tsLocal,
-        date:                new Date(tsLocal).toLocaleDateString('nl-NL'),
-        time:                new Date(tsLocal).toLocaleTimeString('nl-NL'),
+        date:                new Date(tsLocal).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
+        time:                new Date(tsLocal).toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
         timezone:            null,
         device:              null,
         platform:            null,
@@ -2049,7 +2092,7 @@ function updateSyncStats() {
   set('acc-synced-count',  synced);
   set('acc-pending-count', pending);
   set('acc-error-count',   errors);
-  set('acc-last-sync',     lastSync ? new Date(lastSync).toLocaleString('nl-NL') : 'Nog niet');
+  set('acc-last-sync',     lastSync ? new Date(lastSync).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : 'Nog niet');
 }
 
 // ============================================================
@@ -2426,7 +2469,7 @@ async function fetchWeather() {
     if (wh) wh.textContent = `${c.relative_humidity_2m}%`;
     if (wp) wp.textContent = `${c.precipitation} mm`;
     if (wpr) wpr.textContent = `${c.surface_pressure} hPa`;
-    if (wsrc) wsrc.textContent = `Open-Meteo · ${new Date().toLocaleTimeString('nl-NL')}`;
+    if (wsrc) wsrc.textContent = `Open-Meteo · ${new Date().toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' })}`;
 
     // Windroos automatisch instellen op gemeten windrichting
     setCompassDegrees(c.wind_direction_10m);
@@ -2780,9 +2823,9 @@ async function submitMelding() {
       id: meldingId,
       timestamp_local: now.toISOString(),
       timestamp_utc: new Date(now.toUTCString()).toISOString(),
-      date: now.toLocaleDateString('nl-NL'),
-      time: now.toLocaleTimeString('nl-NL'),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      date: now.toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
+      time: now.toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
+      timezone: 'Europe/Amsterdam',
       device: navigator.userAgent.substring(0, 120),
       platform: navigator.platform,
       gps: {
@@ -2931,7 +2974,15 @@ function showPage(name) {
     renderTimeline();
   }
   if (name === 'export') {
-    updateExportInfo(); // async, geen await nodig voor UI-update
+    updateExportInfo();
+    // Vul jaar-dropdowns op basis van aanwezige meldingen
+    const jaren = [...new Set(getMeldingen().map(m => new Date(m.timestamp_local).getFullYear()))].sort((a,b) => b-a);
+    ['pdf-van-jaar', 'pdf-tot-jaar'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const huidig = sel.value;
+      sel.innerHTML = '<option value="">—</option>' + jaren.map(j => `<option value="${j}" ${j == huidig ? 'selected':''}>${j}</option>`).join('');
+    });
   }
 }
 
@@ -2943,9 +2994,9 @@ let _clockInterval = null; // BUG FIX: voorkom gestapelde setIntervals
 function initFormDateTime() {
   const now = new Date();
   document.getElementById('auto-date').textContent = now.toLocaleDateString('nl-NL', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  document.getElementById('auto-time').textContent = now.toLocaleTimeString('nl-NL');
+  document.getElementById('auto-time').textContent = now.toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' });
   document.getElementById('auto-utc').textContent = now.toISOString();
-  document.getElementById('auto-tz').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById('auto-tz').textContent = 'Europe/Amsterdam';
   document.getElementById('auto-device').textContent = navigator.userAgent.substring(0, 80) + '...';
   // BUG FIX: verwijder bestaand interval voor nieuwe aanmaken
   if (_clockInterval) clearInterval(_clockInterval);
@@ -2953,7 +3004,7 @@ function initFormDateTime() {
     const n = new Date();
     const timeEl = document.getElementById('auto-time');
     const utcEl = document.getElementById('auto-utc');
-    if (timeEl) timeEl.textContent = n.toLocaleTimeString('nl-NL');
+    if (timeEl) timeEl.textContent = n.toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' });
     if (utcEl) utcEl.textContent = n.toISOString();
   }, 1000);
 }
@@ -3401,8 +3452,8 @@ async function updateExportInfo() {
   document.getElementById('exp-total').textContent = meldingen.length;
   if (meldingen.length) {
     const dates = meldingen.map(m => new Date(m.timestamp_local)).sort((a,b) => a-b);
-    document.getElementById('exp-first').textContent = dates[0].toLocaleDateString('nl-NL');
-    document.getElementById('exp-last').textContent = dates[dates.length-1].toLocaleDateString('nl-NL');
+    document.getElementById('exp-first').textContent = dates[0].toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' });
+    document.getElementById('exp-last').textContent = dates[dates.length-1].toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' });
   } else {
     document.getElementById('exp-first').textContent = '—';
     document.getElementById('exp-last').textContent = '—';
@@ -3475,10 +3526,34 @@ async function exportJSON() {
 }
 
 async function exportPDF() {
-  const meldingen = getMeldingen();
+  let meldingen = getMeldingen();
   if (!meldingen.length) { toast('Geen meldingen om te exporteren', 'error'); return; }
 
-  toast('PDF wordt voorbereid...', 'success');
+  // Datumfilter van/tot
+  const vanMaand = document.getElementById('pdf-van-maand')?.value;
+  const vanJaar  = document.getElementById('pdf-van-jaar')?.value;
+  const totMaand = document.getElementById('pdf-tot-maand')?.value;
+  const totJaar  = document.getElementById('pdf-tot-jaar')?.value;
+
+  if (vanJaar || totJaar) {
+    meldingen = meldingen.filter(m => {
+      const d = new Date(m.timestamp_local);
+      const mJaar  = d.getFullYear();
+      const mMaand = d.getMonth() + 1;
+      if (vanJaar) {
+        const vanJ = parseInt(vanJaar), vanM = vanMaand ? parseInt(vanMaand) : 1;
+        if (mJaar < vanJ || (mJaar === vanJ && mMaand < vanM)) return false;
+      }
+      if (totJaar) {
+        const totJ = parseInt(totJaar), totM = totMaand ? parseInt(totMaand) : 12;
+        if (mJaar > totJ || (mJaar === totJ && mMaand > totM)) return false;
+      }
+      return true;
+    });
+  }
+
+  if (!meldingen.length) { toast('Geen meldingen in geselecteerde periode', 'error'); return; }
+  toast(`PDF wordt voorbereid (${meldingen.length} meldingen)...`, 'success');
 
   // Verrijk met bijlagen uit IndexedDB
   const verrijkt = await Promise.all(meldingen.map(async m => {
@@ -3554,9 +3629,9 @@ async function exportPDF() {
       <h2>Dossier Informatie</h2>
       <div class="grid-2">
         <div><div class="label">Locatie</div><div class="value">${HOME_NAME}</div></div>
-        <div><div class="label">Export datum</div><div class="value">${new Date().toLocaleDateString('nl-NL')}</div></div>
+        <div><div class="label">Export datum</div><div class="value">${new Date().toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' })}</div></div>
         <div><div class="label">Totaal meldingen</div><div class="value">${verrijkt.length}</div></div>
-        <div><div class="label">Periode</div><div class="value">${verrijkt.length ? new Date(verrijkt[verrijkt.length-1].timestamp_local).toLocaleDateString('nl-NL') + ' — ' + new Date(verrijkt[0].timestamp_local).toLocaleDateString('nl-NL') : '—'}</div></div>
+        <div><div class="label">Periode</div><div class="value">${verrijkt.length ? new Date(verrijkt[verrijkt.length-1].timestamp_local).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }) + ' — ' + new Date(verrijkt[0].timestamp_local).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : '—'}</div></div>
         <div><div class="label">Dossier versie</div><div class="value">SpuitLog v1.0.0</div></div>
       </div>
     </div>
@@ -3575,6 +3650,7 @@ async function exportPDF() {
           </div>
           <div class="timestamp">${m.date} ${m.time}</div>
         </div>
+        ${m.melder_email ? `<div style="font-family:JetBrains Mono;font-size:7.5pt;color:#64748b;margin-bottom:6px;">✉️ ${m.melder_email}</div>` : ''}
 
         <p style="margin-bottom:12px;">${m.description}</p>
 
@@ -3810,7 +3886,7 @@ if ('serviceWorker' in navigator) {
       _updateCheckTimer = setInterval(async () => {
         try {
           await _swRegistration.update();
-          const now = new Date().toLocaleTimeString('nl-NL');
+          const now = new Date().toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' });
           const el  = document.getElementById('dbg-last-check');
           if (el) el.textContent = now;
         } catch {}
@@ -3911,7 +3987,7 @@ async function swDebugRefresh() {
   set('dbg-all-caches', keys.length ? keys.join(', ') : 'Geen', keys.length ? 'ok' : 'warn');
 
   // Laatste check
-  set('dbg-last-check', new Date().toLocaleTimeString('nl-NL'));
+  set('dbg-last-check', new Date().toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' }));
 }
 
 async function forceerSWUpdate() {
