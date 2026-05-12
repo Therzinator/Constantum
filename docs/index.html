@@ -1867,10 +1867,22 @@ async function syncNu(toonStatus = true) {
           .update({ deleted: true })
           .eq('id', delId)
           .eq('user_id', _sbUser.id);
+
         if (!error) {
-          _deleteQueue = _deleteQueue.filter(id => id !== delId);
-          slaOfflineQueueOp();
-          console.log('[Supabase] Delete queue verwerkt:', delId);
+          // Verificatie: controleer of deleted: true daadwerkelijk is opgeslagen
+          const { data: check } = await sb
+            .from('entries')
+            .select('id, deleted')
+            .eq('id', delId)
+            .maybeSingle();
+
+          if (check?.deleted === true) {
+            _deleteQueue = _deleteQueue.filter(id => id !== delId);
+            slaOfflineQueueOp();
+            console.log('[Supabase] Delete geverifieerd:', delId);
+          } else {
+            console.warn('[Supabase] Delete verificatie mislukt voor:', delId, '— blijft in queue');
+          }
         } else {
           console.warn('[Supabase] Delete queue mislukt voor:', delId, error.message);
         }
@@ -3374,31 +3386,51 @@ function verwijderMelding(id, event) {
   const meldingen = getMeldingen().filter(m => m.id !== id);
   saveMeldingen(meldingen);
   idbDeleteBijlagen(id);
-  verwijderUitQueue(id);          // niet meer syncen als nieuwe melding
-  voegToeAanDeleteQueue(id);      // wel verwijderen in Supabase
+  verwijderUitQueue(id);       // niet meer syncen als nieuwe melding
+  voegToeAanDeleteQueue(id);   // wel verwijderen in Supabase
 
-  // Direct proberen te verwijderen in Supabase
-  if (SUPABASE_ENABLED && _sbUser && navigator.onLine) {
-    const sb = sbClient();
-    if (sb) {
-      sb.from('entries').update({ deleted: true }).eq('id', id).eq('user_id', _sbUser.id)
-        .then(({ error }) => {
-          if (error) {
-            console.warn('[Supabase] Soft delete mislukt, blijft in queue:', error.message);
-          } else {
-            verwijderUitQueue(id);
-            console.log('[Supabase] Entry verwijderd:', id);
-          }
-        });
-    }
-  } else if (SUPABASE_ENABLED && _sbUser && !navigator.onLine) {
-    toast('⚠️ Offline — synchroniseer zodra je verbinding hebt om de verwijdering door te voeren in de cloud', '');
-  } else if (SUPABASE_ENABLED && _sbUser) {
-    toast('⚠️ Synchroniseer om de verwijdering door te voeren in de cloud', '');
-  }
-
+  // Teller direct bijwerken in Export tab
+  updateSyncStats();
   renderTimeline();
   updateDashboard();
+
+  // Direct proberen te verwijderen in Supabase + verificatie
+  if (SUPABASE_ENABLED && _sbUser) {
+    if (navigator.onLine) {
+      const sb = sbClient();
+      if (sb) {
+        sb.from('entries')
+          .update({ deleted: true })
+          .eq('id', id)
+          .eq('user_id', _sbUser.id)
+          .then(async ({ error }) => {
+            if (error) {
+              console.warn('[Supabase] Soft delete mislukt, blijft in queue:', error.message);
+              toast('\u26A0\uFE0F Verwijdering in wachtrij \u2014 sync om door te voeren', '');
+            } else {
+              // Verificatie: controleer of deleted: true daadwerkelijk staat
+              const { data: check } = await sb
+                .from('entries')
+                .select('id, deleted')
+                .eq('id', id)
+                .maybeSingle();
+
+              if (check?.deleted === true) {
+                verwijderUitQueue(id);
+                updateSyncStats();
+                console.log('[Supabase] Verwijdering geverifieerd in cloud:', id);
+              } else {
+                console.warn('[Supabase] Verificatie mislukt \u2014 entry niet als deleted gevonden:', id);
+                toast('\u26A0\uFE0F Verwijdering niet bevestigd \u2014 synchroniseer opnieuw', '');
+              }
+            }
+          });
+      }
+    } else {
+      toast('\u26A0\uFE0F Offline \u2014 verwijdering staat klaar, synchroniseer zodra je verbinding hebt', '');
+    }
+  }
+
   toast('Registratie lokaal verwijderd', '');
 }
 
