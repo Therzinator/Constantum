@@ -963,11 +963,14 @@
 
         <!-- Geurintensiteit -->
         <div>
-          <label class="section-label block mb-2">Geurintensiteit: <span id="geur-val" style="color:var(--accent);">1</span>/5</label>
-          <input type="range" id="f-geur" min="1" max="5" value="1" class="w-full" oninput="document.getElementById('geur-val').textContent=this.value">
-          <div class="flex justify-between" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:4px;">
-            <span>Nauwelijks</span><span>Matig</span><span>Intens</span>
-          </div>
+          <label class="section-label block mb-2">Geurintensiteit</label>
+          <select id="f-geur" class="form-select px-3 py-3 text-sm">
+            <option value="0">👃 Geen — geen geurdetectie</option>
+            <option value="1">🌱 Licht — geur alleen dichtbij waarneembaar</option>
+            <option value="2">🌿 Matig — geur constant waarneembaar</option>
+            <option value="3">💨 Sterk — geur duidelijk aanwezig in omgeving</option>
+            <option value="4">🤢 Intens — overheersende/prikkelende geur</option>
+          </select>
         </div>
 
         <!-- Wind subjectief -->
@@ -2997,7 +3000,7 @@ async function submitMelding() {
       type,
       description: desc,
       melder_email: _sbUser?.email || null,
-      geur_intensiteit: parseInt(document.getElementById('f-geur').value) || 1,
+      geur_intensiteit: parseInt(document.getElementById('f-geur').value),
       wind_subjectief: document.getElementById('f-wind-subj').value,
       drift_waarneming: Array.from(document.querySelectorAll('.drift-check:checked')).map(el => el.value),
       richting_deg: parseInt(document.getElementById('f-direction').value) || 0,
@@ -3083,8 +3086,7 @@ async function submitMelding() {
     // ── Reset formulier ────────────────────────────────────────
     document.getElementById('f-type').value = '';
     document.getElementById('f-desc').value = '';
-    document.getElementById('f-geur').value = 1;
-    document.getElementById('geur-val').textContent = '1';
+    document.getElementById('f-geur').value = 0;
     document.getElementById('f-notes').value = '';
     document.querySelectorAll('.health-check, .activity-check, .drift-check').forEach(el => el.checked = false);
     // Standaard activiteiten weer aanvinken
