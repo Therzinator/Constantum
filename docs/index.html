@@ -974,11 +974,24 @@
         <div>
           <label class="section-label block mb-2">Wind Subjectief Ervaren</label>
           <select id="f-wind-subj" class="form-select px-3 py-3 text-sm">
-            <option value="geen">Geen wind</option>
-            <option value="zwak">Zwakke wind</option>
-            <option value="matig">Matige wind</option>
-            <option value="sterk">Sterke wind</option>
+            <option value="geen">🌬️ Geen wind waarneembaar</option>
+            <option value="zwak">🍃 Zwak — bladeren bewegen licht</option>
+            <option value="matig">🌿 Matig — takken bewegen, wind voelbaar</option>
+            <option value="sterk">💨 Sterk — wind in gezicht, kleding beweegt</option>
+            <option value="vlagerig">🌪️ Vlagerig — duidelijke windstoten</option>
           </select>
+        </div>
+
+        <!-- Drift/overlast waarneming -->
+        <div>
+          <label class="section-label block mb-2">Drift & Overlast Waarneming <span style="color:var(--text-muted);font-size:0.6rem;">(tik aan wat van toepassing is)</span></label>
+          <div class="grid grid-cols-1 gap-2">
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="nevel_zichtbaar"> 🌫️ Nevel/drift zichtbaar in de lucht</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="druppels_voelbaar"> 💦 Druppels/nevel voelbaar op huid of oppervlakken</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="drift_ver"> 📏 Drift zichtbaar op meer dan 10 meter afstand</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="geur_direct"> 👃 Geur direct waargenomen tijdens spuiten</label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="ogen_keel"> 👁️ Ogen/keel irritatie bij buitenverblijf</label>
+          </div>
         </div>
 
         <!-- Windrichting waarneming (kompas) -->
@@ -1720,6 +1733,7 @@ async function sbSyncMelding(melding) {
     weather:              melding.weather          || null,
     gezondheidsklachten:  melding.gezondheidsklachten || [],
     activiteiten:         melding.activiteiten     || [],
+    drift_waarneming:     melding.drift_waarneming || [],
     client_hash:          melding.hash             || null,
     melder_email:         melding.melder_email     || _sbUser.email || null,
     sync_status:          'synced',
@@ -2028,6 +2042,7 @@ async function laadVanSupabase() {
         richting_compass:    null,
         gezondheidsklachten: entry.gezondheidsklachten || [],
         activiteiten:        entry.activiteiten        || [],
+        drift_waarneming:    entry.drift_waarneming    || [],
         notities:            '',
         weather:             entry.weather    || null,
         weather_raw:         null,
@@ -2584,6 +2599,18 @@ async function fetchWeather() {
     // Windroos automatisch instellen op gemeten windrichting
     setCompassDegrees(c.wind_direction_10m);
 
+    // Wind subjectief automatisch voorinvullen op basis van gemeten windsnelheid
+    const windSubjEl = document.getElementById('f-wind-subj');
+    if (windSubjEl) {
+      const kmh = c.wind_speed_10m;
+      const gusts = c.wind_gusts_10m || 0;
+      if (gusts > 28 || kmh > 20) windSubjEl.value = 'vlagerig';
+      else if (kmh > 14)          windSubjEl.value = 'sterk';
+      else if (kmh > 8)           windSubjEl.value = 'matig';
+      else if (kmh > 2)           windSubjEl.value = 'zwak';
+      else                        windSubjEl.value = 'geen';
+    }
+
     // BUG FIX: was display:none!important — nu gewoon display:none zodat JS het kan overschrijven
     if (display) display.style.display = 'grid';
     if (spinner) spinner.style.display = 'none';
@@ -2617,24 +2644,42 @@ function kmhToBft(kmh) {
 
 // Toets windsnelheid aan Nederlandse wet (Activiteitenbesluit art. 3.79):
 // Maximum windsnelheid voor spuiten van pesticiden = 5 m/s = 18 km/h
-function spuitWindOordeel(windKmh, gustsKmh) {
+function spuitWindOordeel(windKmh, gustsKmh, driftWaarneming) {
   const bft      = kmhToBft(windKmh);
-  const MAX_MS   = 5;      // wettelijk maximum gemiddelde wind in m/s
-  const MAX_KMH  = 18;     // 5 m/s × 3.6
-  const WARN_KMH = 14;     // waarschuwingszone (~3.9 m/s)
+  const MAX_MS   = 5;
+  const MAX_KMH  = 18;
+  const WARN_KMH = 14;
 
   const windMs  = (windKmh / 3.6).toFixed(1);
   const gustsMs = ((gustsKmh || 0) / 3.6).toFixed(1);
 
-  // Wettelijke grens geldt voor gemiddelde windsnelheid, niet stoten
+  const drift = driftWaarneming || [];
+  const driftOpPersoon  = drift.includes('druppels_voelbaar') || drift.includes('ogen_keel');
+  const driftZichtbaar  = drift.includes('nevel_zichtbaar') || drift.includes('drift_ver');
+  const geurDirect      = drift.includes('geur_direct');
+
+  // Wettelijke grens overschreden op basis van gemiddelde wind
   if (windKmh > MAX_KMH) {
     return { kleur: '#ef4444', icoon: '🚫', tekst: `Te veel wind voor spuiten: ${windMs} m/s gemiddeld (max ${MAX_MS} m/s wettelijk, Bft ${bft})` };
-  } else if (windKmh >= WARN_KMH) {
-    return { kleur: '#f59e0b', icoon: '⚠️', tekst: `Wind nadert wettelijke grens: ${windMs} m/s (max ${MAX_MS} m/s, Bft ${bft})${gustsKmh > MAX_KMH ? ` — stoten ${gustsMs} m/s` : ''}` };
-  } else {
-    const gustsWaarschuwing = gustsKmh > MAX_KMH ? ` — let op stoten: ${gustsMs} m/s` : '';
-    return { kleur: '#00d4aa', icoon: '✓', tekst: `Wind binnen wettelijke norm: ${windMs} m/s (max ${MAX_MS} m/s, Bft ${bft})${gustsWaarschuwing}` };
   }
+
+  // Wind binnen norm maar drift op persoon waargenomen → juridisch zwaarwegend
+  if (driftOpPersoon) {
+    return { kleur: '#ef4444', icoon: '🚫', tekst: `Drift op persoon waargenomen — ongeacht windmeting (${windMs} m/s). Juridisch relevant.` };
+  }
+
+  // Wind nadert grens of drift zichtbaar/geur
+  if (windKmh >= WARN_KMH || driftZichtbaar || geurDirect) {
+    const extra = [];
+    if (driftZichtbaar) extra.push('drift zichtbaar');
+    if (geurDirect)     extra.push('geur direct');
+    if ((gustsKmh || 0) > MAX_KMH) extra.push(`stoten ${gustsMs} m/s`);
+    return { kleur: '#f59e0b', icoon: '⚠️', tekst: `Wind nadert grens: ${windMs} m/s${extra.length ? ' — ' + extra.join(', ') : ''} (max ${MAX_MS} m/s, Bft ${bft})` };
+  }
+
+  // Alles binnen norm
+  const gustsWaarschuwing = (gustsKmh || 0) > MAX_KMH ? ` — let op stoten: ${gustsMs} m/s` : '';
+  return { kleur: '#00d4aa', icoon: '✓', tekst: `Wind binnen wettelijke norm: ${windMs} m/s (max ${MAX_MS} m/s, Bft ${bft})${gustsWaarschuwing}` };
 }
 
 
@@ -2954,6 +2999,7 @@ async function submitMelding() {
       melder_email: _sbUser?.email || null,
       geur_intensiteit: parseInt(document.getElementById('f-geur').value) || 1,
       wind_subjectief: document.getElementById('f-wind-subj').value,
+      drift_waarneming: Array.from(document.querySelectorAll('.drift-check:checked')).map(el => el.value),
       richting_deg: parseInt(document.getElementById('f-direction').value) || 0,
       richting_compass: degToCompass(parseInt(document.getElementById('f-direction').value) || 0),
       gezondheidsklachten: healthChecks,
@@ -3040,7 +3086,7 @@ async function submitMelding() {
     document.getElementById('f-geur').value = 1;
     document.getElementById('geur-val').textContent = '1';
     document.getElementById('f-notes').value = '';
-    document.querySelectorAll('.health-check, .activity-check').forEach(el => el.checked = false);
+    document.querySelectorAll('.health-check, .activity-check, .drift-check').forEach(el => el.checked = false);
     // Standaard activiteiten weer aanvinken
     const tractor = document.querySelector('.activity-check[value="tractor"]');
     const spuit   = document.querySelector('.activity-check[value="spuitmachine"]');
@@ -3596,6 +3642,10 @@ function showMeldingDetail(id) {
         </div>
         ${m.gezondheidsklachten?.length ? `<div class="mt-2"><div class="section-label">Gezondheid</div><div style="color:var(--danger);font-size:0.75rem;margin-top:4px;">${m.gezondheidsklachten.join(', ')}</div></div>` : ''}
         ${m.activiteiten?.length ? `<div class="mt-2"><div class="section-label">Activiteiten</div><div style="color:var(--warning);font-size:0.75rem;margin-top:4px;">${m.activiteiten.join(', ')}</div></div>` : ''}
+        ${m.drift_waarneming?.length ? (() => {
+          const labels = { nevel_zichtbaar: '🌫️ Nevel/drift zichtbaar', druppels_voelbaar: '💦 Druppels voelbaar', drift_ver: '📏 Drift >10m zichtbaar', geur_direct: '👃 Geur direct', ogen_keel: '👁️ Ogen/keel irritatie' };
+          return `<div class="mt-2" style="border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 10px;"><div class="section-label" style="color:var(--danger);margin-bottom:4px;">Drift & Overlast</div><div style="font-size:0.75rem;color:var(--danger);">${m.drift_waarneming.map(v => labels[v]||v).join(' · ')}</div></div>`;
+        })() : ''}
       </div>
 
       <!-- Weerdata -->
@@ -3612,7 +3662,7 @@ function showMeldingDetail(id) {
           <div>📊 ${m.weather.pressure} hPa</div>
         </div>
         ${m.weather.wind_speed != null ? (() => {
-          const o = spuitWindOordeel(m.weather.wind_speed, m.weather.wind_gusts);
+          const o = spuitWindOordeel(m.weather.wind_speed, m.weather.wind_gusts, m.drift_waarneming);
           return `<div style="margin-top:8px;padding:6px 10px;border-radius:6px;background:${o.kleur}18;border:1px solid ${o.kleur}44;font-family:var(--mono);font-size:0.65rem;color:${o.kleur};">${o.icoon} Spuitrichtlijn: ${o.tekst}</div>`;
         })() : ''}
       </div>` : ''}
@@ -3879,6 +3929,10 @@ async function exportPDF() {
 
         ${m.gezondheidsklachten?.length ? `<div style="margin-bottom:8px;"><div class="label">Gezondheidsklachten</div><div style="color:#b91c1c;font-size:9pt;">${m.gezondheidsklachten.join(', ')}</div></div>` : ''}
         ${m.activiteiten?.length ? `<div style="margin-bottom:8px;"><div class="label">Activiteiten</div><div style="color:#b45309;font-size:9pt;">${m.activiteiten.join(', ')}</div></div>` : ''}
+        ${m.drift_waarneming?.length ? (() => {
+          const labels = { nevel_zichtbaar: '🌫️ Nevel/drift zichtbaar in de lucht', druppels_voelbaar: '💦 Druppels/nevel voelbaar', drift_ver: '📏 Drift zichtbaar op >10m', geur_direct: '👃 Geur direct waargenomen', ogen_keel: '👁️ Ogen/keel irritatie' };
+          return `<div style="margin-bottom:8px;padding:6px 8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;"><div class="label" style="color:#b91c1c;">Drift & Overlast Waarneming</div><div style="font-size:9pt;color:#b91c1c;">${m.drift_waarneming.map(v=>labels[v]||v).join(' · ')}</div></div>`;
+        })() : ''}
 
         ${m.weather ? `
         <div style="border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px;">
@@ -3892,7 +3946,7 @@ async function exportPDF() {
             <div><span class="label">Neerslag: </span><span class="value">${m.weather.precipitation} mm</span></div>
           </div>
           ${m.weather.wind_speed != null ? (() => {
-            const o = spuitWindOordeel(m.weather.wind_speed, m.weather.wind_gusts);
+            const o = spuitWindOordeel(m.weather.wind_speed, m.weather.wind_gusts, m.drift_waarneming);
             const bg = o.kleur === '#ef4444' ? '#fee2e2' : o.kleur === '#f59e0b' ? '#fef3c7' : '#d1fae5';
             const border = o.kleur === '#ef4444' ? '#fca5a5' : o.kleur === '#f59e0b' ? '#fcd34d' : '#6ee7b7';
             return `<div style="margin-top:8px;padding:5px 8px;border-radius:4px;background:${bg};border:1px solid ${border};font-family:JetBrains Mono;font-size:8pt;color:#1e293b;">${o.icoon} Spuitrichtlijn: ${o.tekst}</div>`;
