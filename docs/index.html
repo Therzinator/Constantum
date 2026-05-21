@@ -986,14 +986,18 @@
         </div>
 
         <!-- Drift/overlast waarneming -->
-        <div>
-          <label class="section-label block mb-2">Drift & Overlast Waarneming <span style="color:var(--text-muted);font-size:0.6rem;">(tik aan wat van toepassing is)</span></label>
-          <div class="grid grid-cols-1 gap-2">
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="nevel_zichtbaar"> 🌫️ Nevel/drift zichtbaar in de lucht</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="druppels_voelbaar"> 💦 Druppels/nevel voelbaar op huid of oppervlakken</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="drift_ver"> 📏 Drift zichtbaar op meer dan 10 meter afstand</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="geur_direct"> 👃 Geur direct waargenomen tijdens spuiten</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="drift-check" value="ogen_keel"> 👁️ Ogen/keel irritatie bij buitenverblijf</label>
+        <div style="position:relative;">
+          <label class="section-label block mb-2">Drift & Overlast Waarneming</label>
+          <button type="button" id="drift-dropdown-btn" onclick="toggleDriftDropdown()" class="form-select px-3 py-3 text-sm w-full flex items-center justify-between" style="cursor:pointer;text-align:left;">
+            <span id="drift-dropdown-label" style="color:var(--text-muted);">Niets geselecteerd</span>
+            <span style="font-size:0.75rem;color:var(--text-muted);">▼</span>
+          </button>
+          <div id="drift-dropdown-panel" style="display:none;position:absolute;left:0;right:0;z-index:200;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:10px;margin-top:4px;padding:8px 0;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" style="transition:background 0.1s;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="nevel_zichtbaar" onchange="updateDriftLabel()"> 🌫️ Nevel/drift zichtbaar in de lucht</label>
+            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="druppels_voelbaar" onchange="updateDriftLabel()"> 💦 Druppels/nevel voelbaar op huid</label>
+            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="drift_ver" onchange="updateDriftLabel()"> 📏 Drift zichtbaar op meer dan 10 meter</label>
+            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="geur_direct" onchange="updateDriftLabel()"> 👃 Geur direct waargenomen tijdens spuiten</label>
+            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="ogen_keel" onchange="updateDriftLabel()"> 👁️ Ogen/keel irritatie bij buitenverblijf</label>
           </div>
         </div>
 
@@ -1029,16 +1033,21 @@
 
         <!-- Gezondheidsklachten -->
         <div>
-          <label class="section-label block mb-3">Gezondheidsklachten</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="hoofdpijn"> Hoofdpijn</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="misselijkheid"> Misselijkheid</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="benauwdheid"> Benauwdheid</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="oogirritatie"> Oogirritatie</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="keelirritatie"> Keelirritatie</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="darmklachten"> Darmklachten</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="duizeligheid"> Duizeligheid</label>
-            <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="vermoeidheid"> Vermoeidheid</label>
+          <button type="button" onclick="toggleGezondheid(this)" class="w-full flex items-center justify-between section-label py-2" style="background:none;border:none;cursor:pointer;text-align:left;">
+            <span>Gezondheidsklachten <span id="gezondheid-badge" style="display:none;font-size:0.6rem;color:var(--accent);font-weight:700;margin-left:6px;"></span></span>
+            <span id="gezondheid-chevron" style="font-size:0.75rem;color:var(--text-muted);transition:transform 0.2s;">▼</span>
+          </button>
+          <div id="gezondheid-panel" style="display:none;margin-top:8px;">
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="hoofdpijn" onchange="updateGezondheidBadge()"> Hoofdpijn</label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="misselijkheid" onchange="updateGezondheidBadge()"> Misselijkheid</label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="benauwdheid" onchange="updateGezondheidBadge()"> Benauwdheid</label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="oogirritatie" onchange="updateGezondheidBadge()"> Oogirritatie</label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="keelirritatie" onchange="updateGezondheidBadge()"> Keelirritatie</label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="darmklachten" onchange="updateGezondheidBadge()"> Darmklachten</label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="duizeligheid" onchange="updateGezondheidBadge()"> Duizeligheid</label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" class="health-check" value="vermoeidheid" onchange="updateGezondheidBadge()"> Vermoeidheid</label>
+            </div>
           </div>
         </div>
 
@@ -2506,6 +2515,51 @@ function generateId() {
 }
 
 // ============================================================
+// GEZONDHEID ACCORDION + DRIFT DROPDOWN
+// ============================================================
+function toggleGezondheid(btn) {
+  const panel   = document.getElementById('gezondheid-panel');
+  const chevron = document.getElementById('gezondheid-chevron');
+  const open    = panel.style.display !== 'none';
+  panel.style.display     = open ? 'none' : 'block';
+  chevron.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function updateGezondheidBadge() {
+  const count = document.querySelectorAll('.health-check:checked').length;
+  const badge = document.getElementById('gezondheid-badge');
+  if (badge) {
+    badge.textContent   = count > 0 ? `${count} geselecteerd` : '';
+    badge.style.display = count > 0 ? 'inline' : 'none';
+  }
+}
+
+function toggleDriftDropdown() {
+  const panel = document.getElementById('drift-dropdown-panel');
+  if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function updateDriftLabel() {
+  const checked  = Array.from(document.querySelectorAll('.drift-check:checked'));
+  const label    = document.getElementById('drift-dropdown-label');
+  if (!label) return;
+  const emojiMap = { nevel_zichtbaar: '🌫️', druppels_voelbaar: '💦', drift_ver: '📏', geur_direct: '👃', ogen_keel: '👁️' };
+  label.style.color = checked.length ? 'var(--text-primary)' : 'var(--text-muted)';
+  label.textContent = checked.length
+    ? checked.map(el => emojiMap[el.value] || el.value).join('  ')
+    : 'Niets geselecteerd';
+}
+
+// Sluit drift dropdown bij klik buiten
+document.addEventListener('click', e => {
+  const panel = document.getElementById('drift-dropdown-panel');
+  const btn   = document.getElementById('drift-dropdown-btn');
+  if (panel && btn && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
+// ============================================================
 // GPS
 // ============================================================
 function refreshGPS() {
@@ -3089,6 +3143,13 @@ async function submitMelding() {
     document.getElementById('f-geur').value = 0;
     document.getElementById('f-notes').value = '';
     document.querySelectorAll('.health-check, .activity-check, .drift-check').forEach(el => el.checked = false);
+    updateGezondheidBadge();
+    updateDriftLabel();
+    // Gezondheid panel weer inklappen
+    const gPanel = document.getElementById('gezondheid-panel');
+    const gChevron = document.getElementById('gezondheid-chevron');
+    if (gPanel) gPanel.style.display = 'none';
+    if (gChevron) gChevron.style.transform = '';
     // Standaard activiteiten weer aanvinken
     const tractor = document.querySelector('.activity-check[value="tractor"]');
     const spuit   = document.querySelector('.activity-check[value="spuitmachine"]');
