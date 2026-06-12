@@ -728,7 +728,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.2</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.3</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUIT PESTICIDE DOSSIER</div>
       </div>
@@ -805,6 +805,10 @@
           </div>
         </div>
         <div id="leaflet-map" style="height:440px;border-radius:0 0 12px 12px;"></div>
+        <!-- GPS terugkeer knop — gepositioneerd over de kaart -->
+        <div style="position:relative;height:0;">
+          <button onclick="kaartNaarGPS()" title="Terug naar mijn locatie" style="position:absolute;bottom:56px;right:10px;z-index:1000;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:8px;padding:7px 9px;cursor:pointer;font-size:1rem;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,0.4);">📍</button>
+        </div>
         <div id="map-legenda" class="p-2" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid var(--border);"></div>
       </div>
 
@@ -1225,12 +1229,15 @@
                 <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:8px;">BACKUP TERUGZETTEN</div>
                 <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:10px;">Herstel verwijderde meldingen uit de cloud. Meldingen die in de afgelopen 72 uur zijn verwijderd kunnen worden teruggezet.</div>
                 <div class="flex gap-2 mb-3">
-                  <select id="backup-uren" class="form-select px-2 py-2 text-sm flex-1">
-                    <option value="6">Afgelopen 6 uur</option>
-                    <option value="12">Afgelopen 12 uur</option>
-                    <option value="24">Afgelopen 24 uur</option>
-                    <option value="48">Afgelopen 48 uur</option>
-                    <option value="72" selected>Afgelopen 72 uur</option>
+                  <select id="backup-dagen" class="form-select px-2 py-2 text-sm flex-1">
+                    <option value="1">Afgelopen 1 dag</option>
+                    <option value="2">Afgelopen 2 dagen</option>
+                    <option value="3">Afgelopen 3 dagen</option>
+                    <option value="4">Afgelopen 4 dagen</option>
+                    <option value="5">Afgelopen 5 dagen</option>
+                    <option value="7" selected>Afgelopen 7 dagen</option>
+                    <option value="10">Afgelopen 10 dagen</option>
+                    <option value="14">Afgelopen 14 dagen</option>
                   </select>
                   <button onclick="laadVerwijderdeMeldingen()" class="btn-outline px-3 py-2 text-sm">🔍 Bekijk</button>
                 </div>
@@ -2682,23 +2689,24 @@ async function laadVerwijderdeMeldingen() {
   const sb = sbClient();
   if (!sb) return;
 
-  const uren = parseInt(document.getElementById('backup-uren').value) || 72;
-  const vanaf = new Date(Date.now() - uren * 60 * 60 * 1000).toISOString();
+  const dagen = parseInt(document.getElementById('backup-dagen').value) || 7;
+  const vanaf = new Date(Date.now() - dagen * 24 * 60 * 60 * 1000).toISOString();
 
-  const lijstEl    = document.getElementById('backup-lijst');
-  const entriesEl  = document.getElementById('backup-entries');
-  const infoEl     = document.getElementById('backup-info');
+  const lijstEl   = document.getElementById('backup-lijst');
+  const entriesEl = document.getElementById('backup-entries');
+  const infoEl    = document.getElementById('backup-info');
 
   entriesEl.innerHTML = '<div style="text-align:center;padding:20px;"><div class="spinner" style="display:inline-block;"></div></div>';
   lijstEl.style.display = 'block';
 
   try {
+    // Filter op timestamp_local ipv updated_at — robuuster voor oudere entries zonder updated_at
     const { data, error } = await sb
       .from('entries')
       .select('id, timestamp_local, type, description, melder_email, user_id')
       .eq('deleted', true)
-      .gte('updated_at', vanaf)
-      .order('updated_at', { ascending: false });
+      .or(`updated_at.gte.${vanaf},timestamp_local.gte.${vanaf}`)
+      .order('timestamp_local', { ascending: false });
 
     if (error) throw error;
 
@@ -2708,20 +2716,23 @@ async function laadVerwijderdeMeldingen() {
       return;
     }
 
-    infoEl.textContent = `${data.length} verwijderde melding(en) gevonden in afgelopen ${uren} uur`;
+    infoEl.textContent = `${data.length} verwijderde melding(en) gevonden in afgelopen ${dagen} dag(en)`;
 
     entriesEl.innerHTML = data.map(e => {
       const d = new Date(e.timestamp_local);
       const datum = d.toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' });
       const tijd  = d.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit', timeZone: 'Europe/Amsterdam' });
+      const omschrijving = e.description || '—';
       return `
-        <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);">${datum} ${tijd}</div>
-            <div style="font-size:0.8rem;color:var(--text-primary);margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.description?.substring(0,60) || '—'}</div>
-            <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);">${e.melder_email || e.user_id || '?'}</div>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);">${datum} ${tijd}</div>
+              <div style="font-size:0.8rem;color:var(--text-primary);margin:4px 0;line-height:1.4;word-break:break-word;">${omschrijving}</div>
+              <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);">${e.melder_email || e.user_id || '?'}</div>
+            </div>
+            <button onclick="herstelMelding('${e.id}')" class="btn-outline px-3 py-1" style="font-size:0.7rem;white-space:nowrap;flex-shrink:0;margin-top:2px;">↩ Herstel</button>
           </div>
-          <button onclick="herstelMelding('${e.id}')" class="btn-outline px-3 py-1" style="font-size:0.7rem;white-space:nowrap;flex-shrink:0;">↩ Herstel</button>
         </div>`;
     }).join('');
   } catch (e) {
@@ -3304,6 +3315,16 @@ async function submitMelding() {
   if (!type) { toast('Selecteer een type waarneming', 'error'); return; }
   if (!desc) { toast('Voer een omschrijving in', 'error'); return; }
 
+  // Verplichte subjectieve waarnemingen
+  const geurVal = document.getElementById('f-geur').value;
+  const windVal = document.getElementById('f-wind-subj').value;
+  if (geurVal === null || geurVal === undefined || geurVal === '') {
+    toast('Selecteer een geurintensiteit', 'error'); return;
+  }
+  if (!windVal || windVal === '') {
+    toast('Selecteer een wind waarneming', 'error'); return;
+  }
+
   const btn = document.getElementById('submit-btn');
   const btnOriginalHTML = btn.innerHTML;
   btn.disabled = true;
@@ -3335,7 +3356,7 @@ async function submitMelding() {
     const melding = {
       id: meldingId,
       timestamp_local: now.toISOString(),
-      timestamp_utc: new Date(now.toUTCString()).toISOString(),
+      timestamp_utc: now.toISOString(), // ISO is altijd UTC
       date: now.toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
       time: now.toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
       timezone: 'Europe/Amsterdam',
@@ -3350,8 +3371,8 @@ async function submitMelding() {
       type,
       description: desc,
       melder_email: _sbUser?.email || null,
-      geur_intensiteit: parseInt(document.getElementById('f-geur').value),
-      wind_subjectief: document.getElementById('f-wind-subj').value,
+      geur_intensiteit: parseInt(document.getElementById('f-geur').value) || 0,
+      wind_subjectief: document.getElementById('f-wind-subj').value || 'geen',
       drift_waarneming: Array.from(document.querySelectorAll('.drift-check:checked')).map(el => el.value),
       richting_deg: parseInt(document.getElementById('f-direction').value) || 0,
       richting_compass: degToCompass(parseInt(document.getElementById('f-direction').value) || 0),
@@ -3585,14 +3606,41 @@ function initFormMap() {
 function initDashMap() {
   dashMap = L.map('leaflet-map').setView([HOME_LAT, HOME_LNG], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OSM', maxZoom: 19
+    attribution: '© OpenStreetMap', maxZoom: 19
   }).addTo(dashMap);
-
   const homeIcon = L.divIcon({
     html: '<div style="width:16px;height:16px;background:#00d4aa;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(0,212,170,0.5)"></div>',
     iconSize: [16,16], className: ''
   });
   L.marker([HOME_LAT, HOME_LNG], { icon: homeIcon }).addTo(dashMap).bindPopup('🏠 ' + HOME_NAME);
+}
+
+function kaartNaarGPS() {
+  if (!dashMap) return;
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        if (Math.abs(lat) < 0.01 && Math.abs(lng) < 0.01) return;
+        currentGPS = { lat, lng, accuracy: pos.coords.accuracy };
+        dashMap.setView([lat, lng], 15);
+        // Toon korte pulse marker
+        const pulse = L.circleMarker([lat, lng], {
+          radius: 10, color: 'var(--accent)', fillColor: 'var(--accent)',
+          fillOpacity: 0.3, weight: 2
+        }).addTo(dashMap);
+        setTimeout(() => dashMap.removeLayer(pulse), 2500);
+      },
+      () => {
+        // GPS geweigerd: spring naar HOME
+        dashMap.setView([HOME_LAT, HOME_LNG], 15);
+      },
+      { enableHighAccuracy: true, timeout: 6000 }
+    );
+  } else {
+    dashMap.setView([HOME_LAT, HOME_LNG], 15);
+  }
 }
 
 // Vaste kleurenpalet per gebruiker (email → kleur)
@@ -4494,7 +4542,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.2';
+const APP_VERSION_CLIENT = '7.3';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
