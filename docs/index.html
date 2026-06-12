@@ -726,7 +726,10 @@
         <line x1="20" y1="14" x2="26" y2="14" stroke="#00d4aa" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
       <div>
-        <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em;">SpuitLogger</div>
+        <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
+          SpuitLogger
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.2</span>
+        </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUIT PESTICIDE DOSSIER</div>
       </div>
     </div>
@@ -1556,6 +1559,7 @@ async function authInit() {
     setTimeout(() => {
       laadVanSupabase();
       laadGebruikerRol();
+      startRealtime();
     }, 1200);
     return;
   }
@@ -1576,6 +1580,7 @@ async function authInit() {
         laadVanSupabase();
         laadGebruikerRol();
       }, 1500);
+      startRealtime();
     }
     if (event === 'SIGNED_OUT') {
       toast('Uitgelogd', '');
@@ -1621,6 +1626,7 @@ async function authSubmit() {
       toast('✓ Ingelogd als ' + (_sbUser?.email || ''), 'success');
       laadGebruikerRol();
       syncNu();
+      startRealtime();
     } else if (!isLogin) {
       // Registratie zonder directe sessie (email-bevestiging vereist)
       errEl.textContent = '✓ Bevestigingsmail verstuurd. Controleer uw inbox.';
@@ -1659,8 +1665,10 @@ function authSkip() {
 
 async function authUitloggen() {
   const sb = sbClient();
+  stopRealtime();
   if (sb) await sb.auth.signOut();
   _sbUser = null;
+  _gebruikerRol = 'gebruiker';
   authUpdateUI(null);
 }
 
@@ -2083,26 +2091,34 @@ async function laadVanSupabase() {
 
     if (error) throw error;
 
-    const lokaal    = getMeldingen();
-    const lokaalIds = new Set(lokaal.map(m => m.id));
-    let nieuw = 0;
+    const lokaal   = getMeldingen();
+    const lokaalMap = new Map(lokaal.map(m => [m.id, m]));
+    let nieuw = 0, bijgewerkt = 0;
 
     for (const entry of entries) {
-      if (lokaalIds.has(entry.id)) continue;
+      const bestaand = lokaalMap.get(entry.id);
 
-      // Haal bijlage-metadata op uit attachments tabel
-      const bestanden = await laadBijlagenVanSupabase(entry.id);
+      // Bepaal of de cloud-versie nieuwer is
+      const cloudUpdated = entry.updated_at || entry.created_at;
+      const lokaalUpdated = bestaand?.sync_at;
+      const cloudIsNieuwer = !bestaand || !lokaalUpdated ||
+        new Date(cloudUpdated) > new Date(lokaalUpdated);
+
+      if (bestaand && !cloudIsNieuwer) continue; // lokaal al up-to-date
+
+      // Haal bijlagen op (alleen als entry nieuw of bijgewerkt is)
+      const bestanden = bestaand?.bestanden?.length
+        ? bestaand.bestanden  // hergebruik bestaande bijlagen
+        : await laadBijlagenVanSupabase(entry.id);
 
       const tsLocal = entry.timestamp_local || entry.created_at;
       const melding = {
+        ...(bestaand || {}),   // behoud lokale velden als fallback
         id:                  entry.id,
         timestamp_local:     tsLocal,
         timestamp_utc:       entry.timestamp_utc || tsLocal,
         date:                new Date(tsLocal).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
         time:                new Date(tsLocal).toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
-        timezone:            null,
-        device:              null,
-        platform:            null,
         gps: {
           lat:      entry.gps_lat  ?? null,
           lng:      entry.gps_lng  ?? null,
@@ -2112,38 +2128,41 @@ async function laadVanSupabase() {
         type:                entry.type        || 'overig',
         description:         entry.description || '',
         melder_email:        entry.melder_email || null,
-        geur_intensiteit:    null,
-        wind_subjectief:     null,
-        richting_deg:        null,
-        richting_compass:    null,
         gezondheidsklachten: entry.gezondheidsklachten || [],
         activiteiten:        entry.activiteiten        || [],
         drift_waarneming:    entry.drift_waarneming    || [],
-        notities:            '',
         weather:             entry.weather    || null,
-        weather_raw:         null,
-        bestanden,           // gevuld vanuit attachments tabel
+        bestanden,
         warnings:            entry.warnings   || [],
-        version:             '1.0.0',
         hash:                entry.client_hash || null,
         sync_status:         'synced',
-        sync_at:             entry.created_at,
+        sync_at:             cloudUpdated,
         supabase_id:         entry.id
       };
-      lokaal.push(melding);
-      nieuw++;
+
+      if (bestaand) {
+        lokaalMap.set(entry.id, melding);
+        bijgewerkt++;
+      } else {
+        lokaalMap.set(entry.id, melding);
+        nieuw++;
+      }
     }
 
-    if (nieuw > 0) {
-      lokaal.sort((a, b) => new Date(b.timestamp_local) - new Date(a.timestamp_local));
-      saveMeldingen(lokaal);
-      sluitSyncBalk(true, `✓ ${nieuw} nieuwe melding(en) geladen`);
-      toast(`✓ ${nieuw} nieuwe melding(en) geladen van cloud`, 'success');
+    if (nieuw > 0 || bijgewerkt > 0) {
+      const gesorteerd = [...lokaalMap.values()]
+        .sort((a, b) => new Date(b.timestamp_local) - new Date(a.timestamp_local));
+      saveMeldingen(gesorteerd);
+      const tekst = [
+        nieuw      > 0 ? `${nieuw} nieuw`       : '',
+        bijgewerkt > 0 ? `${bijgewerkt} bijgewerkt` : ''
+      ].filter(Boolean).join(', ');
+      sluitSyncBalk(true, `✓ ${tekst}`);
+      toast(`✓ Cloud geladen: ${tekst}`, 'success');
       renderTimeline();
       updateDashboard();
     } else {
       sluitSyncBalk(true, 'Alles al up-to-date');
-      toast('Alles al up-to-date', 'success');
     }
   } catch (e) {
     console.error('[Supabase] Laden mislukt:', e.message);
@@ -2620,8 +2639,42 @@ function debouncedRenderTimeline() {
 }
 
 // ============================================================
-// ADMIN FUNCTIES
+// SUPABASE REALTIME — automatisch nieuwe meldingen ontvangen
 // ============================================================
+let _realtimeChannel = null;
+
+function startRealtime() {
+  const sb = sbClient();
+  if (!sb || !_sbUser || !SUPABASE_ENABLED) return;
+  if (_realtimeChannel) return; // al actief
+
+  _realtimeChannel = sb
+    .channel('entries-live')
+    .on('postgres_changes', {
+      event: '*',           // INSERT, UPDATE, DELETE
+      schema: 'public',
+      table: 'entries',
+    }, payload => {
+      console.log('[Realtime] Wijziging ontvangen:', payload.eventType, payload.new?.id);
+
+      // Kleine vertraging zodat Supabase REST ook bijgewerkt is
+      setTimeout(() => {
+        laadVanSupabase();
+      }, 500);
+    })
+    .subscribe(status => {
+      console.log('[Realtime] Status:', status);
+    });
+}
+
+function stopRealtime() {
+  if (_realtimeChannel) {
+    _realtimeChannel.unsubscribe();
+    _realtimeChannel = null;
+  }
+}
+
+
 
 // Laad verwijderde meldingen van de afgelopen X uur
 async function laadVerwijderdeMeldingen() {
@@ -4441,7 +4494,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '4'; // moet overeenkomen met sw.js APP_VERSION
+const APP_VERSION_CLIENT = '7.2';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
@@ -4552,7 +4605,9 @@ function reloadApp() {
 
 function updateVersionLabel(version) {
   const el = document.getElementById('app-version-label');
-  if (el) el.textContent = `PESTICIDE DRIFT DOSSIER v${version}`;
+  if (el) el.textContent = `SPUIT PESTICIDE DOSSIER v${version}`;
+  const hv = document.getElementById('header-versie');
+  if (hv) hv.textContent = `v${version}`;
 }
 
 // ── SW Debug functies ─────────────────────────────────────────
@@ -4638,6 +4693,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Verwijder reload-guard na succesvolle herstart
   sessionStorage.removeItem('sw_reloading');
 
+  updateVersionLabel(APP_VERSION_CLIENT);
   updateOnlineStatus();
   initDashMap();
   updateDashboard();
