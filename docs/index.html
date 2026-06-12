@@ -112,6 +112,22 @@
       font-family: var(--sans);
       transition: border-color 0.2s;
       width: 100%;
+      line-height: 1.5;
+    }
+    .form-input, .form-select {
+      min-height: 44px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+    .form-select {
+      /* Voorkomt dat descenders (g, p, y) worden afgeknipt in iOS/Android */
+      padding-top: 11px;
+      padding-bottom: 11px;
+    }
+    .form-textarea {
+      line-height: 1.6;
+      padding-top: 10px;
+      padding-bottom: 10px;
     }
     .form-input:focus, .form-select:focus, .form-textarea:focus {
       outline: none;
@@ -728,7 +744,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.3</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.4</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUIT PESTICIDE DOSSIER</div>
       </div>
@@ -1245,20 +1261,6 @@
                   <div id="backup-entries" style="max-height:300px;overflow-y:auto;"></div>
                   <div style="margin-top:8px;font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);" id="backup-info"></div>
                 </div>
-              </div>
-
-              <!-- Rollen beheer -->
-              <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
-                <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:8px;">ROLLEN BEHEER</div>
-                <div class="flex gap-2 mb-2">
-                  <input type="email" id="rol-email" class="form-input px-2 py-2 text-sm flex-1" placeholder="gebruiker@email.nl">
-                  <select id="rol-select" class="form-select px-2 py-2 text-sm">
-                    <option value="gebruiker">👤 Gebruiker</option>
-                    <option value="admin">👑 Admin</option>
-                  </select>
-                  <button onclick="wijzigGebruikerRol()" class="btn-primary px-3 py-2 text-sm">Sla op</button>
-                </div>
-                <div id="rollen-status" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);"></div>
               </div>
             </div>
           </div>
@@ -2762,49 +2764,6 @@ async function herstelMelding(id) {
   laadVerwijderdeMeldingen();
   // Haal de herstelde melding ook direct lokaal op
   setTimeout(() => laadVanSupabase(), 800);
-}
-
-// Wijzig de rol van een gebruiker (admin only)
-async function wijzigGebruikerRol() {
-  if (!isAdmin()) { toast('⛔ Geen admin rechten', 'error'); return; }
-  const sb = sbClient();
-  if (!sb) return;
-
-  const email  = document.getElementById('rol-email').value.trim();
-  const rol    = document.getElementById('rol-select').value;
-  const status = document.getElementById('rollen-status');
-
-  if (!email) { toast('Voer een e-mailadres in', 'error'); return; }
-
-  status.textContent = 'Opzoeken...';
-  status.style.color = 'var(--text-muted)';
-
-  // Zoek user_id op via entries (melder_email) of via auth.users als beschikbaar
-  const { data: entries } = await sb
-    .from('entries')
-    .select('user_id, melder_email')
-    .eq('melder_email', email)
-    .limit(1);
-
-  const userId = entries?.[0]?.user_id;
-  if (!userId) {
-    status.textContent = `Gebruiker ${email} niet gevonden in meldingen`;
-    status.style.color = 'var(--danger)';
-    return;
-  }
-
-  const { error } = await sb
-    .from('user_roles')
-    .upsert({ user_id: userId, role: rol }, { onConflict: 'user_id' });
-
-  if (error) {
-    status.textContent = 'Opslaan mislukt: ' + error.message;
-    status.style.color = 'var(--danger)';
-  } else {
-    status.textContent = `✓ Rol van ${email} ingesteld op "${rol}"`;
-    status.style.color = 'var(--accent)';
-    document.getElementById('rol-email').value = '';
-  }
 }
 
 // Update rol-badge zodra rol geladen is
@@ -4542,7 +4501,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.3';
+const APP_VERSION_CLIENT = '7.4';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
