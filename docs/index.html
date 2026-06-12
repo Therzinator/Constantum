@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0a0e17">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="SpuitLog">
+  <meta name="apple-mobile-web-app-title" content="SpuitLogger">
   <meta name="description" content="Juridisch dossieropbouw systeem voor pesticiden drift en spuitactiviteiten registratie">
   <!-- Cache-control: voorkom dat browsers deze HTML oneindig cachen -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -58,7 +58,7 @@
 
     /* Layout */
     #app { display: flex; flex-direction: column; height: 100dvh; }
-    #main-content { flex: 1; overflow-y: auto; }
+    #main-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
     /* Nav */
     .nav-tab { transition: all 0.2s; position: relative; }
@@ -1080,9 +1080,15 @@
           <label class="section-label block mb-2">Foto / Video Bewijs</label>
           <div class="card p-3" style="border-style:dashed;border-color:var(--border-bright);">
             <input type="file" id="f-files" multiple accept="image/*,video/*" class="hidden" onchange="handleFiles(event)">
-            <button type="button" onclick="document.getElementById('f-files').click()" class="btn-outline w-full py-3 text-sm flex items-center justify-center gap-2" style="min-height:52px;">
-              <span>📸</span> Foto's / Video's toevoegen
-            </button>
+            <input type="file" id="f-camera" accept="image/*" capture="environment" class="hidden" onchange="handleFiles(event)">
+            <div class="flex gap-2">
+              <button type="button" onclick="document.getElementById('f-camera').click()" class="btn-primary flex-1 py-3 text-sm flex items-center justify-center gap-2" style="min-height:52px;">
+                📷 Camera
+              </button>
+              <button type="button" onclick="document.getElementById('f-files').click()" class="btn-outline flex-1 py-3 text-sm flex items-center justify-center gap-2" style="min-height:52px;">
+                🖼️ Galerij
+              </button>
+            </div>
           </div>
           <!-- Foto grid preview -->
           <div id="file-previews" class="photo-grid"></div>
@@ -1120,7 +1126,7 @@
       <div class="card p-3 mb-4">
         <div class="section-label mb-2">Filters & Zoeken</div>
         <div class="space-y-2">
-          <input type="text" id="tl-search" class="form-input px-3 py-2 text-sm" placeholder="Zoeken in meldingen..." oninput="renderTimeline()">
+          <input type="text" id="tl-search" class="form-input px-3 py-2 text-sm" placeholder="Zoeken in meldingen..." oninput="debouncedRenderTimeline()">
           <div class="grid grid-cols-2 gap-2">
             <select id="tl-filter-type" class="form-select px-2 py-2 text-sm" onchange="renderTimeline()">
               <option value="">Alle typen</option>
@@ -1181,6 +1187,7 @@
           <div id="account-logged-in" style="display:none;">
             <div class="space-y-2 mono text-xs" style="color:var(--text-secondary);">
               <div class="flex justify-between"><span>Ingelogd als:</span><span id="acc-email" style="color:var(--accent);">—</span></div>
+              <div class="flex justify-between"><span>Rol:</span><span id="acc-rol" style="color:var(--accent);">—</span></div>
               <div class="flex justify-between"><span>Lokaal:</span><span id="acc-local-count" style="color:var(--accent);">—</span></div>
               <div class="flex justify-between"><span>Gesynchroniseerd:</span><span id="acc-synced-count" style="color:var(--accent);">—</span></div>
               <div class="flex justify-between"><span>In wachtrij:</span><span id="acc-pending-count" style="color:var(--warning);">—</span></div>
@@ -1198,6 +1205,51 @@
               <button onclick="authUitloggen()" style="background:transparent;border:1px solid var(--border-bright);color:var(--text-muted);border-radius:10px;padding:8px 12px;font-size:0.75rem;font-family:var(--mono);">
                 Uitloggen
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin sectie — alleen zichtbaar voor admin rol -->
+        <div id="admin-section" class="card p-4" style="display:none;border-color:rgba(245,158,11,0.4);">
+          <div class="flex items-start gap-3">
+            <div style="font-size:1.5rem;">👑</div>
+            <div class="flex-1">
+              <div style="font-weight:700;font-size:0.95rem;color:var(--warning);">Beheer — Admin</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">Functies beschikbaar voor de admin rol</div>
+
+              <!-- Backup terugzetten -->
+              <div style="margin-top:16px;">
+                <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:8px;">BACKUP TERUGZETTEN</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:10px;">Herstel verwijderde meldingen uit de cloud. Meldingen die in de afgelopen 72 uur zijn verwijderd kunnen worden teruggezet.</div>
+                <div class="flex gap-2 mb-3">
+                  <select id="backup-uren" class="form-select px-2 py-2 text-sm flex-1">
+                    <option value="6">Afgelopen 6 uur</option>
+                    <option value="12">Afgelopen 12 uur</option>
+                    <option value="24">Afgelopen 24 uur</option>
+                    <option value="48">Afgelopen 48 uur</option>
+                    <option value="72" selected>Afgelopen 72 uur</option>
+                  </select>
+                  <button onclick="laadVerwijderdeMeldingen()" class="btn-outline px-3 py-2 text-sm">🔍 Bekijk</button>
+                </div>
+                <div id="backup-lijst" style="display:none;">
+                  <div id="backup-entries" style="max-height:300px;overflow-y:auto;"></div>
+                  <div style="margin-top:8px;font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);" id="backup-info"></div>
+                </div>
+              </div>
+
+              <!-- Rollen beheer -->
+              <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+                <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:8px;">ROLLEN BEHEER</div>
+                <div class="flex gap-2 mb-2">
+                  <input type="email" id="rol-email" class="form-input px-2 py-2 text-sm flex-1" placeholder="gebruiker@email.nl">
+                  <select id="rol-select" class="form-select px-2 py-2 text-sm">
+                    <option value="gebruiker">👤 Gebruiker</option>
+                    <option value="admin">👑 Admin</option>
+                  </select>
+                  <button onclick="wijzigGebruikerRol()" class="btn-primary px-3 py-2 text-sm">Sla op</button>
+                </div>
+                <div id="rollen-status" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1466,6 +1518,7 @@ let chartTypes = null;
 // ── Client initialisatie ──────────────────────────────────────
 let _sb = null;          // Supabase client instance
 let _sbUser = null;      // ingelogde gebruiker
+let _gebruikerRol = 'gebruiker'; // 'admin' | 'gebruiker'
 let _sessieHersteld = true; // voorkomt toast bij sessie-herstel bij laden
 let _offlineQueue = [];  // wachtrij van meldingen die nog gesynchroniseerd moeten worden
 let _deleteQueue  = [];  // wachtrij van verwijderde meldingen
@@ -1500,8 +1553,10 @@ async function authInit() {
     _sbUser = session.user;
     authUpdateUI(session.user);
     document.getElementById('auth-overlay').classList.remove('visible');
-    // Auto-laden van cloud bij opstarten met bestaande sessie
-    setTimeout(() => laadVanSupabase(), 1200);
+    setTimeout(() => {
+      laadVanSupabase();
+      laadGebruikerRol();
+    }, 1200);
     return;
   }
 
@@ -1517,7 +1572,10 @@ async function authInit() {
       }
       _sessieHersteld = false;
       syncNu();
-      setTimeout(() => laadVanSupabase(), 1500);
+      setTimeout(() => {
+        laadVanSupabase();
+        laadGebruikerRol();
+      }, 1500);
     }
     if (event === 'SIGNED_OUT') {
       toast('Uitgelogd', '');
@@ -1561,6 +1619,7 @@ async function authSubmit() {
       authUpdateUI(_sbUser);
       document.getElementById('auth-overlay').classList.remove('visible');
       toast('✓ Ingelogd als ' + (_sbUser?.email || ''), 'success');
+      laadGebruikerRol();
       syncNu();
     } else if (!isLogin) {
       // Registratie zonder directe sessie (email-bevestiging vereist)
@@ -1625,6 +1684,11 @@ function authUpdateUI(user) {
     if (headerUserInitial) headerUserInitial.textContent = initial;
     const emailEl = document.getElementById('acc-email');
     if (emailEl) emailEl.textContent = user.email || '—';
+    const rolEl = document.getElementById('acc-rol');
+    if (rolEl) rolEl.textContent = _gebruikerRol === 'admin' ? '👑 Admin' : '👤 Gebruiker';
+    // Toon admin-sectie als beschikbaar
+    const adminSection = document.getElementById('admin-section');
+    if (adminSection) adminSection.style.display = _gebruikerRol === 'admin' ? 'block' : 'none';
   } else {
     if (loggedOut) loggedOut.style.display = 'block';
     if (loggedIn)  loggedIn.style.display  = 'none';
@@ -2383,7 +2447,36 @@ async function idbSaveBijlage(record) {
   }
 }
 
-// Haal bijlagen op voor een melding-id (via index — geen full scan)
+// Haal de rol van de ingelogde gebruiker op uit de user_roles tabel
+async function laadGebruikerRol() {
+  const sb = sbClient();
+  if (!sb || !_sbUser) return;
+  try {
+    const { data, error } = await sb
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', _sbUser.id)
+      .maybeSingle();
+    _gebruikerRol = data?.role || 'gebruiker';
+    console.log('[Auth] Rol geladen:', _gebruikerRol);
+    updateRolBadge();
+    renderTimeline();
+    updateDashboard();
+  } catch (e) {
+    console.warn('[Auth] Rol ophalen mislukt:', e.message);
+    _gebruikerRol = 'gebruiker';
+  }
+}
+
+function isAdmin() {
+  return _gebruikerRol === 'admin';
+}
+
+function magVerwijderen(meldingUserId) {
+  if (isAdmin()) return true;
+  // Gebruiker mag alleen eigen meldingen verwijderen
+  return meldingUserId === _sbUser?.id || meldingUserId === _sbUser?.email;
+}
 async function idbGetBijlagen(meldingId) {
   try {
     const db = await openIDB();
@@ -2514,9 +2607,146 @@ function generateId() {
   return 'DL-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2,5).toUpperCase();
 }
 
+// Debounce voor zoekbalk — voorkomt zware DOM-rebuild bij elke toetsaanslag
+let _zoekDebounce;
+function debouncedRenderTimeline() {
+  clearTimeout(_zoekDebounce);
+  _zoekDebounce = setTimeout(renderTimeline, 250);
+}
+
 // ============================================================
-// GEZONDHEID ACCORDION + DRIFT DROPDOWN
+// ADMIN FUNCTIES
 // ============================================================
+
+// Laad verwijderde meldingen van de afgelopen X uur
+async function laadVerwijderdeMeldingen() {
+  if (!isAdmin()) { toast('⛔ Geen admin rechten', 'error'); return; }
+  const sb = sbClient();
+  if (!sb) return;
+
+  const uren = parseInt(document.getElementById('backup-uren').value) || 72;
+  const vanaf = new Date(Date.now() - uren * 60 * 60 * 1000).toISOString();
+
+  const lijstEl    = document.getElementById('backup-lijst');
+  const entriesEl  = document.getElementById('backup-entries');
+  const infoEl     = document.getElementById('backup-info');
+
+  entriesEl.innerHTML = '<div style="text-align:center;padding:20px;"><div class="spinner" style="display:inline-block;"></div></div>';
+  lijstEl.style.display = 'block';
+
+  try {
+    const { data, error } = await sb
+      .from('entries')
+      .select('id, timestamp_local, type, description, melder_email, user_id')
+      .eq('deleted', true)
+      .gte('updated_at', vanaf)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!data?.length) {
+      entriesEl.innerHTML = '<div style="text-align:center;padding:20px;font-family:var(--mono);font-size:0.7rem;color:var(--text-muted);">Geen verwijderde meldingen gevonden</div>';
+      infoEl.textContent = '';
+      return;
+    }
+
+    infoEl.textContent = `${data.length} verwijderde melding(en) gevonden in afgelopen ${uren} uur`;
+
+    entriesEl.innerHTML = data.map(e => {
+      const d = new Date(e.timestamp_local);
+      const datum = d.toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' });
+      const tijd  = d.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit', timeZone: 'Europe/Amsterdam' });
+      return `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);">${datum} ${tijd}</div>
+            <div style="font-size:0.8rem;color:var(--text-primary);margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.description?.substring(0,60) || '—'}</div>
+            <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);">${e.melder_email || e.user_id || '?'}</div>
+          </div>
+          <button onclick="herstelMelding('${e.id}')" class="btn-outline px-3 py-1" style="font-size:0.7rem;white-space:nowrap;flex-shrink:0;">↩ Herstel</button>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    console.error('[Admin] Backup laden mislukt:', e.message);
+    entriesEl.innerHTML = `<div style="color:var(--danger);font-family:var(--mono);font-size:0.7rem;">Fout: ${e.message}</div>`;
+  }
+}
+
+// Herstel een verwijderde melding
+async function herstelMelding(id) {
+  if (!isAdmin()) { toast('⛔ Geen admin rechten', 'error'); return; }
+  const sb = sbClient();
+  if (!sb) return;
+
+  const { error } = await sb
+    .from('entries')
+    .update({ deleted: false })
+    .eq('id', id);
+
+  if (error) {
+    toast('Herstel mislukt: ' + error.message, 'error');
+    return;
+  }
+
+  toast('✓ Melding hersteld — laad van cloud om te zien', 'success');
+  // Herlaad de backup lijst
+  laadVerwijderdeMeldingen();
+  // Haal de herstelde melding ook direct lokaal op
+  setTimeout(() => laadVanSupabase(), 800);
+}
+
+// Wijzig de rol van een gebruiker (admin only)
+async function wijzigGebruikerRol() {
+  if (!isAdmin()) { toast('⛔ Geen admin rechten', 'error'); return; }
+  const sb = sbClient();
+  if (!sb) return;
+
+  const email  = document.getElementById('rol-email').value.trim();
+  const rol    = document.getElementById('rol-select').value;
+  const status = document.getElementById('rollen-status');
+
+  if (!email) { toast('Voer een e-mailadres in', 'error'); return; }
+
+  status.textContent = 'Opzoeken...';
+  status.style.color = 'var(--text-muted)';
+
+  // Zoek user_id op via entries (melder_email) of via auth.users als beschikbaar
+  const { data: entries } = await sb
+    .from('entries')
+    .select('user_id, melder_email')
+    .eq('melder_email', email)
+    .limit(1);
+
+  const userId = entries?.[0]?.user_id;
+  if (!userId) {
+    status.textContent = `Gebruiker ${email} niet gevonden in meldingen`;
+    status.style.color = 'var(--danger)';
+    return;
+  }
+
+  const { error } = await sb
+    .from('user_roles')
+    .upsert({ user_id: userId, role: rol }, { onConflict: 'user_id' });
+
+  if (error) {
+    status.textContent = 'Opslaan mislukt: ' + error.message;
+    status.style.color = 'var(--danger)';
+  } else {
+    status.textContent = `✓ Rol van ${email} ingesteld op "${rol}"`;
+    status.style.color = 'var(--accent)';
+    document.getElementById('rol-email').value = '';
+  }
+}
+
+// Update rol-badge zodra rol geladen is
+function updateRolBadge() {
+  const rolEl = document.getElementById('acc-rol');
+  if (rolEl) rolEl.textContent = _gebruikerRol === 'admin' ? '👑 Admin' : '👤 Gebruiker';
+  const adminSection = document.getElementById('admin-section');
+  if (adminSection) adminSection.style.display = _gebruikerRol === 'admin' ? 'block' : 'none';
+}
+
+
 function toggleGezondheid(btn) {
   const panel   = document.getElementById('gezondheid-panel');
   const chevron = document.getElementById('gezondheid-chevron');
@@ -2571,12 +2801,20 @@ function refreshGPS() {
   }
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
-      el.textContent = `${pos.coords.latitude.toFixed(6)}°N  ${pos.coords.longitude.toFixed(6)}°E  (±${pos.coords.accuracy?.toFixed(0)}m)`;
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      // Valideer: wijs 0,0 af (GPS-fout of zee-coördinaat)
+      if (Math.abs(lat) < 0.01 && Math.abs(lng) < 0.01) {
+        el.textContent = 'GPS fout: ongeldige coördinaten (0,0)';
+        console.warn('[GPS] Ongeldige 0,0 coördinaat afgewezen');
+        return;
+      }
+      currentGPS = { lat, lng, accuracy: pos.coords.accuracy };
+      el.textContent = `${lat.toFixed(6)}°N  ${lng.toFixed(6)}°E  (±${pos.coords.accuracy?.toFixed(0)}m)`;
       // [WIJZIGING 2] GPS knop verplaatst marker naar werkelijke GPS positie
-      document.getElementById('f-lat').value = pos.coords.latitude.toFixed(6);
-      document.getElementById('f-lng').value = pos.coords.longitude.toFixed(6);
-      if (formMarker) formMarker.setLatLng([pos.coords.latitude, pos.coords.longitude]);
+      document.getElementById('f-lat').value = lat.toFixed(6);
+      document.getElementById('f-lng').value = lng.toFixed(6);
+      if (formMarker) formMarker.setLatLng([lat, lng]);
       if (formMap) formMap.setView([pos.coords.latitude, pos.coords.longitude], 16);
       fetchWeather();
       toast('✓ GPS locatie bijgewerkt', 'success');
@@ -3181,6 +3419,10 @@ function showPage(name) {
   document.getElementById('page-' + name).classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
 
+  // Sluit open dropdowns bij navigatie
+  const driftPanel = document.getElementById('drift-dropdown-panel');
+  if (driftPanel) driftPanel.style.display = 'none';
+
   if (name === 'melding') {
     initFormDateTime();
     initFormMap();
@@ -3354,17 +3596,18 @@ function updateDashboard() {
     return true;
   });
 
-  // Kaartmarkers hertekenen
+  // Kaartmarkers hertekenen via LayerGroup (stabiel bij filter-updates)
   if (dashMap) {
-    // Verwijder bestaande markers (behalve het huis)
-    dashMap.eachLayer(layer => {
-      if (layer instanceof L.Marker && layer._isUserMarker) dashMap.removeLayer(layer);
-    });
+    if (!window._markersLayer) {
+      window._markersLayer = L.layerGroup().addTo(dashMap);
+    }
+    window._markersLayer.clearLayers();
 
     const typeColors = { spuitactiviteit: '#f59e0b', drift: '#3b82f6', geur: '#8b5cf6', gezondheid: '#ef4444', geluid: '#f97316', overig: '#6b7280' };
 
     gefiltered.slice(0, 100).forEach(m => {
       if (!m.gps?.lat || !m.gps?.lng) return;
+      if (Math.abs(m.gps.lat) < 0.01 && Math.abs(m.gps.lng) < 0.01) return; // wijs 0,0 af
       const typeColor = typeColors[m.type] || '#6b7280';
       const randKleur = gebruikerKleur(m.melder_email);
       const d = new Date(m.timestamp_local);
@@ -3377,8 +3620,7 @@ function updateDashboard() {
         iconSize: [10, 10], iconAnchor: [5, 5], className: ''
       });
       const marker = L.marker([m.gps.lat, m.gps.lng], { icon });
-      marker._isUserMarker = true;
-      marker.addTo(dashMap);
+      window._markersLayer.addLayer(marker);
       marker.on('click', () => {
         showPage('tijdlijn');
         setTimeout(() => showMeldingDetail(m.id), 150);
@@ -3542,7 +3784,10 @@ function renderTimeline() {
 
   const el = document.getElementById('timeline-entries');
   if (filtered.length === 0) {
-    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted);font-family:var(--mono);font-size:0.75rem;">Geen meldingen gevonden</div>`;
+    const isLoading = SUPABASE_ENABLED && _sbUser && navigator.onLine;
+    el.innerHTML = isLoading
+      ? `<div style="text-align:center;padding:40px;color:var(--text-muted);font-family:var(--mono);font-size:0.75rem;"><div class="spinner" style="display:inline-block;margin-bottom:12px;"></div><br>Meldingen ophalen van cloud...</div>`
+      : `<div style="text-align:center;padding:40px;color:var(--text-muted);font-family:var(--mono);font-size:0.75rem;">Geen meldingen gevonden</div>`;
     return;
   }
   el.innerHTML = filtered.map(m => renderMeldingCard(m)).join('');
@@ -3597,7 +3842,9 @@ function renderMeldingCard(m, compact = false) {
     </div>
     ${!compact ? `
     <div style="border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:flex-end;">
+      ${magVerwijderen(m.supabase_id ? m.user_id : _sbUser?.id) || !m.supabase_id ? `
       <button onclick="verwijderMelding('${m.id}', event)" style="background:none;border:none;cursor:pointer;color:var(--danger);opacity:0.6;font-size:1.1rem;line-height:1;padding:2px 6px;border-radius:4px;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Verwijder registratie">✕</button>
+      ` : ''}
     </div>` : ''}
   </div>`;
 }
@@ -3607,48 +3854,54 @@ function renderMeldingCard(m, compact = false) {
 // ============================================================
 function verwijderMelding(id, event) {
   event.stopPropagation();
+
+  // Rechtencheck
+  const melding = getMeldingen().find(m => m.id === id);
+  if (!melding) return;
+  const eigenaar = melding.user_id || melding.melder_email;
+  const isEigenaar = eigenaar === _sbUser?.id || eigenaar === _sbUser?.email || !eigenaar;
+  if (!isAdmin() && !isEigenaar) {
+    toast('⛔ Geen rechten om deze melding te verwijderen', 'error');
+    return;
+  }
+
   if (!confirm('Registratie verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
 
   const meldingen = getMeldingen().filter(m => m.id !== id);
   saveMeldingen(meldingen);
   idbDeleteBijlagen(id);
-  verwijderUitQueue(id);       // niet meer syncen als nieuwe melding
-  voegToeAanDeleteQueue(id);   // wel verwijderen in Supabase
+  verwijderUitQueue(id);
+  voegToeAanDeleteQueue(id);
 
-  // Teller direct bijwerken in Export tab
   updateSyncStats();
   renderTimeline();
   updateDashboard();
 
-  // Direct proberen te verwijderen in Supabase + verificatie
   if (SUPABASE_ENABLED && _sbUser) {
     if (navigator.onLine) {
       const sb = sbClient();
       if (sb) {
-        sb.from('entries')
-          .update({ deleted: true }, { count: 'exact' })
-          .eq('id', id)
-          .eq('user_id', _sbUser.id)
-          .then(async ({ error, count }) => {
-            if (error) {
-              console.warn('[Supabase] Soft delete mislukt, blijft in queue:', error.message);
-              toast('\u26A0\uFE0F Verwijdering in wachtrij \u2014 sync om door te voeren', '');
-            } else if (count === 0) {
-              // Nooit gesynchroniseerd — lokale verwijdering volstaat
-              verwijderUitQueue(id);
-              updateSyncStats();
-              console.log('[Supabase] Entry bestond niet in cloud, lokale verwijdering voldoende:', id);
-            } else {
-              // Verificatie: controleer of deleted: true daadwerkelijk staat
-              // count > 0 bevestigt dat de update is doorgevoerd — SELECT zou deleted=true filteren via RLS
-              verwijderUitQueue(id);
-              updateSyncStats();
-              console.log('[Supabase] Verwijdering bevestigd via count in cloud:', id);
-            }
-          });
+        // Admin mag zonder user_id filter; gebruiker alleen eigen entries
+        let query = sb.from('entries').update({ deleted: true }, { count: 'exact' }).eq('id', id);
+        if (!isAdmin()) query = query.eq('user_id', _sbUser.id);
+
+        query.then(async ({ error, count }) => {
+          if (error) {
+            console.warn('[Supabase] Soft delete mislukt, blijft in queue:', error.message);
+            toast('⚠️ Verwijdering in wachtrij — sync om door te voeren', '');
+          } else if (count === 0) {
+            verwijderUitQueue(id);
+            updateSyncStats();
+            console.log('[Supabase] Entry bestond niet in cloud:', id);
+          } else {
+            verwijderUitQueue(id);
+            updateSyncStats();
+            console.log('[Supabase] Verwijdering bevestigd:', id);
+          }
+        });
       }
     } else {
-      toast('\u26A0\uFE0F Offline \u2014 verwijdering staat klaar, synchroniseer zodra je verbinding hebt', '');
+      toast('⚠️ Offline — verwijdering staat klaar, synchroniseer zodra je verbinding hebt', '');
     }
   }
 
@@ -3880,7 +4133,20 @@ async function exportPDF() {
   }
 
   if (!meldingen.length) { toast('Geen meldingen in geselecteerde periode', 'error'); return; }
-  toast(`PDF wordt voorbereid (${meldingen.length} meldingen)...`, 'success');
+
+  // Voortgangsindicator
+  const pdfBtn = document.querySelector('button[onclick="exportPDF()"]');
+  const origBtnHtml = pdfBtn?.innerHTML;
+  if (pdfBtn) {
+    pdfBtn.disabled = true;
+    pdfBtn.innerHTML = '<div class="spinner" style="display:inline-block;vertical-align:middle;margin-right:8px;width:14px;height:14px;border-width:2px;"></div> Rapport samenstellen...';
+  }
+  toonSyncBalk(`PDF samenstellen (${meldingen.length} meldingen)…`);
+
+  // Kleine vertraging zodat de UI de spinner kan tonen vóór de zware berekening
+  await new Promise(resolve => setTimeout(resolve, 80));
+
+  try {
 
   // Verrijk met bijlagen uit IndexedDB
   const verrijkt = await Promise.all(meldingen.map(async m => {
@@ -4041,6 +4307,17 @@ async function exportPDF() {
     win.addEventListener('load', () => setTimeout(() => win.print(), 500));
   }
   toast('✓ PDF-rapport geopend (gebruik Afdrukken → Opslaan als PDF)', 'success');
+  sluitSyncBalk(true, 'PDF klaar');
+  } catch (e) {
+    console.error('[PDF] Export mislukt:', e);
+    toast('PDF export mislukt: ' + e.message, 'error');
+    sluitSyncBalk(false, 'PDF mislukt');
+  } finally {
+    if (pdfBtn) {
+      pdfBtn.disabled = false;
+      pdfBtn.innerHTML = origBtnHtml;
+    }
+  }
 }
 
 function importJSON(event) {
