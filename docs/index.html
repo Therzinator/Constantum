@@ -2472,10 +2472,15 @@ function isAdmin() {
   return _gebruikerRol === 'admin';
 }
 
-function magVerwijderen(meldingUserId) {
+function magVerwijderen(melderEmail, userId) {
   if (isAdmin()) return true;
-  // Gebruiker mag alleen eigen meldingen verwijderen
-  return meldingUserId === _sbUser?.id || meldingUserId === _sbUser?.email;
+  if (!_sbUser) return false;
+  // Eigen melding: check op email of user_id
+  if (melderEmail && melderEmail === _sbUser.email) return true;
+  if (userId && userId === _sbUser.id) return true;
+  // Nog niet gesynchroniseerde melding (geen melder_email/user_id): altijd eigen
+  if (!melderEmail && !userId) return true;
+  return false;
 }
 async function idbGetBijlagen(meldingId) {
   try {
@@ -3842,7 +3847,7 @@ function renderMeldingCard(m, compact = false) {
     </div>
     ${!compact ? `
     <div style="border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:flex-end;">
-      ${magVerwijderen(m.supabase_id ? m.user_id : _sbUser?.id) || !m.supabase_id ? `
+      ${magVerwijderen(m.melder_email, m.user_id) ? `
       <button onclick="verwijderMelding('${m.id}', event)" style="background:none;border:none;cursor:pointer;color:var(--danger);opacity:0.6;font-size:1.1rem;line-height:1;padding:2px 6px;border-radius:4px;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Verwijder registratie">✕</button>
       ` : ''}
     </div>` : ''}
@@ -3858,9 +3863,7 @@ function verwijderMelding(id, event) {
   // Rechtencheck
   const melding = getMeldingen().find(m => m.id === id);
   if (!melding) return;
-  const eigenaar = melding.user_id || melding.melder_email;
-  const isEigenaar = eigenaar === _sbUser?.id || eigenaar === _sbUser?.email || !eigenaar;
-  if (!isAdmin() && !isEigenaar) {
+  if (!magVerwijderen(melding.melder_email, melding.user_id)) {
     toast('⛔ Geen rechten om deze melding te verwijderen', 'error');
     return;
   }
