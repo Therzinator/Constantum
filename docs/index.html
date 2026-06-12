@@ -744,7 +744,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.4</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.5</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUIT PESTICIDE DOSSIER</div>
       </div>
@@ -1222,7 +1222,7 @@
               <button onclick="syncNu()" class="btn-primary px-4 py-2 text-sm inline-flex items-center gap-2">
                 ↻ Sync nu
               </button>
-              <button onclick="laadVanSupabase()" class="btn-outline px-4 py-2 text-sm inline-flex items-center gap-2">
+              <button onclick="laadVanSupabase(true)" class="btn-outline px-4 py-2 text-sm inline-flex items-center gap-2">
                 ⬇ Laden van cloud
               </button>
               <button onclick="authUitloggen()" style="background:transparent;border:1px solid var(--border-bright);color:var(--text-muted);border-radius:10px;padding:8px 12px;font-size:0.75rem;font-family:var(--mono);">
@@ -2084,7 +2084,7 @@ async function syncNu(toonStatus = true) {
 }
 
 // Laad meldingen van Supabase (andere apparaten)
-async function laadVanSupabase() {
+async function laadVanSupabase(force = false) {
   const sb = sbClient();
   if (!sb || !_sbUser) { toast('Niet ingelogd', 'error'); return; }
   if (!navigator.onLine) { toast('Offline', 'error'); return; }
@@ -2100,29 +2100,28 @@ async function laadVanSupabase() {
 
     if (error) throw error;
 
-    const lokaal   = getMeldingen();
+    const lokaal    = getMeldingen();
     const lokaalMap = new Map(lokaal.map(m => [m.id, m]));
     let nieuw = 0, bijgewerkt = 0;
 
     for (const entry of entries) {
       const bestaand = lokaalMap.get(entry.id);
 
-      // Bepaal of de cloud-versie nieuwer is
-      const cloudUpdated = entry.updated_at || entry.created_at;
+      const cloudUpdated  = entry.updated_at || entry.created_at;
       const lokaalUpdated = bestaand?.sync_at;
       const cloudIsNieuwer = !bestaand || !lokaalUpdated ||
         new Date(cloudUpdated) > new Date(lokaalUpdated);
 
-      if (bestaand && !cloudIsNieuwer) continue; // lokaal al up-to-date
+      // Bij force: altijd bijwerken; anders alleen als cloud nieuwer is
+      if (bestaand && !cloudIsNieuwer && !force) continue;
 
-      // Haal bijlagen op (alleen als entry nieuw of bijgewerkt is)
       const bestanden = bestaand?.bestanden?.length
-        ? bestaand.bestanden  // hergebruik bestaande bijlagen
+        ? bestaand.bestanden
         : await laadBijlagenVanSupabase(entry.id);
 
       const tsLocal = entry.timestamp_local || entry.created_at;
       const melding = {
-        ...(bestaand || {}),   // behoud lokale velden als fallback
+        ...(bestaand || {}),
         id:                  entry.id,
         timestamp_local:     tsLocal,
         timestamp_utc:       entry.timestamp_utc || tsLocal,
@@ -2163,7 +2162,7 @@ async function laadVanSupabase() {
         .sort((a, b) => new Date(b.timestamp_local) - new Date(a.timestamp_local));
       saveMeldingen(gesorteerd);
       const tekst = [
-        nieuw      > 0 ? `${nieuw} nieuw`       : '',
+        nieuw      > 0 ? `${nieuw} nieuw`          : '',
         bijgewerkt > 0 ? `${bijgewerkt} bijgewerkt` : ''
       ].filter(Boolean).join(', ');
       sluitSyncBalk(true, `✓ ${tekst}`);
@@ -2171,7 +2170,8 @@ async function laadVanSupabase() {
       renderTimeline();
       updateDashboard();
     } else {
-      sluitSyncBalk(true, 'Alles al up-to-date');
+      sluitSyncBalk(true, force ? '✓ Alles gecontroleerd — up-to-date' : 'Alles al up-to-date');
+      if (force) toast('✓ Alles gecontroleerd — geen wijzigingen', 'success');
     }
   } catch (e) {
     console.error('[Supabase] Laden mislukt:', e.message);
@@ -4501,7 +4501,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.4';
+const APP_VERSION_CLIENT = '7.5';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
