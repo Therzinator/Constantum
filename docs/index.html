@@ -742,13 +742,13 @@
 <div id="app">
 
   <!-- Header -->
-  <header style="background:var(--bg-secondary); border-bottom:1px solid var(--border);" class="px-4 py-3 flex items-center justify-between flex-shrink-0">
+  <header style="background:#010510; border-bottom:1px solid var(--border);" class="px-4 py-3 flex items-center justify-between flex-shrink-0">
     <div class="flex items-center gap-3">
       <img src="icons/header-logo.png" width="40" height="40" style="flex-shrink:0;border-radius:4px;" alt="SpuitLogger logo">
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.17</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.18</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUIT PESTICIDE DOSSIER</div>
       </div>
@@ -4525,7 +4525,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.17';
+const APP_VERSION_CLIENT = '7.18';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
