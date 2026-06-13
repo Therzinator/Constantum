@@ -748,7 +748,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.29</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.30</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -1108,8 +1108,41 @@
             <div id="bedrijf-suggesties" style="display:none;position:absolute;left:0;right:0;z-index:300;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:8px;margin-top:2px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:160px;overflow-y:auto;"></div>
           </div>
 
+          <!-- Gewas dropdown -->
+          <div style="margin-bottom:10px;">
+            <label class="block mb-1" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">GEWAS</label>
+            <select id="f-gewas" class="form-select px-3 py-2 text-sm">
+              <option value="">— Onbekend gewas —</option>
+              <optgroup label="⚠️ Sierteelt (hoog risico)">
+                <option value="lelies">🌸 Lelies</option>
+                <option value="tulpen">🌷 Tulpen</option>
+                <option value="hyacinten">🌺 Hyacinten</option>
+                <option value="narcissen">🌼 Narcissen</option>
+                <option value="gladiolen">🌻 Gladiolen</option>
+                <option value="pioenrozen">🌹 Pioenrozen</option>
+                <option value="dahlia">🌸 Dahlia</option>
+                <option value="overige_sierteelt">🌿 Overige sierteelt</option>
+              </optgroup>
+              <optgroup label="Akkerbouw">
+                <option value="aardappelen">🥔 Aardappelen</option>
+                <option value="suikerbieten">🌱 Suikerbieten</option>
+                <option value="granen">🌾 Granen</option>
+                <option value="mais">🌽 Maïs</option>
+                <option value="uien">🧅 Uien</option>
+                <option value="prei">🥬 Prei</option>
+                <option value="overige_akkerbouw">🌱 Overige akkerbouw</option>
+              </optgroup>
+              <optgroup label="Overig">
+                <option value="gras">🌿 Gras</option>
+                <option value="fruit">🍎 Fruitteelt</option>
+                <option value="boomkwekerij">🌳 Boomkwekerij</option>
+                <option value="overig">📝 Overig</option>
+              </optgroup>
+            </select>
+          </div>
+
           <!-- Perceelnummer + auto-detect knop -->
-          <div>
+          <div style="margin-bottom:10px;">
             <label class="block mb-1" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">KADASTRAAL PERCEELNUMMER</label>
             <div class="flex gap-2">
               <input type="text" id="f-perceelnummer"
@@ -1124,6 +1157,23 @@
               </button>
             </div>
             <div id="perceel-status" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:4px;"></div>
+          </div>
+
+          <!-- Afstand tot dichtstbijzijnde woning -->
+          <div style="margin-bottom:10px;">
+            <label class="block mb-1" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">AFSTAND TOT DICHTSTBIJZIJNDE WONING</label>
+            <div id="f-afstand-woning-display" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">
+              Wordt berekend na plaatsen pin op perceel
+            </div>
+            <input type="hidden" id="f-afstand-woning">
+            <div id="afstand-status" style="font-family:var(--mono);font-size:0.6rem;margin-top:4px;"></div>
+          </div>
+
+          <!-- Natura 2000 indicator -->
+          <div id="natura2000-melding" style="display:none;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.5);border-radius:8px;padding:10px 12px;margin-bottom:4px;">
+            <div style="font-weight:700;font-size:0.8rem;color:var(--warning);">⚠️ Natura 2000 gebied nabij</div>
+            <div id="natura2000-naam" style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;"></div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Op basis van Raad van State uitspraak 2 april 2025 is voor pesticiden nabij Natura 2000-gebieden een <strong>natuurvergunning vereist</strong>.</div>
           </div>
         </div>
 
@@ -1956,6 +2006,8 @@ async function sbSyncMelding(melding) {
     melder_email:         melding.melder_email     || _sbUser.email || null,
     bedrijfsnaam:         melding.bedrijfsnaam     || null,
     perceelnummer:        melding.perceelnummer    || null,
+    gewas:                melding.gewas            || null,
+    afstand_woning:       melding.afstand_woning   || null,
     sync_status:          'synced',
     warnings:             melding.warnings         || [],
     deleted:              false
@@ -2265,6 +2317,8 @@ async function laadVanSupabase(force = false) {
         melder_email:        entry.melder_email || null,
         bedrijfsnaam:        entry.bedrijfsnaam || null,
         perceelnummer:       entry.perceelnummer || null,
+        gewas:               entry.gewas || null,
+        afstand_woning:      entry.afstand_woning || null,
         gezondheidsklachten: entry.gezondheidsklachten || [],
         activiteiten:        entry.activiteiten        || [],
         drift_waarneming:    entry.drift_waarneming    || [],
@@ -2856,6 +2910,106 @@ async function detecteerPerceel() {
   setTimeout(() => { if (status) status.textContent = ''; }, 5000);
 }
 
+// ============================================================
+// BAG — dichtstbijzijnde woning + Natura 2000 detectie
+// ============================================================
+
+function haversineAfstand(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function polygonCentroid(coords) {
+  const ring = coords[0];
+  let lat = 0, lng = 0;
+  ring.forEach(([x, y]) => { lng += x; lat += y; });
+  return { lat: lat / ring.length, lng: lng / ring.length };
+}
+
+async function detecteerAfstandEnNatura2000(lat, lng) {
+  const afstandDisplay = document.getElementById('f-afstand-woning-display');
+  const afstandInput   = document.getElementById('f-afstand-woning');
+  const natura2000El   = document.getElementById('natura2000-melding');
+  const natura2000Naam = document.getElementById('natura2000-naam');
+
+  if (afstandDisplay) { afstandDisplay.textContent = '⏳ Woningen opzoeken...'; afstandDisplay.style.color = 'var(--text-muted)'; }
+
+  // BAG WFS — panden met woonfunctie binnen 300m
+  try {
+    const delta = 0.003;
+    const bbox  = `${lat - delta},${lng - delta},${lat + delta},${lng + delta},EPSG:4326`;
+    const url   = `https://service.pdok.nl/lv/bag/wfs/v2_0?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=bag:pand&outputFormat=application/json&srsName=EPSG:4326&BBOX=${bbox}&count=50`;
+    const res   = await fetch(url);
+    if (res.ok) {
+      const text = await res.text();
+      if (text.trim().startsWith('{')) {
+        const data    = JSON.parse(text);
+        const woningen = (data.features || []).filter(f =>
+          f.properties?.gebruiksdoel === 'woonfunctie' ||
+          f.properties?.gebruiksdoel_woonfunctie === 1
+        );
+        if (woningen.length > 0) {
+          let minAfstand = Infinity;
+          woningen.forEach(f => {
+            const geom = f.geometry;
+            if (!geom) return;
+            let pandLat, pandLng;
+            if (geom.type === 'Polygon') {
+              const c = polygonCentroid(geom.coordinates);
+              pandLat = c.lat; pandLng = c.lng;
+            } else if (geom.type === 'Point') {
+              pandLng = geom.coordinates[0]; pandLat = geom.coordinates[1];
+            } else return;
+            const d = haversineAfstand(lat, lng, pandLat, pandLng);
+            if (d < minAfstand) minAfstand = d;
+          });
+          const afstandM = Math.round(minAfstand);
+          const kleur = afstandM < 50 ? 'var(--danger)' : afstandM < 100 ? 'var(--warning)' : 'var(--accent)';
+          const label = afstandM < 50
+            ? `⛔ ${afstandM}m — ONDER DE 50m NORM (Raad van State vuistregel)`
+            : afstandM < 100
+            ? `⚠️ ${afstandM}m — nabij de 50m norm`
+            : `✓ ${afstandM}m tot dichtstbijzijnde woning`;
+          if (afstandDisplay) { afstandDisplay.textContent = label; afstandDisplay.style.color = kleur; }
+          if (afstandInput)   afstandInput.value = afstandM;
+          console.log(`[BAG] Dichtstbijzijnde woning: ${afstandM}m (${woningen.length} panden)`);
+        } else {
+          if (afstandDisplay) { afstandDisplay.textContent = 'Geen woningen gevonden binnen 300m'; afstandDisplay.style.color = 'var(--text-muted)'; }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[BAG] Afstand mislukt:', e.message);
+    if (afstandDisplay) { afstandDisplay.textContent = 'Afstand berekenen mislukt'; }
+  }
+
+  // Natura 2000 WFS — check binnen 500m
+  try {
+    const deltaN = 0.005;
+    const bboxN  = `${lat - deltaN},${lng - deltaN},${lat + deltaN},${lng + deltaN},EPSG:4326`;
+    const urlN   = `https://service.pdok.nl/rvo/natura2000/wfs/v1_0?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=natura2000:natura2000&outputFormat=application/json&srsName=EPSG:4326&BBOX=${bboxN}&count=1`;
+    const resN   = await fetch(urlN);
+    if (resN.ok) {
+      const textN = await resN.text();
+      if (textN.trim().startsWith('{')) {
+        const dataN = JSON.parse(textN);
+        if (dataN.features?.length > 0) {
+          const naam = dataN.features[0].properties?.naam || dataN.features[0].properties?.NAAM || 'Natura 2000-gebied';
+          if (natura2000El)   natura2000El.style.display = 'block';
+          if (natura2000Naam) natura2000Naam.textContent = `Nabij: ${naam}`;
+          console.log('[Natura2000] Gevonden:', naam);
+        } else {
+          if (natura2000El) natura2000El.style.display = 'none';
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Natura2000] Check mislukt:', e.message);
+  }
+}
 
 function getBedrijfSuggesties(query) {
   if (!query || query.length < 2) return [];
@@ -3339,6 +3493,7 @@ function refreshGPS() {
       document.getElementById('f-lng').value = lng.toFixed(6);
       if (formMarker) formMarker.setLatLng([lat, lng]);
       detecteerPerceel();
+      detecteerAfstandEnNatura2000(lat, lng);
       if (formMap) formMap.setView([pos.coords.latitude, pos.coords.longitude], 16);
       fetchWeather();
       toast('✓ GPS locatie bijgewerkt', 'success');
@@ -3828,6 +3983,8 @@ async function submitMelding() {
       melder_email: _sbUser?.email || null,
       bedrijfsnaam:   document.getElementById('f-bedrijfsnaam')?.value.trim() || null,
       perceelnummer:  document.getElementById('f-perceelnummer')?.value.trim() || null,
+      gewas:          document.getElementById('f-gewas')?.value || null,
+      afstand_woning: parseFloat(document.getElementById('f-afstand-woning')?.value) || null,
       geur_intensiteit: parseInt(document.getElementById('f-geur').value) || 0,
       wind_subjectief: document.getElementById('f-wind-subj').value || 'geen',
       drift_waarneming: Array.from(document.querySelectorAll('.drift-check:checked')).map(el => el.value),
@@ -3920,9 +4077,17 @@ async function submitMelding() {
     const bedrijfEl = document.getElementById('f-bedrijfsnaam');
     const perceelEl = document.getElementById('f-perceelnummer');
     const perceelStatus = document.getElementById('perceel-status');
+    const gewasEl  = document.getElementById('f-gewas');
+    const afstandDisplay = document.getElementById('f-afstand-woning-display');
+    const afstandInput   = document.getElementById('f-afstand-woning');
+    const natura2000El   = document.getElementById('natura2000-melding');
     if (bedrijfEl) bedrijfEl.value = '';
     if (perceelEl) { perceelEl.value = ''; perceelEl.style.color = 'var(--text-muted)'; }
     if (perceelStatus) perceelStatus.textContent = '';
+    if (gewasEl) gewasEl.value = '';
+    if (afstandDisplay) { afstandDisplay.textContent = 'Wordt berekend na plaatsen pin op perceel'; afstandDisplay.style.color = 'var(--text-muted)'; }
+    if (afstandInput) afstandInput.value = '';
+    if (natura2000El) natura2000El.style.display = 'none';
     updateGezondheidBadge();
     updateDriftLabel();
     // Gezondheid panel weer inklappen
@@ -4070,12 +4235,14 @@ function initFormMap() {
       document.getElementById('f-lat').value = p.lat.toFixed(6);
       document.getElementById('f-lng').value = p.lng.toFixed(6);
       detecteerPerceel();
+      detecteerAfstandEnNatura2000(p.lat, p.lng);
     });
     formMap.on('click', (e) => {
       formMarker.setLatLng(e.latlng);
       document.getElementById('f-lat').value = e.latlng.lat.toFixed(6);
       document.getElementById('f-lng').value = e.latlng.lng.toFixed(6);
       detecteerPerceel();
+      detecteerAfstandEnNatura2000(e.latlng.lat, e.latlng.lng);
     });
   }, 100);
 }
@@ -4542,11 +4709,13 @@ function showMeldingDetail(id) {
         </div>
         ${m.gezondheidsklachten?.length ? `<div class="mt-2"><div class="section-label">Gezondheid</div><div style="color:var(--danger);font-size:0.75rem;margin-top:4px;">${m.gezondheidsklachten.join(', ')}</div></div>` : ''}
         ${m.activiteiten?.length ? `<div class="mt-2"><div class="section-label">Activiteiten</div><div style="color:var(--warning);font-size:0.75rem;margin-top:4px;">${m.activiteiten.join(', ')}</div></div>` : ''}
-        ${(m.bedrijfsnaam || m.perceelnummer) ? `
+        ${(m.bedrijfsnaam || m.perceelnummer || m.gewas || m.afstand_woning) ? `
         <div class="mt-2" style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
           <div class="section-label mb-1">Teler & Perceel</div>
           ${m.bedrijfsnaam  ? `<div style="font-size:0.75rem;">🏢 ${m.bedrijfsnaam}</div>` : ''}
+          ${m.gewas         ? `<div style="font-size:0.75rem;">🌱 ${m.gewas}</div>` : ''}
           ${m.perceelnummer ? `<div style="font-size:0.75rem;font-family:var(--mono);">📋 ${m.perceelnummer}</div>` : ''}
+          ${m.afstand_woning != null ? `<div style="font-size:0.75rem;color:${m.afstand_woning < 50 ? 'var(--danger)' : m.afstand_woning < 100 ? 'var(--warning)' : 'var(--accent)'};">📏 ${m.afstand_woning}m tot dichtstbijzijnde woning${m.afstand_woning < 50 ? ' ⛔ ONDER 50m NORM' : ''}</div>` : ''}
         </div>` : ''}
         ${m.drift_waarneming?.length ? (() => {
           const labels = { nevel_zichtbaar: '🌫️ Nevel/drift zichtbaar', druppels_voelbaar: '💦 Druppels voelbaar', drift_ver: '📏 Drift >10m zichtbaar', geur_direct: '👃 Geur direct', ogen_keel: '👁️ Ogen/keel irritatie' };
@@ -4850,11 +5019,13 @@ async function exportPDF() {
 
         ${m.gezondheidsklachten?.length ? `<div style="margin-bottom:8px;"><div class="label">Gezondheidsklachten</div><div style="color:#b91c1c;font-size:9pt;">${m.gezondheidsklachten.join(', ')}</div></div>` : ''}
         ${m.activiteiten?.length ? `<div style="margin-bottom:8px;"><div class="label">Activiteiten</div><div style="color:#b45309;font-size:9pt;">${m.activiteiten.join(', ')}</div></div>` : ''}
-        ${(m.bedrijfsnaam || m.perceelnummer) ? `
+        ${(m.bedrijfsnaam || m.perceelnummer || m.gewas || m.afstand_woning != null) ? `
         <div style="margin-bottom:8px;padding:6px 8px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;">
           <div class="label">Teler & Perceel</div>
           ${m.bedrijfsnaam  ? `<div style="font-size:9pt;">🏢 ${m.bedrijfsnaam}</div>` : ''}
+          ${m.gewas         ? `<div style="font-size:9pt;">🌱 Gewas: ${m.gewas}</div>` : ''}
           ${m.perceelnummer ? `<div style="font-size:9pt;font-family:JetBrains Mono;">📋 Perceelnummer: ${m.perceelnummer}</div>` : ''}
+          ${m.afstand_woning != null ? `<div style="font-size:9pt;color:${m.afstand_woning < 50 ? '#dc2626' : m.afstand_woning < 100 ? '#d97706' : '#16a34a'};">📏 Afstand dichtstbijzijnde woning: ${m.afstand_woning}m${m.afstand_woning < 50 ? ' — ONDER DE 50m NORM (ABRvS vuistregel)' : ''}</div>` : ''}
         </div>` : ''}
         ${m.drift_waarneming?.length ? (() => {
           const labels = { nevel_zichtbaar: '🌫️ Nevel/drift zichtbaar in de lucht', druppels_voelbaar: '💦 Druppels/nevel voelbaar', drift_ver: '📏 Drift zichtbaar op >10m', geur_direct: '👃 Geur direct waargenomen', ogen_keel: '👁️ Ogen/keel irritatie' };
@@ -5036,7 +5207,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.29';
+const APP_VERSION_CLIENT = '7.30';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
