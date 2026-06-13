@@ -748,7 +748,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.32</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.33</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -2961,7 +2961,10 @@ async function detecteerAfstandEnNatura2000(lat, lng) {
   const natura2000El   = document.getElementById('natura2000-melding');
   const natura2000Naam = document.getElementById('natura2000-naam');
 
-  if (afstandDisplay) { afstandDisplay.textContent = '⏳ Woningen opzoeken...'; afstandDisplay.style.color = 'var(--text-muted)'; }
+  if (afstandDisplay) {
+    afstandDisplay.textContent = '⏳ Woningen opzoeken...';
+    afstandDisplay.style.color = 'var(--text-muted)';
+  }
 
   // BAG WFS — panden met woonfunctie binnen 300m
   try {
@@ -2989,7 +2992,9 @@ async function detecteerAfstandEnNatura2000(lat, lng) {
               pandLat = c.lat; pandLng = c.lng;
             } else if (geom.type === 'Point') {
               pandLng = geom.coordinates[0]; pandLat = geom.coordinates[1];
-            } else return;
+            } else {
+              return;
+            }
             const d = haversineAfstand(lat, lng, pandLat, pandLng);
             if (d < minAfstand) {
               minAfstand = d;
@@ -3006,22 +3011,23 @@ async function detecteerAfstandEnNatura2000(lat, lng) {
             : `✓ ${afstandM}m tot dichtstbijzijnde woning`;
           if (afstandDisplay) { afstandDisplay.textContent = label; afstandDisplay.style.color = kleur; }
           if (afstandInput)   afstandInput.value = afstandM;
-
-          // Windanalyse: waait de wind van het perceel naar de woning?
+          // Windanalyse
           const windDeg = window._actueleWindDeg ?? null;
-          if (windDeg != null) {
+          if (windDeg != null && dichtstbijzijndeLat) {
             const analyse = windWaaitNaarWoning(windDeg, lat, lng, dichtstbijzijndeLat, dichtstbijzijndeLng);
+            window._windNaarWoning = analyse?.waait
+              ? { waait: true, windDeg, hoekNaarWoning: analyse.hoekNaarWoning, afstandM }
+              : { waait: false };
             if (analyse?.waait) {
-              // Wind waait richting woning — sla op als extra waarschuwing
-              window._windNaarWoning = { waait: true, windDeg, hoekNaarWoning: analyse.hoekNaarWoning, afstandM };
-              console.log(`[Wind] ⚠️ Wind (${windDeg}°) waait naar woning (${analyse.hoekNaarWoning}°), verschil ${analyse.verschil}°`);
-            } else {
-              window._windNaarWoning = { waait: false };
+              console.log(`[Wind] ⚠️ Wind (${windDeg}°) waait naar woning (${analyse.hoekNaarWoning}°)`);
             }
           }
           console.log(`[BAG] Dichtstbijzijnde woning: ${afstandM}m (${woningen.length} panden)`);
         } else {
-          if (afstandDisplay) { afstandDisplay.textContent = 'Geen woningen gevonden binnen 300m'; afstandDisplay.style.color = 'var(--text-muted)'; }
+          if (afstandDisplay) {
+            afstandDisplay.textContent = 'Geen woningen gevonden binnen 300m';
+            afstandDisplay.style.color = 'var(--text-muted)';
+          }
         }
       }
     }
@@ -4331,7 +4337,7 @@ function toggleFormKaartLaag() {
   }
 }
 
-
+function kaartNaarGPS() {
   if (!dashMap) return;
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
@@ -5278,7 +5284,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.32';
+const APP_VERSION_CLIENT = '7.33';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
