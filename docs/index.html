@@ -748,7 +748,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.26</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.27</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -1114,7 +1114,7 @@
             <div class="flex gap-2">
               <input type="text" id="f-perceelnummer"
                 class="form-input px-3 py-3 text-sm flex-1"
-                placeholder="Wordt automatisch gevuld via kaart"
+                placeholder="Klik op het spuitperceel in de kaart ↓"
                 readonly
                 style="background:var(--bg-secondary);color:var(--text-muted);">
               <button type="button" onclick="detecteerPerceel()" id="perceel-btn"
@@ -1409,6 +1409,22 @@
           <div id="gemeente-status" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:6px;"></div>
         </div>
 
+        <!-- Thuislocatie -->
+        <div class="card p-4">
+          <div class="section-label mb-2">🏠 Thuislocatie</div>
+          <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:10px;">Jouw adres als standaard startlocatie voor nieuwe meldingen.</div>
+          <div class="flex gap-2 mb-2">
+            <input type="text" id="profiel-locatie-label" class="form-input px-3 py-2 text-sm flex-1" placeholder="bijv. Dorpsstraat 1, Assen">
+            <button onclick="detecteerThuislocatie()" class="btn-outline px-3 py-2 text-sm" title="Gebruik huidige GPS locatie">📡</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <input type="number" id="profiel-locatie-lat" class="form-input px-3 py-2 text-sm" placeholder="Breedtegraad" step="0.000001">
+            <input type="number" id="profiel-locatie-lng" class="form-input px-3 py-2 text-sm" placeholder="Lengtegraad" step="0.000001">
+          </div>
+          <button onclick="slaThuislocatieOp()" class="btn-primary px-4 py-2 text-sm">Opslaan</button>
+          <div id="thuislocatie-status" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:6px;"></div>
+        </div>
+
         <!-- Admin sectie -->
         <div id="admin-section" class="card p-4" style="display:none;border-color:rgba(245,158,11,0.4);">
           <div class="flex items-start gap-3">
@@ -1566,12 +1582,21 @@ const SUPABASE_ENABLED = (SUPABASE_URL !== 'JOUW_SUPABASE_URL_HIER');
 // STATE & CONSTANTS
 // ============================================================
 
-// [WIJZIGING 2] Standaard locatie: Hijkerweg 5, Hooghalen
-const DEFAULT_LOCATION = {
-  lat: 52.912290,
-  lng: 6.526136,
-  label: 'Hijkerweg 5, Hooghalen'
-};
+// Standaard locatie — geladen vanuit profiel of fallback naar centrum Nederland
+function laadThuislocatie() {
+  const opgeslagen = localStorage.getItem('spuitlog_thuislocatie');
+  if (opgeslagen) {
+    try {
+      const loc = JSON.parse(opgeslagen);
+      if (loc.lat && loc.lng) return loc;
+    } catch (e) {}
+  }
+  // Fallback: centrum van Nederland
+  return { lat: 52.3676, lng: 5.2006, label: 'Nederland' };
+}
+
+const _thuislocatie   = laadThuislocatie();
+const DEFAULT_LOCATION = { lat: _thuislocatie.lat, lng: _thuislocatie.lng, label: _thuislocatie.label };
 const HOME_LAT  = DEFAULT_LOCATION.lat;
 const HOME_LNG  = DEFAULT_LOCATION.lng;
 const HOME_NAME = DEFAULT_LOCATION.label;
@@ -2587,9 +2612,74 @@ async function laadGebruikerRol() {
   }
 }
 
-// ============================================================
-// PERCEEL & BEDRIJFSNAAM
-// ============================================================
+function laadThuislocatieProfiel() {
+  const loc = laadThuislocatie();
+  const labelEl = document.getElementById('profiel-locatie-label');
+  const latEl   = document.getElementById('profiel-locatie-lat');
+  const lngEl   = document.getElementById('profiel-locatie-lng');
+  if (labelEl) labelEl.value = loc.label !== 'Nederland' ? loc.label : '';
+  if (latEl)   latEl.value   = loc.lat !== 52.3676 ? loc.lat : '';
+  if (lngEl)   lngEl.value   = loc.lng !== 5.2006  ? loc.lng : '';
+}
+
+async function slaThuislocatieOp() {
+  const label = document.getElementById('profiel-locatie-label')?.value.trim() || '';
+  const lat   = parseFloat(document.getElementById('profiel-locatie-lat')?.value);
+  const lng   = parseFloat(document.getElementById('profiel-locatie-lng')?.value);
+  const status = document.getElementById('thuislocatie-status');
+
+  if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+    if (status) { status.textContent = '⚠️ Voer geldige coördinaten in of gebruik 📡'; status.style.color = 'var(--warning)'; }
+    return;
+  }
+
+  const loc = { lat, lng, label: label || `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
+  localStorage.setItem('spuitlog_thuislocatie', JSON.stringify(loc));
+
+  // Herlaad kaarten met nieuwe locatie
+  if (dashMap) dashMap.setView([lat, lng], 13);
+
+  if (status) {
+    status.textContent = `✓ Thuislocatie opgeslagen: ${loc.label}`;
+    status.style.color = 'var(--accent)';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  }
+}
+
+function detecteerThuislocatie() {
+  const status = document.getElementById('thuislocatie-status');
+  if (status) { status.textContent = '📡 GPS ophalen...'; status.style.color = 'var(--text-muted)'; }
+
+  if (!navigator.geolocation) {
+    if (status) { status.textContent = 'GPS niet beschikbaar'; status.style.color = 'var(--danger)'; }
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    const latEl = document.getElementById('profiel-locatie-lat');
+    const lngEl = document.getElementById('profiel-locatie-lng');
+    if (latEl) latEl.value = lat.toFixed(6);
+    if (lngEl) lngEl.value = lng.toFixed(6);
+
+    // Reverse geocode voor label
+    try {
+      const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=nl`);
+      const data = await res.json();
+      const adres = data.display_name?.split(',').slice(0, 3).join(',').trim() || '';
+      const labelEl = document.getElementById('profiel-locatie-label');
+      if (labelEl && adres) labelEl.value = adres;
+    } catch (e) {}
+
+    if (status) { status.textContent = '✓ GPS locatie gevonden — klik Opslaan om te bevestigen'; status.style.color = 'var(--accent)'; }
+  }, () => {
+    if (status) { status.textContent = 'GPS geweigerd'; status.style.color = 'var(--danger)'; }
+  }, { enableHighAccuracy: true, timeout: 8000 });
+}
+
+
 
 // PDOK WFS — haal kadastraal perceelnummer op via GPS coördinaat (gratis, geen API-key)
 async function detecteerPerceel() {
@@ -3799,6 +3889,7 @@ function showPage(name) {
   }
   if (name === 'instellingen') {
     laadGemeenteProfiel();
+    laadThuislocatieProfiel();
     swDebugRefresh();
   }
   if (name === 'export') {
@@ -4838,7 +4929,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.26';
+const APP_VERSION_CLIENT = '7.27';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
