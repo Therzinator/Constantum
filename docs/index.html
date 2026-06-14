@@ -750,7 +750,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.42</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.43</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -4631,9 +4631,9 @@ function showPage(name) {
 
   // Voeg history entry toe zodat de terug-knop op mobiel werkt
   if (name !== 'dashboard') {
-    _isNavigation = true;
+    window._isNavigation = true;
     history.pushState({ page: name }, '', '');
-    setTimeout(() => { _isNavigation = false; }, 100);
+    setTimeout(() => { window._isNavigation = false; }, 100);
   } else {
     history.replaceState({ page: 'dashboard' }, '', '');
   }
@@ -5805,7 +5805,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.42';
+const APP_VERSION_CLIENT = '7.43';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
@@ -6025,9 +6025,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Terug-knop op Android/mobiel → altijd naar dashboard
   // Gebruik een vlag om onderscheid te maken tussen browser-terug en tab-klik
-  let _isNavigation = false;
   window.addEventListener('popstate', (e) => {
-    if (_isNavigation) return; // Tab-klik — niet onderscheppen
+    if (window._isNavigation) return; // Tab-klik — niet onderscheppen
     showPage('dashboard');
   });
 
