@@ -750,7 +750,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.36</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.37</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -3390,13 +3390,6 @@ function laadGemeenteProfiel() {
   updateDashboardGemeente(gemeente);
 }
 
-
-  const gemeente = localStorage.getItem('spuitlog_gemeente') || '';
-  const el = document.getElementById('profiel-gemeente');
-  if (el) el.value = gemeente;
-  updateDashboardGemeente(gemeente);
-}
-
 function updateGemeentePreview() {
   const val = document.getElementById('profiel-gemeente')?.value || '';
   updateDashboardGemeente(val);
@@ -5641,7 +5634,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.36';
+const APP_VERSION_CLIENT = '7.37';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
