@@ -750,7 +750,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.35</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.36</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -1446,20 +1446,23 @@
           <div class="section-label mb-2">📍 Gemeente</div>
           <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:10px;">In welke gemeente registreer je spuitactiviteiten? Wordt getoond op het dashboard.</div>
           <div class="flex gap-2 mb-2">
-            <select id="profiel-gemeente" class="form-select px-3 py-2 text-sm flex-1" onchange="updateGemeentePreview()">
-              <option value="">— Selecteer gemeente —</option>
-            <option value="Aa en Hunze">Aa en Hunze</option>
-            <option value="Assen">Assen</option>
-            <option value="Borger-Odoorn">Borger-Odoorn</option>
-            <option value="Coevorden">Coevorden</option>
-            <option value="De Wolden">De Wolden</option>
-            <option value="Emmen">Emmen</option>
-            <option value="Hoogeveen">Hoogeveen</option>
-            <option value="Meppel">Meppel</option>
-            <option value="Midden-Drenthe">Midden-Drenthe</option>
-            <option value="Noordenveld">Noordenveld</option>
-            <option value="Tynaarlo">Tynaarlo</option>
-            <option value="Westerveld">Westerveld</option>
+            <select id="profiel-provincie" class="form-select px-3 py-2 text-sm" style="max-width:160px;" onchange="updateGemeenteDropdown()">
+              <option value="">— Provincie —</option>
+              <option value="drenthe">Drenthe</option>
+              <option value="flevoland">Flevoland</option>
+              <option value="friesland">Friesland</option>
+              <option value="gelderland">Gelderland</option>
+              <option value="groningen">Groningen</option>
+              <option value="limburg">Limburg</option>
+              <option value="noord_brabant">Noord-Brabant</option>
+              <option value="noord_holland">Noord-Holland</option>
+              <option value="overijssel">Overijssel</option>
+              <option value="utrecht">Utrecht</option>
+              <option value="zeeland">Zeeland</option>
+              <option value="zuid_holland">Zuid-Holland</option>
+            </select>
+            <select id="profiel-gemeente" class="form-select px-3 py-2 text-sm flex-1" onchange="updateGemeentePreview()" disabled>
+              <option value="">— Selecteer eerst provincie —</option>
             </select>
             <button onclick="detecteerGemeente()" class="btn-outline px-3 py-2 text-sm" title="Detecteer via GPS">📡</button>
           </div>
@@ -3091,8 +3094,9 @@ function perceelSamenvattingPDF(perceelnummer, meldingId) {
 function analyseerSpuitpatroon(melding) {
   const gewas  = melding.gewas || '';
   const weer   = melding.weather || {};
+  // Correcte veldnamen uit het weer-object (Open-Meteo structuur)
   const regen  = weer.precipitation ?? 0;
-  const rv     = weer.relative_humidity ?? 0;
+  const rv     = weer.humidity ?? weer.relative_humidity ?? 0;
   const temp   = weer.temperature ?? 0;
   const wind   = weer.wind_speed ?? 0;
   const uur    = new Date(melding.timestamp_local).getHours();
@@ -3123,9 +3127,15 @@ function analyseerSpuitpatroon(melding) {
     risicoScore += 2;
   }
 
-  // PFAS-waarschuwing bij sierteelt
+  // PFAS-waarschuwing bij sierteelt — altijd tonen als gewas bekend is
   if (isSierteelt) {
-    indicaties.push({ type: 'pfas', label: '⚠️ PFAS-risico', reden: 'In sierteelt (met name lelies) worden PFAS-houdende middelen gebruikt (TFA)', score: 1 });
+    indicaties.push({ type: 'pfas', label: '⚠️ PFAS-risico', reden: 'In sierteelt (m.n. lelies) worden PFAS-houdende middelen gebruikt (TFA)', score: 1 });
+    risicoScore += 1;
+  }
+
+  // Geen gewas maar weerpatroon wijst op spuiten
+  if (!gewas && regen > 2) {
+    indicaties.push({ type: 'algemeen', label: '🌧️ Spuiten na regen', reden: `${regen}mm neerslag recent — typisch fungicide- of herbicidemoment`, score: 1 });
     risicoScore += 1;
   }
 
@@ -3331,7 +3341,56 @@ function verbergBedrijfSuggesties() {
 }
 
 
+// ============================================================
+// GEMEENTE PROFIEL — PROVINCIE + GEMEENTE CASCADE
+// ============================================================
+
+const PROVINCIE_GEMEENTEN = {
+  drenthe: ['Aa en Hunze','Assen','Borger-Odoorn','Coevorden','De Wolden','Emmen','Hoogeveen','Meppel','Midden-Drenthe','Noordenveld','Tynaarlo','Westerveld'],
+  flevoland: ['Almere','Dronten','Lelystad','Noordoostpolder','Urk','Zeewolde'],
+  friesland: ['Achtkarspelen','Ameland','Dantumadiel','De Fryske Marren','Harlingen','Heerenveen','Leeuwarden','Noardeast-Fryslân','Ooststellingwerf','Opsterland','Schiermonnikoog','Smallingerland','Súdwest-Fryslân','Terschelling','Tytsjerksteradiel','Vlieland','Waadhoeke','Westerkwartier','Weststellingwerf'],
+  gelderland: ['Aalten','Apeldoorn','Arnhem','Barneveld','Berg en Dal','Berkelland','Beuningen','Bronckhorst','Brummen','Buren','Culemborg','Doetinchem','Druten','Duiven','Ede','Elburg','Epe','Ermelo','Harderwijk','Hattem','Heerde','Heumen','Lingewaard','Lochem','Maasdriel','Midden-Gelderland','Montferland','Neder-Betuwe','Nijkerk','Nijmegen','Nunspeet','Oldebroek','Oost Gelre','Oude IJsselstreek','Overbetuwe','Putten','Renkum','Rheden','Rozendaal','Scherpenzeel','Tiel','Voorst','Wageningen','West Betuwe','West Maas en Waal','Winterswijk','Wijchen','Wijk bij Duurstede','Zaltbommel','Zevenaar','Zutphen'],
+  groningen: ['Appingedam','Bellingwedde','Delfzijl','Groningen','Grootegast','Haren','Hoogezand-Sappemeer','Leek','Loppersum','Marum','Midden-Groningen','Oldambt','Pekela','Slochteren','Stadskanaal','Ten Boer','Tynaarlo','Veendam','Vlagtwedde','Westerkwartier','Westerwolde','Winsum','Zuidhorn'],
+  limburg: ['Beek','Bergen','Beesel','Brunssum','Echt-Susteren','Eijsden-Margraten','Gennep','Gulpen-Wittem','Heerlen','Horst aan de Maas','Kerkrade','Landgraaf','Leudal','Maasgouw','Maastricht','Meerssen','Mook en Middelaar','Nuth','Onderbanken','Peel en Maas','Roerdalen','Roermond','Simpelveld','Sittard-Geleen','Stein','Vaals','Valkenburg aan de Geul','Venlo','Venray','Voerendaal','Weert'],
+  noord_brabant: ['Alphen-Chaam','Altena','Asten','Baarle-Nassau','Bergen op Zoom','Best','Bladel','Boekel','Boxtel','Breda','Deurne','Dongen','Drimmelen','Eersel','Eindhoven','Etten-Leur','Geldrop-Mierlo','Gemert-Bakel','Gilze en Rijen','Goirle','Halderberge','Heeze-Leende','Helmond','Heusden','Hilvarenbeek','Land van Cuijk','Laarbeek','Loon op Zand','Meierijstad','Mill en Sint Hubert','Moerdijk','Nuenen','Oirschot','Oisterwijk','Oosterhout','Oss','Rucphen','Someren','Son en Breugel','Steenbergen','Tilburg','Valkenswaard','Veldhoven','Vught','Waalre','Waalwijk','Wassenaar','Zundert'],
+  noord_holland: ['Aalsmeer','Alkmaar','Amstelveen','Amsterdam','Bergen','Beverwijk','Blaricum','Bloemendaal','Castricum','Den Helder','Diemen','Dijk en Waard','Edam-Volendam','Enkhuizen','Gooise Meren','Haarlem','Haarlemmermeer','Heemskerk','Heemstede','Heerhugowaard','Heiloo','Hilversum','Hoorn','Huizen','Koggenland','Landsmeer','Langedijk','Laren','Medemblik','Midden-Delfland','Muiden','Naarden','Oostzaan','Opmeer','Ouder-Amstel','Purmerend','Schagen','Stede Broec','Texel','Uitgeest','Uithoorn','Velsen','Weesp','Westfriesland','Wijdemeren','Wormerland','Zaanstad','Zandvoort'],
+  overijssel: ['Almelo','Borne','Dalfsen','Deventer','Dinkelland','Enschede','Haaksbergen','Hardenberg','Hellendoorn','Hengelo','Hof van Twente','Kampen','Losser','Oldenzaal','Olst-Wijhe','Ommen','Raalte','Rijssen-Holten','Staphorst','Steenwijkerland','Tubbergen','Twenterand','Urk','Wierden','Zwartewaterland','Zwolle'],
+  utrecht: ['Amersfoort','Baarn','Bunnik','Bunschoten','De Bilt','De Ronde Venen','Eemnes','Houten','IJsselstein','Leusden','Lopik','Montfoort','Nieuwegein','Oudewater','Rhenen','Soest','Stichtse Vecht','Utrecht','Utrechtse Heuvelrug','Veenendaal','Vijfheerenlanden','Wijk bij Duurstede','Woerden','Woudenberg','Zeist'],
+  zeeland: ['Borsele','Goes','Hulst','Kapelle','Middelburg','Noord-Beveland','Reimerswaal','Schouwen-Duiveland','Sluis','Terneuzen','Tholen','Veere','Vlissingen'],
+  zuid_holland: ['Alblasserdam','Alphen aan den Rijn','Barendrecht','Brielle','Capelle aan den IJssel','Delft','Dordrecht','Goeree-Overflakkee','Gorinchem','Gouda','Hardinxveld-Giessendam','Hellevoetsluis','Hendrik-Ido-Ambacht','Hillegom','Hoeksche Waard','Katwijk','Krimpen aan den IJssel','Krimpenerwaard','Lansingerland','Leerdam','Leiden','Leiderdorp','Leidschendam-Voorburg','Lisse','Maassluis','Midden-Delfland','Molenlanden','Nieuwkoop','Nissewaard','Noordwijk','Oegstgeest','Papendrecht','Pijnacker-Nootdorp','Ridderkerk','Rotterdam','Rijswijk','Schiedam','Sliedrecht','Súdwest-Fryslân','Teylingen','Vlaardingen','Voorschoten','Waddinxveen','Wassenaar','Westland','Westvoorne','Woerden','Zoetermeer','Zoeterwoude','Zuidplas','Zwijndrecht']
+};
+
+function updateGemeenteDropdown() {
+  const provEl    = document.getElementById('profiel-provincie');
+  const gemeenteEl = document.getElementById('profiel-gemeente');
+  if (!provEl || !gemeenteEl) return;
+
+  const prov = provEl.value;
+  const gemeenten = PROVINCIE_GEMEENTEN[prov] || [];
+
+  gemeenteEl.innerHTML = gemeenten.length
+    ? '<option value="">— Selecteer gemeente —</option>' + gemeenten.map(g => `<option value="${g}">${g}</option>`).join('')
+    : '<option value="">— Selecteer eerst provincie —</option>';
+  gemeenteEl.disabled = !gemeenten.length;
+}
+
 function laadGemeenteProfiel() {
+  const gemeente = localStorage.getItem('spuitlog_gemeente') || '';
+  const provincie = localStorage.getItem('spuitlog_provincie') || '';
+  const provEl     = document.getElementById('profiel-provincie');
+  const gemeenteEl = document.getElementById('profiel-gemeente');
+  if (provEl && provincie) {
+    provEl.value = provincie;
+    updateGemeenteDropdown();
+  }
+  if (gemeenteEl && gemeente) {
+    gemeenteEl.value = gemeente;
+    gemeenteEl.disabled = false;
+  }
+  updateDashboardGemeente(gemeente);
+}
+
+
   const gemeente = localStorage.getItem('spuitlog_gemeente') || '';
   const el = document.getElementById('profiel-gemeente');
   if (el) el.value = gemeente;
@@ -3367,17 +3426,26 @@ async function detecteerGemeente() {
       const data = await res.json();
       const gemeente = data.address?.municipality || data.address?.county || '';
 
-      // Zoek exacte match in Drenthe lijst
-      const drenthe = ["Aa en Hunze","Assen","Borger-Odoorn","Coevorden","De Wolden","Emmen","Hoogeveen","Meppel","Midden-Drenthe","Noordenveld","Tynaarlo","Westerveld"];
-      const match = drenthe.find(g => gemeente.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(gemeente.toLowerCase()));
+      // Zoek match in alle provincies
+      const provMap = { 'Drenthe':'drenthe','Friesland':'friesland','Flevoland':'flevoland','Gelderland':'gelderland','Groningen':'groningen','Limburg':'limburg','Noord-Brabant':'noord_brabant','Noord-Holland':'noord_holland','Overijssel':'overijssel','Utrecht':'utrecht','Zeeland':'zeeland','Zuid-Holland':'zuid_holland' };
+      const provincie  = data.address?.state || '';
+      const provKey    = Object.entries(provMap).find(([naam]) => provincie.includes(naam))?.[1] || '';
+      let matchGemeente = '', matchProv = provKey;
+      for (const [prov, gemeenten] of Object.entries(PROVINCIE_GEMEENTEN)) {
+        const m = gemeenten.find(g => gemeente.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(gemeente.toLowerCase()));
+        if (m) { matchGemeente = m; if (!matchProv) matchProv = prov; break; }
+      }
 
-      const el = document.getElementById('profiel-gemeente');
-      if (match && el) {
-        el.value = match;
-        updateDashboardGemeente(match);
-        if (status) { status.textContent = `✓ Gevonden: ${match}`; status.style.color = 'var(--accent)'; }
+      const provEl     = document.getElementById('profiel-provincie');
+      const gemeenteEl = document.getElementById('profiel-gemeente');
+      if (matchProv && provEl) { provEl.value = matchProv; updateGemeenteDropdown(); }
+      if (matchGemeente && gemeenteEl) {
+        gemeenteEl.value = matchGemeente;
+        gemeenteEl.disabled = false;
+        updateGemeentePreview();
+        if (status) { status.textContent = `✓ Gevonden: ${matchGemeente}`; status.style.color = 'var(--accent)'; }
       } else {
-        if (status) { status.textContent = gemeente ? `Gevonden: "${gemeente}" — niet in Drenthe lijst` : 'Gemeente niet herkend'; status.style.color = 'var(--warning)'; }
+        if (status) { status.textContent = gemeente ? `"${gemeente}" niet gevonden` : 'Gemeente niet herkend'; status.style.color = 'var(--warning)'; }
       }
     } catch (e) {
       if (status) { status.textContent = 'Opzoeken mislukt'; status.style.color = 'var(--danger)'; }
@@ -3389,11 +3457,13 @@ async function detecteerGemeente() {
 }
 
 async function slaGemeenteOp() {
-  const val = document.getElementById('profiel-gemeente')?.value.trim() || '';
-  const status = document.getElementById('gemeente-status');
+  const val      = document.getElementById('profiel-gemeente')?.value.trim() || '';
+  const provVal  = document.getElementById('profiel-provincie')?.value || '';
+  const status   = document.getElementById('gemeente-status');
+  if (!val) { if (status) { status.textContent = '⚠️ Selecteer een gemeente'; status.style.color = 'var(--warning)'; } return; }
 
-  // Altijd lokaal opslaan
   localStorage.setItem('spuitlog_gemeente', val);
+  if (provVal) localStorage.setItem('spuitlog_provincie', provVal);
   updateDashboardGemeente(val);
 
   // Sync naar Supabase als ingelogd
@@ -3730,14 +3800,29 @@ function updateDriftLabel(changedEl) {
     if (nvt) nvt.checked = false;
   }
 
-  const checked  = Array.from(document.querySelectorAll('.drift-check:checked'));
-  const label    = document.getElementById('drift-dropdown-label');
+  const checked = Array.from(document.querySelectorAll('.drift-check:checked'));
+  const label   = document.getElementById('drift-dropdown-label');
   if (!label) return;
-  const emojiMap = { nvt: '🚫', nevel_zichtbaar: '🌫️', druppels_voelbaar: '💦', drift_ver: '📏', geur_direct: '👃', ogen_keel: '👁️' };
-  label.style.color = checked.length ? 'var(--text-primary)' : 'var(--text-muted)';
-  label.textContent = checked.length
-    ? checked.map(el => emojiMap[el.value] || el.value).join('  ')
-    : 'Niets geselecteerd';
+
+  const labelMap = {
+    nvt:               '🚫 Niet van toepassing',
+    nevel_zichtbaar:   '🌫️ Nevel/drift zichtbaar',
+    druppels_voelbaar: '💦 Druppels/nevel voelbaar',
+    drift_ver:         '📏 Drift op >10 meter',
+    geur_direct:       '👃 Geur direct',
+    ogen_keel:         '👁️ Ogen/keel irritatie'
+  };
+
+  if (checked.length === 0) {
+    label.style.color = 'var(--text-muted)';
+    label.textContent = 'Selecteer waarneming';
+  } else if (checked.length === 1) {
+    label.style.color = 'var(--text-primary)';
+    label.textContent = labelMap[checked[0].value] || checked[0].value;
+  } else {
+    label.style.color = 'var(--text-primary)';
+    label.textContent = checked.map(el => labelMap[el.value]?.split(' ')[0] || '').join('  ');
+  }
 }
 
 // Sluit drift dropdown bij klik buiten
@@ -4359,6 +4444,9 @@ async function submitMelding() {
     document.getElementById('f-geur').value = 0;
     document.getElementById('f-notes').value = '';
     document.querySelectorAll('.health-check, .activity-check, .drift-check').forEach(el => el.checked = false);
+    // Drift standaard op "Niet van toepassing"
+    const nvtCheck = document.querySelector('.drift-check[value="nvt"]');
+    if (nvtCheck) { nvtCheck.checked = true; updateDriftLabel(nvtCheck); }
     const bedrijfEl = document.getElementById('f-bedrijfsnaam');
     const perceelEl = document.getElementById('f-perceelnummer');
     const perceelStatus = document.getElementById('perceel-status');
@@ -5553,7 +5641,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.35';
+const APP_VERSION_CLIENT = '7.36';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
@@ -5785,6 +5873,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   updateVersionLabel(APP_VERSION_CLIENT);
   laadGemeenteProfiel();
+  // Drift standaard op "Niet van toepassing"
+  const nvtCheck = document.querySelector('.drift-check[value="nvt"]');
+  if (nvtCheck) { nvtCheck.checked = true; updateDriftLabel(nvtCheck); }
   updateOnlineStatus();
   initDashMap();
   updateDashboard();
