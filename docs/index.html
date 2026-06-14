@@ -750,7 +750,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.39</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.40</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -810,6 +810,24 @@
           <div class="flex items-center justify-between gap-2 flex-wrap">
             <div class="section-label">Kaart Overzicht</div>
             <div class="flex items-center gap-2 flex-wrap">
+              <select id="map-filter-provincie" class="form-select px-2 py-1 text-xs" onchange="updateMapGemeenteFilter();updateDashboard();" style="font-size:0.65rem;">
+                <option value="">Alle provincies</option>
+                <option value="drenthe">Drenthe</option>
+                <option value="flevoland">Flevoland</option>
+                <option value="friesland">Friesland</option>
+                <option value="gelderland">Gelderland</option>
+                <option value="groningen">Groningen</option>
+                <option value="limburg">Limburg</option>
+                <option value="noord_brabant">Noord-Brabant</option>
+                <option value="noord_holland">Noord-Holland</option>
+                <option value="overijssel">Overijssel</option>
+                <option value="utrecht">Utrecht</option>
+                <option value="zeeland">Zeeland</option>
+                <option value="zuid_holland">Zuid-Holland</option>
+              </select>
+              <select id="map-filter-gemeente" class="form-select px-2 py-1 text-xs" onchange="updateDashboard();" style="font-size:0.65rem;" disabled>
+                <option value="">Alle gemeenten</option>
+              </select>
               <select id="map-filter-maand" class="form-select px-2 py-1 text-xs" onchange="updateDashboard()" style="font-size:0.65rem;">
                 <option value="huidig">Deze maand</option>
                 <option value="">Alle maanden</option>
@@ -1292,7 +1310,23 @@
 
       <div class="space-y-3">
 
-        <!-- Sync statistieken -->
+        <!-- Perceelanalyse samenvatting -->
+        <div class="card p-4" id="perceel-analyse-card">
+          <div class="section-label mb-3">📊 Perceelanalyse</div>
+          <div id="perceel-analyse-inhoud" style="font-family:var(--mono);font-size:0.7rem;color:var(--text-muted);">Laden...</div>
+        </div>
+
+        <!-- Laboratorium meetvoorstel -->
+        <div class="card p-4" id="lab-meetvoorstel" style="display:none;border-color:rgba(139,92,246,0.4);">
+          <div class="flex items-start gap-3">
+            <div style="font-size:1.5rem;">🔬</div>
+            <div class="flex-1">
+              <div style="font-weight:700;font-size:0.95rem;color:#a78bfa;">Laboratoriumonderzoek aanbevolen</div>
+              <div id="lab-voorstel-tekst" style="font-size:0.75rem;color:var(--text-secondary);margin-top:6px;line-height:1.5;"></div>
+              <div style="margin-top:10px;font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);">Op basis van methodes bewezen door Meten=Weten en RIVM OBO-onderzoek</div>
+            </div>
+          </div>
+        </div>
         <div class="card p-4">
           <div class="section-label mb-3">📊 Synchronisatiestatus</div>
           <div class="space-y-2 mono text-xs" style="color:var(--text-secondary);">
@@ -2983,6 +3017,67 @@ async function migreerNaarSupabase() {
 }
 
 
+function renderPerceelAnalyse() {
+  const el = document.getElementById('perceel-analyse-inhoud');
+  if (!el) return;
+
+  const stats   = perceelStatistieken();
+  const percelen = Object.entries(stats).sort((a,b) => b[1].ditJaar - a[1].ditJaar);
+
+  if (!percelen.length) {
+    el.textContent = 'Nog geen meldingen met perceelnummer geregistreerd.';
+    return;
+  }
+
+  el.innerHTML = percelen.map(([perceel, s]) => {
+    const kleur = s.ditJaar >= 5 ? 'var(--danger)' : s.ditJaar >= 3 ? 'var(--warning)' : 'var(--accent)';
+    const gewasLijst = [...s.gewassen].join(', ') || '—';
+    return `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <span style="color:var(--text-primary);font-size:0.8rem;">📋 ${perceel}</span>
+          <span style="color:${kleur};font-size:0.75rem;font-weight:700;">${s.ditJaar}× dit jaar</span>
+        </div>
+        <div style="color:var(--text-muted);font-size:0.65rem;margin-top:3px;">
+          Totaal: ${s.totaal} · Gewas: ${gewasLijst}${s.bovenWindNorm ? ` · <span style="color:var(--danger)">${s.bovenWindNorm}× boven windnorm</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  berekenMeetvoorstel(stats);
+}
+
+function berekenMeetvoorstel(stats) {
+  const meldingen   = getMeldingen();
+  const melderCount = new Set(meldingen.map(m => m.melder_email).filter(Boolean)).size;
+  const totaalMeld  = meldingen.length;
+  const isSierteelt = meldingen.some(m => ['lelies','tulpen','hyacinten','narcissen','gladiolen','pioenrozen','dahlia','overige_sierteelt'].includes(m.gewas));
+  const heeftKlachten = meldingen.some(m => m.gezondheidsklachten?.length > 0);
+  const percelen    = Object.keys(stats);
+  const voorstellen = [];
+
+  if (totaalMeld >= 5) {
+    voorstellen.push({ methode: '🏠 Huisstof- en deurmatmonster', drempel: `${totaalMeld} meldingen`, uitleg: 'Stuur een stofzuigerzak of deurmatmonster op naar een gecertificeerd laboratorium. Pesticiden blijven maandenlang aantoonbaar in huisstof. Bewezen methode van RIVM en Meten=Weten.', kosten: '±€150-300', labs: 'Anotox · Eurofins NL' });
+  }
+  if (melderCount >= 2 && isSierteelt) {
+    voorstellen.push({ methode: '⌚ Silicone polsbandje', drempel: `${melderCount} gebruikers + sierteelt`, uitleg: 'Draag 7 dagen een silicone polsbandje dat passief pesticiden absorbeert uit de lucht. Gebruikt in het SPRINT EU-onderzoek.', kosten: '±€50-100', labs: 'SPRINT-partners · Oregon State Univ.' });
+  }
+  if (totaalMeld >= 10 && percelen.length && heeftKlachten) {
+    voorstellen.push({ methode: '💨 Luchtfilter (PUF/PEF)', drempel: `${totaalMeld} meldingen + klachten`, uitleg: 'Passief luchtfilter op vaste locatie gedurende 4-8 weken. Meten=Weten vond zo 70+ werkzame stoffen in Drenthe. Coördineer via Meten=Weten.', kosten: '±€500+', labs: 'Anotox · RIVM · Meten=Weten' });
+  }
+  if (heeftKlachten && totaalMeld >= 3) {
+    voorstellen.push({ methode: '🩺 Urine- of bloedonderzoek', drempel: 'Gezondheidsklachten aanwezig', uitleg: 'Sterkste persoonlijk bewijs van blootstelling. Vraag huisarts om verwijzing of laat privé testen. Meet snel: binnen uren tot dagen na blootstelling.', kosten: '±€300-500 privé', labs: 'Cerba · Synlab · Huisarts' });
+  }
+
+  const voorstelEl = document.getElementById('lab-meetvoorstel');
+  const tekstEl    = document.getElementById('lab-voorstel-tekst');
+  if (!voorstelEl || !tekstEl || !voorstellen.length) { if (voorstelEl) voorstelEl.style.display = 'none'; return; }
+
+  voorstelEl.style.display = 'block';
+  tekstEl.innerHTML = `<div style="margin-bottom:8px;color:#a78bfa;font-weight:600;">Op basis van ${totaalMeld} melding${totaalMeld !== 1 ? 'en' : ''} (${melderCount} melder${melderCount !== 1 ? 's' : ''}):</div>` +
+    voorstellen.map((v, i) => `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.08);border-radius:6px;"><div style="font-weight:600;margin-bottom:2px;">${i+1}. ${v.methode}</div><div style="color:var(--text-muted);font-size:0.7rem;margin-bottom:3px;">Drempel: ${v.drempel}</div><div style="font-size:0.75rem;">${v.uitleg}</div><div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;">Kosten: ${v.kosten} · Labs: ${v.labs}</div></div>`).join('');
+}
+
 function slaKNMIKeyOp() {
   const key    = document.getElementById('knmi-api-key')?.value.trim();
   const status = document.getElementById('knmi-key-status');
@@ -4576,6 +4671,7 @@ function showPage(name) {
   if (name === 'export') {
     updateExportInfo();
     laadGemeenteProfiel();
+    renderPerceelAnalyse();
     // Vul jaar-dropdowns op basis van aanwezige meldingen
     const jaren = [...new Set(getMeldingen().map(m => new Date(m.timestamp_local).getFullYear()))].sort((a,b) => b-a);
     ['pdf-van-jaar', 'pdf-tot-jaar'].forEach(id => {
@@ -4678,7 +4774,34 @@ function initDashMap() {
   L.marker([HOME_LAT, HOME_LNG], { icon: homeIcon }).addTo(dashMap).bindPopup('🏠 ' + HOME_NAME);
 }
 
-function toggleFormKaartLaag() {
+function updateMapGemeenteFilter() {
+  const provEl     = document.getElementById('map-filter-provincie');
+  const gemeenteEl = document.getElementById('map-filter-gemeente');
+  if (!provEl || !gemeenteEl) return;
+  const prov = provEl.value;
+  const gemeenten = PROVINCIE_GEMEENTEN[prov] || [];
+  gemeenteEl.innerHTML = '<option value="">Alle gemeenten</option>' +
+    gemeenten.map(g => `<option value="${g}">${g}</option>`).join('');
+  gemeenteEl.disabled = !gemeenten.length;
+}
+
+// Sync kaartfilter met profiel gemeente/provincie bij laden
+function syncKaartFilterMetProfiel() {
+  const gemeente  = localStorage.getItem('spuitlog_gemeente')  || '';
+  const provincie = localStorage.getItem('spuitlog_provincie') || '';
+  const provEl    = document.getElementById('map-filter-provincie');
+  const gemEl     = document.getElementById('map-filter-gemeente');
+  if (provEl && provincie) {
+    provEl.value = provincie;
+    updateMapGemeenteFilter();
+  }
+  if (gemEl && gemeente) {
+    gemEl.value = gemeente;
+    gemEl.disabled = false;
+  }
+}
+
+
   if (!formMap) return;
   const btn = document.getElementById('kaart-toggle-btn');
   if (window._formKaartModus === 'osm') {
@@ -4766,18 +4889,24 @@ function updateDashboard() {
   }
 
   // Kaartfilter bepalen
-  const maandFilter = document.getElementById('map-filter-maand')?.value ?? 'huidig';
-  const jaarFilter  = document.getElementById('map-filter-jaar')?.value  || '';
+  const maandFilter    = document.getElementById('map-filter-maand')?.value ?? 'huidig';
+  const jaarFilter     = document.getElementById('map-filter-jaar')?.value  || '';
+  const provincieFilter = document.getElementById('map-filter-provincie')?.value || '';
+  const gemeenteFilter  = document.getElementById('map-filter-gemeente')?.value  || '';
+
+  // Thuisgemeente voor kaartcentrering
+  const thuisGemeente  = localStorage.getItem('spuitlog_gemeente') || '';
 
   const gefiltered = meldingen.filter(m => {
     const d = new Date(m.timestamp_local);
     if (maandFilter === 'huidig') {
-      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-    }
-    if (maandFilter && maandFilter !== '') {
-      if (String(d.getMonth()+1).padStart(2,'0') !== maandFilter) return false;
+      if (d.getMonth() !== thisMonth || d.getFullYear() !== thisYear) return false;
+    } else {
+      if (maandFilter && String(d.getMonth()+1).padStart(2,'0') !== maandFilter) return false;
     }
     if (jaarFilter && String(d.getFullYear()) !== jaarFilter) return false;
+    // Gemeente filter op basis van perceelnummer gemeente-prefix of melder-gemeente
+    if (gemeenteFilter && m.gemeente_melding !== gemeenteFilter && !m.perceelnummer?.toLowerCase().startsWith(gemeenteFilter.substring(0,3).toLowerCase())) return false;
     return true;
   });
 
@@ -5676,7 +5805,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.39';
+const APP_VERSION_CLIENT = '7.40';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
@@ -5908,6 +6037,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   updateVersionLabel(APP_VERSION_CLIENT);
   laadGemeenteProfiel();
+  syncKaartFilterMetProfiel();
   // Drift standaard op "Niet van toepassing"
   const nvtCheck = document.querySelector('.drift-check[value="nvt"]');
   if (nvtCheck) { nvtCheck.checked = true; updateDriftLabel(nvtCheck); }
