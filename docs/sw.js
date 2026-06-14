@@ -1,8 +1,8 @@
 // ============================================================
-// SpuitLog Service Worker v4
+// SpuitLogger Service Worker v5
 // Versie hier verhogen bij elke GitHub Pages deploy
 // ============================================================
-const APP_VERSION  = '4';
+const APP_VERSION  = '5';
 const CACHE_STATIC = `spuitlog-static-v${APP_VERSION}`;
 const CACHE_TILES  = `spuitlog-tiles-v${APP_VERSION}`;
 const CACHE_API    = `spuitlog-api-v${APP_VERSION}`;
@@ -49,7 +49,7 @@ self.addEventListener('activate', event => {
       .then(keys => {
         const verwijder = keys.filter(k =>
           // Verwijder alle caches die niet van deze versie zijn
-          (k.startsWith('spuitlog-') || k.startsWith('driftlog-')) &&
+          (k.startsWith('spuitlog-') || k.startsWith('spuitlogger-') || k.startsWith('driftlog-')) &&
           k !== CACHE_STATIC && k !== CACHE_TILES && k !== CACHE_API
         );
         if (verwijder.length) {
