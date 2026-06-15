@@ -750,7 +750,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v7.38</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.01</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -1101,62 +1101,68 @@
           <!-- Bedrijfsnaam met autocomplete -->
           <div style="position:relative;margin-bottom:10px;">
             <label class="block mb-1" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">BEDRIJFSNAAM TELER</label>
-            <input type="text" id="f-bedrijfsnaam"
-              class="form-input px-3 py-3 text-sm"
-              placeholder="bijv. Loonbedrijf Jansen"
-              autocomplete="off"
-              oninput="toonBedrijfSuggesties(this.value)"
-              onblur="setTimeout(()=>verbergBedrijfSuggesties(),200)">
+            <input type="text" id="f-bedrijfsnaam" class="form-input px-3 py-3 text-sm" placeholder="bijv. Loonbedrijf Jansen" autocomplete="off" oninput="toonBedrijfSuggesties(this.value)" onblur="setTimeout(()=>verbergBedrijfSuggesties(),200)">
             <div id="bedrijf-suggesties" style="display:none;position:absolute;left:0;right:0;z-index:300;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:8px;margin-top:2px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:160px;overflow-y:auto;"></div>
           </div>
 
-          <!-- Gewas dropdown -->
+          <!-- BRP Gewas — automatisch via PDOK/RVO, handmatige fallback -->
           <div style="margin-bottom:10px;">
-            <label class="block mb-1" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">GEWAS</label>
-            <select id="f-gewas" class="form-select px-3 py-2 text-sm">
-              <option value="">— Onbekend gewas —</option>
-              <optgroup label="⚠️ Sierteelt (hoog risico)">
-                <option value="lelies">🌸 Lelies</option>
-                <option value="tulpen">🌷 Tulpen</option>
-                <option value="hyacinten">🌺 Hyacinten</option>
-                <option value="narcissen">🌼 Narcissen</option>
-                <option value="gladiolen">🌻 Gladiolen</option>
-                <option value="pioenrozen">🌹 Pioenrozen</option>
-                <option value="dahlia">🌸 Dahlia</option>
-                <option value="overige_sierteelt">🌿 Overige sierteelt</option>
-              </optgroup>
-              <optgroup label="Akkerbouw">
-                <option value="aardappelen">🥔 Aardappelen</option>
-                <option value="suikerbieten">🌱 Suikerbieten</option>
-                <option value="granen">🌾 Granen</option>
-                <option value="mais">🌽 Maïs</option>
-                <option value="uien">🧅 Uien</option>
-                <option value="prei">🥬 Prei</option>
-                <option value="overige_akkerbouw">🌱 Overige akkerbouw</option>
-              </optgroup>
-              <optgroup label="Overig">
-                <option value="gras">🌿 Gras</option>
-                <option value="fruit">🍎 Fruitteelt</option>
-                <option value="boomkwekerij">🌳 Boomkwekerij</option>
-                <option value="overig">📝 Overig</option>
-              </optgroup>
-            </select>
+            <label class="block mb-1" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">GEWAS
+              <span id="brp-bron-label" style="display:none;color:var(--accent);margin-left:6px;">✓ BRP/RVO 2025</span>
+              <span id="brp-fallback-label" style="display:none;color:var(--text-muted);margin-left:6px;">handmatig</span>
+            </label>
+            <div id="brp-resultaat" style="display:none;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.3);border-radius:8px;padding:10px 12px;margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <div id="brp-gewas-naam" style="font-weight:700;font-size:0.9rem;color:var(--accent);"></div>
+                  <div id="brp-categorie" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);margin-top:2px;"></div>
+                  <div id="brp-details" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:2px;"></div>
+                </div>
+                <button type="button" onclick="brpHandmatigOverride()" style="font-family:var(--mono);font-size:0.6rem;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:6px;padding:3px 8px;cursor:pointer;">✏️</button>
+              </div>
+            </div>
+            <div id="brp-handmatig">
+              <select id="f-gewas" class="form-select px-3 py-2 text-sm">
+                <option value="">— Onbekend gewas —</option>
+                <optgroup label="Sierteelt (hoog risico)">
+                  <option value="Lelie">🌸 Lelies</option>
+                  <option value="Tulp">🌷 Tulpen</option>
+                  <option value="Hyacint">🌺 Hyacinten</option>
+                  <option value="Narcis">🌼 Narcissen</option>
+                  <option value="Gladiool">🌻 Gladiolen</option>
+                  <option value="Pioenroos">🌹 Pioenrozen</option>
+                  <option value="Dahlia">🌸 Dahlia</option>
+                  <option value="Overige sierteelt">🌿 Overige sierteelt</option>
+                </optgroup>
+                <optgroup label="Akkerbouw">
+                  <option value="Aardappel">🥔 Aardappelen</option>
+                  <option value="Suikerbiet">🌱 Suikerbieten</option>
+                  <option value="Tarwe, winter-">🌾 Wintertarwe</option>
+                  <option value="Mais">🌽 Maïs</option>
+                  <option value="Ui">🧅 Uien</option>
+                  <option value="Prei">🥬 Prei</option>
+                  <option value="Overige akkerbouw">🌱 Overige akkerbouw</option>
+                </optgroup>
+                <optgroup label="Overig">
+                  <option value="Grasland">🌿 Grasland</option>
+                  <option value="Fruitteelt">🍎 Fruitteelt</option>
+                  <option value="Boomkwekerij">🌳 Boomkwekerij</option>
+                  <option value="Overig">📝 Overig</option>
+                </optgroup>
+              </select>
+              <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:3px;">Wordt automatisch ingevuld als de pin op een landbouwperceel staat</div>
+            </div>
+            <input type="hidden" id="f-brp-categorie">
+            <input type="hidden" id="f-brp-jaar">
+            <input type="hidden" id="f-brp-opp-ha">
           </div>
 
-          <!-- Perceelnummer + auto-detect knop -->
+          <!-- Perceelnummer -->
           <div style="margin-bottom:10px;">
             <label class="block mb-1" style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);">KADASTRAAL PERCEELNUMMER</label>
             <div class="flex gap-2">
-              <input type="text" id="f-perceelnummer"
-                class="form-input px-3 py-3 text-sm flex-1"
-                placeholder="Klik op het spuitperceel in de kaart ↓"
-                readonly
-                style="background:var(--bg-secondary);color:var(--text-muted);">
-              <button type="button" onclick="detecteerPerceel()" id="perceel-btn"
-                class="btn-outline px-3 py-3 text-sm flex-shrink-0"
-                title="Opnieuw ophalen">
-                🔄
-              </button>
+              <input type="text" id="f-perceelnummer" class="form-input px-3 py-3 text-sm flex-1" placeholder="Klik op het spuitperceel in de kaart ↓" readonly style="background:var(--bg-secondary);color:var(--text-muted);">
+              <button type="button" onclick="detecteerPerceel()" id="perceel-btn" class="btn-outline px-3 py-3 text-sm flex-shrink-0" title="Opnieuw ophalen">🔄</button>
             </div>
             <div id="perceel-status" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:4px;"></div>
           </div>
@@ -1172,6 +1178,8 @@
           </div>
 
           <!-- Natura 2000 indicator -->
+          <div id="natura2000-melding" style="display:none;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.5);border-radius:8px;padding:10px 12px;margin-bottom:4px;">
+
           <div id="natura2000-melding" style="display:none;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.5);border-radius:8px;padding:10px 12px;margin-bottom:4px;">
             <div style="font-weight:700;font-size:0.8rem;color:var(--warning);">⚠️ Natura 2000 gebied nabij</div>
             <div id="natura2000-naam" style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;"></div>
@@ -1235,6 +1243,7 @@
         ⚠️ Melding wordt voorzien van SHA256 hash voor juridische betrouwbaarheid
       </div>
     </div>
+  </div>
 
     <!-- PAGE: Tijdlijn -->
     <div id="page-tijdlijn" class="page p-4">
@@ -2872,8 +2881,162 @@ function detecteerThuislocatie() {
 
 
 
-// PDOK WFS — haal kadastraal perceelnummer op via GPS coördinaat (gratis, geen API-key)
+// ============================================================
+// BRP GEWASPERCELEN — PDOK/RVO (gratis, geen API-key)
+// Levert: gewas, gewascode, category, jaar, opp_ha
+// Coördinaten: WGS84 (EPSG:4326), filter als OGC XML
+// ============================================================
+
+// Gewascode → PFAS risico mapping (sierteelt codes)
+const PFAS_GEWASCODE = new Set([260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285,286,287,288,289,290]); // lelies ~260-290
+
+// Gewascode → emoji + categorie
+function gewasEmoji(category, gewas) {
+  const g = (gewas || '').toLowerCase();
+  const c = (category || '').toLowerCase();
+  if (g.includes('lelie'))    return '🌸';
+  if (g.includes('tulp'))     return '🌷';
+  if (g.includes('hyacint'))  return '🌺';
+  if (g.includes('narcis'))   return '🌼';
+  if (g.includes('gladiool')) return '🌻';
+  if (g.includes('pioen'))    return '🌹';
+  if (c.includes('sierteelt')) return '🌿';
+  if (g.includes('aardappel')) return '🥔';
+  if (g.includes('tarwe') || g.includes('rogge') || g.includes('gerst')) return '🌾';
+  if (g.includes('mais') || g.includes('maïs')) return '🌽';
+  if (g.includes('ui') || g.includes('prei')) return '🧅';
+  if (c.includes('grasland') || g.includes('gras')) return '🌿';
+  if (c.includes('fruit') || g.includes('appel') || g.includes('peer')) return '🍎';
+  return '🌱';
+}
+
+async function detecteerBRPGewas(lat, lng) {
+  // OGC Filter met WGS84 coördinaten — SRSNAME=EPSG:4326 vereist lng,lat volgorde
+  const filter = `<Filter><Contains><PropertyName>geom</PropertyName><gml:Point srsName="EPSG:4326"><gml:coordinates>${lng},${lat}</gml:coordinates></gml:Point></Contains></Filter>`;
+  const url = `https://service.pdok.nl/rvo/brpgewaspercelen/wfs/v1_0?request=GetFeature&service=WFS&typename=BrpGewas&version=2.0.0&outputformat=json&SRSNAME=EPSG:4326&Filter=${encodeURIComponent(filter)}&count=1`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`BRP HTTP ${res.status}`);
+  const text = await res.text();
+  if (!text.trim().startsWith('{')) throw new Error('BRP geen JSON');
+  const data = JSON.parse(text);
+  if (!data.features?.length) return null;
+
+  const props = data.features[0].properties;
+  console.log('[BRP] Gevonden:', props);
+  return {
+    gewas:      props.gewas     || props.GEWAS     || '',
+    gewascode:  props.gewascode || props.GEWASCODE || null,
+    category:   props.category  || props.CATEGORY  || '',
+    jaar:       props.jaar      || props.JAAR       || null,
+    opp_ha:     props.opp_ha   || props.OPP_HA    || null,
+    status:     props.status    || props.STATUS     || '',
+    bron:       'BRP/RVO PDOK 2025'
+  };
+}
+
+function brpResultaatTonen(brp) {
+  const emoji = gewasEmoji(brp.category, brp.gewas);
+  const isPfas = PFAS_GEWASCODE.has(brp.gewascode);
+  const isSierteelt = (brp.category || '').toLowerCase().includes('sierteelt') ||
+    ['lelie','tulp','hyacint','narcis','gladiool','pioen','dahlia'].some(s => brp.gewas.toLowerCase().includes(s));
+
+  document.getElementById('brp-resultaat').style.display = 'block';
+  document.getElementById('brp-handmatig').style.display = 'none';
+  document.getElementById('brp-bron-label').style.display = 'inline';
+  document.getElementById('brp-fallback-label').style.display = 'none';
+
+  document.getElementById('brp-gewas-naam').textContent = `${emoji} ${brp.gewas}`;
+  document.getElementById('brp-categorie').textContent  = `${brp.category}${isPfas ? ' · ⚠️ PFAS-risico (gewascode '+brp.gewascode+')' : ''}${isSierteelt ? ' · Hoog risico sierteelt' : ''}`;
+  document.getElementById('brp-details').textContent    = [
+    brp.jaar   ? `Jaar: ${brp.jaar}` : '',
+    brp.opp_ha ? `Oppervlakte: ${parseFloat(brp.opp_ha).toFixed(2)} ha` : '',
+    brp.status ? `Status: ${brp.status}` : ''
+  ].filter(Boolean).join(' · ');
+
+  // Vul verborgen velden
+  document.getElementById('f-gewas').value          = brp.gewas;
+  document.getElementById('f-brp-gewascode').value  = brp.gewascode || '';
+  document.getElementById('f-brp-categorie').value  = brp.category  || '';
+  document.getElementById('f-brp-jaar').value        = brp.jaar      || '';
+  document.getElementById('f-brp-opp-ha').value      = brp.opp_ha   || '';
+}
+
+function brpResultaatVerbergen() {
+  document.getElementById('brp-resultaat').style.display   = 'none';
+  document.getElementById('brp-handmatig').style.display   = 'block';
+  document.getElementById('brp-bron-label').style.display  = 'none';
+  document.getElementById('brp-fallback-label').style.display = 'inline';
+  ['f-brp-gewascode','f-brp-categorie','f-brp-jaar','f-brp-opp-ha'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+function brpHandmatigOverride() {
+  brpResultaatVerbergen();
+  document.getElementById('f-gewas').value = '';
+}
+
 async function detecteerPerceel() {
+  const btn    = document.getElementById('perceel-btn');
+  const input  = document.getElementById('f-perceelnummer');
+  const status = document.getElementById('perceel-status');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  if (status) { status.textContent = 'Perceel opzoeken...'; status.style.color = 'var(--text-muted)'; }
+
+  const lat = parseFloat(document.getElementById('f-lat')?.value);
+  const lng = parseFloat(document.getElementById('f-lng')?.value);
+
+  if (!lat || !lng || (Math.abs(lat) < 0.01 && Math.abs(lng) < 0.01)) {
+    if (status) { status.textContent = '⚠️ Geen locatie — gebruik de kaart'; status.style.color = 'var(--warning)'; }
+    if (btn) { btn.disabled = false; btn.textContent = '🔄'; }
+    return;
+  }
+
+  // Parallel: BRP gewaspercelen + kadaster perceelnummer
+  const [brpResultaat, perceelResultaat] = await Promise.allSettled([
+    detecteerBRPGewas(lat, lng),
+    detecteerKadastraalPerceel(lat, lng)
+  ]);
+
+  // BRP gewas verwerken
+  if (brpResultaat.status === 'fulfilled' && brpResultaat.value) {
+    brpResultaatTonen(brpResultaat.value);
+    if (status) { status.textContent = `✓ BRP: ${brpResultaat.value.gewas}`; status.style.color = 'var(--accent)'; }
+  } else {
+    brpResultaatVerbergen();
+    if (status) { status.textContent = 'Geen landbouwperceel op deze locatie'; status.style.color = 'var(--text-muted)'; }
+  }
+
+  // Kadaster perceelnummer verwerken
+  if (perceelResultaat.status === 'fulfilled' && perceelResultaat.value) {
+    if (input) { input.value = perceelResultaat.value; input.style.color = 'var(--text-primary)'; }
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '🔄'; }
+  setTimeout(() => { if (status && status.textContent.startsWith('Geen')) status.textContent = ''; }, 4000);
+}
+
+async function detecteerKadastraalPerceel(lat, lng) {
+  const delta = 0.0002;
+  const bbox  = `${lat - delta},${lng - delta},${lat + delta},${lng + delta},EPSG:4326`;
+  const url   = `https://service.pdok.nl/kadaster/kadastralekaart/wfs/v5_0?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=kadastralekaart:Perceel&outputFormat=application/json&srsName=EPSG:4326&BBOX=${bbox}&count=1`;
+  const res   = await fetch(url);
+  if (!res.ok) return null;
+  const text  = await res.text();
+  if (!text.trim().startsWith('{')) return null;
+  const data  = JSON.parse(text);
+  if (!data.features?.length) return null;
+  const props = data.features[0].properties;
+  console.log('[Kadaster] Perceel velden:', Object.keys(props));
+  const gemeente = props.AKRKadastraleGemeenteCode || props.kadastralegemeentecode || '';
+  const sectie   = props.sectie   || '';
+  const nummer   = props.perceelnummer || '';
+  return `${gemeente}${sectie}-${nummer}`.toUpperCase().replace(/^-|-$/g, '') || null;
+}
+
+
   const btn    = document.getElementById('perceel-btn');
   const input  = document.getElementById('f-perceelnummer');
   const status = document.getElementById('perceel-status');
@@ -4350,6 +4513,13 @@ async function submitMelding() {
       perceelnummer:  document.getElementById('f-perceelnummer')?.value.trim() || null,
       gewas:          document.getElementById('f-gewas')?.value || null,
       afstand_woning: parseFloat(document.getElementById('f-afstand-woning')?.value) || null,
+      brp: document.getElementById('f-brp-gewascode')?.value ? {
+        gewascode: parseInt(document.getElementById('f-brp-gewascode')?.value) || null,
+        category:  document.getElementById('f-brp-categorie')?.value  || null,
+        jaar:      parseInt(document.getElementById('f-brp-jaar')?.value)      || null,
+        opp_ha:    parseFloat(document.getElementById('f-brp-opp-ha')?.value)  || null,
+        bron:      'BRP/RVO PDOK 2025'
+      } : null,
       wind_naar_woning: window._windNaarWoning?.waait ? window._windNaarWoning : null,
       geur_intensiteit: parseInt(document.getElementById('f-geur').value) || 0,
       wind_subjectief: document.getElementById('f-wind-subj').value || 'geen',
@@ -4454,6 +4624,7 @@ async function submitMelding() {
     if (perceelEl) { perceelEl.value = ''; perceelEl.style.color = 'var(--text-muted)'; }
     if (perceelStatus) perceelStatus.textContent = '';
     if (gewasEl) gewasEl.value = '';
+    brpResultaatVerbergen();
     if (afstandDisplay) { afstandDisplay.textContent = 'Wordt berekend na plaatsen pin op perceel'; afstandDisplay.style.color = 'var(--text-muted)'; }
     if (afstandInput) afstandInput.value = '';
     if (natura2000El) natura2000El.style.display = 'none';
@@ -5435,7 +5606,8 @@ async function exportPDF() {
         <div style="margin-bottom:8px;padding:6px 8px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;">
           <div class="label">Teler & Perceel</div>
           ${m.bedrijfsnaam  ? `<div style="font-size:9pt;">🏢 ${m.bedrijfsnaam}</div>` : ''}
-          ${m.gewas         ? `<div style="font-size:9pt;">🌱 Gewas: ${m.gewas}</div>` : ''}
+          ${m.gewas         ? `<div style="font-size:9pt;">🌱 Gewas: ${m.gewas}${m.brp ? ` <span style="color:#16a34a;">(BRP/RVO ${m.brp.jaar || ''})</span>` : ''}</div>` : ''}
+          ${m.brp?.gewascode ? `<div style="font-size:8pt;color:#374151;">Gewascode: ${m.brp.gewascode} · ${m.brp.category || ''}${m.brp.opp_ha ? ` · ${parseFloat(m.brp.opp_ha).toFixed(2)} ha` : ''} · ${m.brp.bron}</div>` : ''}
           ${m.perceelnummer ? `<div style="font-size:9pt;font-family:JetBrains Mono;">📋 Perceelnummer: ${m.perceelnummer}</div>` : ''}
           ${m.afstand_woning != null ? `<div style="font-size:9pt;color:${m.afstand_woning < 50 ? '#dc2626' : m.afstand_woning < 100 ? '#d97706' : '#16a34a'};">📏 Afstand dichtstbijzijnde woning: ${m.afstand_woning}m${m.afstand_woning < 50 ? ' — ONDER DE 50m NORM (ABRvS vuistregel)' : ''}</div>` : ''}
           ${m.wind_naar_woning?.waait ? `<div style="font-size:9pt;color:#dc2626;font-weight:bold;">💨 WIND WAAIT NAAR WONING — windrichting ${m.wind_naar_woning.windDeg}° richting woning op ${m.wind_naar_woning.hoekNaarWoning}°, afstand ${m.wind_naar_woning.afstandM}m. Directe blootstelling aan drift aannemelijk.</div>` : ''}
@@ -5637,7 +5809,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '7.38';
+const APP_VERSION_CLIENT = '8.01';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
