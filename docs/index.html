@@ -750,7 +750,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.13</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.14</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -785,22 +785,22 @@
       </div>
 
       <!-- Stats + maandgrafiek naast elkaar -->
-      <div class="flex gap-3 mb-4" style="align-items:stretch;">
-        <!-- Stats kolom -->
-        <div class="flex flex-col gap-2" style="min-width:130px;flex-shrink:0;">
-          <div class="card p-3" style="flex:1;">
+      <div class="flex gap-3 mb-4" style="align-items:flex-start;">
+        <!-- Stats kolom: vaste breedte, vaste hoogte per kaart -->
+        <div class="flex flex-col gap-2" style="width:130px;flex-shrink:0;">
+          <div class="card p-3">
             <div class="stat-value" id="stat-total">0</div>
             <div class="stat-label">Totaal meldingen</div>
           </div>
-          <div class="card p-3" style="flex:1;">
+          <div class="card p-3">
             <div class="stat-value" id="stat-month">0</div>
             <div class="stat-label">Deze maand</div>
           </div>
-          <div class="card p-3" style="flex:1;">
+          <div class="card p-3">
             <div class="stat-value" id="stat-week">0</div>
             <div class="stat-label">Deze week</div>
           </div>
-          <div class="card p-3" style="flex:1;">
+          <div class="card p-3">
             <div class="stat-value" id="stat-wind">—</div>
             <div class="stat-label">Meest wind</div>
           </div>
@@ -810,8 +810,8 @@
           <div class="p-2 border-b" style="border-color:var(--border);">
             <div class="section-label" style="font-size:0.6rem;">Meldingen per maand</div>
           </div>
-          <div class="p-2" style="height:calc(100% - 32px);display:flex;align-items:center;">
-            <canvas id="chart-monthly" style="width:100%;"></canvas>
+          <div class="p-2">
+            <canvas id="chart-monthly" height="120"></canvas>
           </div>
         </div>
       </div>
@@ -4993,9 +4993,11 @@ function updateDashboard() {
 
     // Aparte laag voor driftzones (onder markers)
     if (!window._driftLayer) {
-      window._driftLayer = L.layerGroup().addTo(dashMap);
+      window._driftLayer = L.layerGroup();
     }
     window._driftLayer.clearLayers();
+    // Verwijder laag van kaart en voeg alleen toe als toggle aan staat
+    if (dashMap.hasLayer(window._driftLayer)) dashMap.removeLayer(window._driftLayer);
 
     const typeColors = { spuitactiviteit: '#f59e0b', drift: '#3b82f6', geur: '#8b5cf6', gezondheid: '#ef4444', geluid: '#f97316', overig: '#6b7280' };
 
@@ -5021,11 +5023,16 @@ function updateDashboard() {
       });
 
       // Driftzone op dashboard kaart (alleen voor spuitactiviteit met winddata)
-      if (window._driftAan && m.weather?.wind_dir != null && (m.type === 'spuitactiviteit' || m.type === 'drift')) {
+      if (m.weather?.wind_dir != null && (m.type === 'spuitactiviteit' || m.type === 'drift')) {
         const driftLaag = maakDriftZoneLayer(m);
         if (driftLaag) window._driftLayer.addLayer(driftLaag);
       }
     });
+
+    // Voeg drift layer toe aan kaart als toggle aan staat
+    if (window._driftAan && window._driftLayer) {
+      window._driftLayer.addTo(dashMap);
+    }
 
     // Legenda
     const legendaEl = document.getElementById('map-legenda');
@@ -5964,7 +5971,7 @@ async function exportPDF() {
         ${m.gps?.lat && m.gps?.lng ? (() => {
           const lat  = m.gps.lat;
           const lng  = m.gps.lng;
-          const zoom = 13; // Zoom 13 geeft voldoende context voor driftzone
+          const zoom = 14; // Zoom 14: perceel zichtbaar met omgeving
           const tileX = Math.floor((lng + 180) / 360 * Math.pow(2, zoom));
           const tileY = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
           const windInfo = m.weather?.wind_dir != null
@@ -5976,7 +5983,7 @@ async function exportPDF() {
           <div style="border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px;page-break-inside:avoid;">
             <div class="label" style="margin-bottom:6px;">Locatiekaart & Driftzone</div>
             <img src="https://tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png"
-              style="width:100%;max-width:400px;height:200px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;display:block;"
+              style="width:100%;max-width:500px;height:260px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;display:block;"
               alt="Kaart ${lat.toFixed(5)}, ${lng.toFixed(5)}">
             <div style="font-family:JetBrains Mono;font-size:7.5pt;color:#374151;margin-top:4px;">
               📍 ${lat.toFixed(6)}°N · ${lng.toFixed(6)}°E · ${windInfo}
@@ -6141,7 +6148,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '8.13';
+const APP_VERSION_CLIENT = '8.14';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
