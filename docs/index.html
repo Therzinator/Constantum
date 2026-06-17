@@ -750,7 +750,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.12</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.13</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -784,23 +784,35 @@
         <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);" id="dashboard-gemeente">Nederland</div>
       </div>
 
-      <!-- Stats grid -->
-      <div class="grid grid-cols-2 gap-3 mb-4">
-        <div class="card p-4">
-          <div class="stat-value" id="stat-total">0</div>
-          <div class="stat-label">Totaal meldingen</div>
+      <!-- Stats + maandgrafiek naast elkaar -->
+      <div class="flex gap-3 mb-4" style="align-items:stretch;">
+        <!-- Stats kolom -->
+        <div class="flex flex-col gap-2" style="min-width:130px;flex-shrink:0;">
+          <div class="card p-3" style="flex:1;">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Totaal meldingen</div>
+          </div>
+          <div class="card p-3" style="flex:1;">
+            <div class="stat-value" id="stat-month">0</div>
+            <div class="stat-label">Deze maand</div>
+          </div>
+          <div class="card p-3" style="flex:1;">
+            <div class="stat-value" id="stat-week">0</div>
+            <div class="stat-label">Deze week</div>
+          </div>
+          <div class="card p-3" style="flex:1;">
+            <div class="stat-value" id="stat-wind">—</div>
+            <div class="stat-label">Meest wind</div>
+          </div>
         </div>
-        <div class="card p-4">
-          <div class="stat-value" id="stat-month">0</div>
-          <div class="stat-label">Deze maand</div>
-        </div>
-        <div class="card p-4">
-          <div class="stat-value" id="stat-week">0</div>
-          <div class="stat-label">Deze week</div>
-        </div>
-        <div class="card p-4">
-          <div class="stat-value" id="stat-wind">—</div>
-          <div class="stat-label">Meest wind</div>
+        <!-- Maandgrafiek rechts -->
+        <div class="card flex-1" style="min-width:0;">
+          <div class="p-2 border-b" style="border-color:var(--border);">
+            <div class="section-label" style="font-size:0.6rem;">Meldingen per maand</div>
+          </div>
+          <div class="p-2" style="height:calc(100% - 32px);display:flex;align-items:center;">
+            <canvas id="chart-monthly" style="width:100%;"></canvas>
+          </div>
         </div>
       </div>
 
@@ -810,9 +822,13 @@
           <div class="flex items-center justify-between gap-2 flex-wrap">
             <div class="section-label">Kaart Overzicht</div>
             <div class="flex items-center gap-2 flex-wrap">
+              <button id="dash-lucht-btn" onclick="toggleDashLuchtfoto()"
+                style="font-family:var(--mono);font-size:0.6rem;background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-muted);border-radius:6px;padding:3px 9px;cursor:pointer;">
+                🛰️ Luchtfoto
+              </button>
               <button id="drift-toggle-btn" onclick="toggleDashDriftLaag()"
-                style="font-family:var(--mono);font-size:0.6rem;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.5);color:#60a5fa;border-radius:6px;padding:3px 9px;cursor:pointer;">
-                🌬️ Driftzone aan
+                style="font-family:var(--mono);font-size:0.6rem;background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-muted);border-radius:6px;padding:3px 9px;cursor:pointer;">
+                🌬️ Driftzone
               </button>
               <select id="map-filter-maand" class="form-select px-2 py-1 text-xs" onchange="updateDashboard()" style="font-size:0.65rem;">
                 <option value="huidig">Deze maand</option>
@@ -848,25 +864,7 @@
         <div id="map-legenda" class="p-2" style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid var(--border);"></div>
       </div>
 
-      <!-- Charts naast elkaar -->
-      <div class="flex gap-3 mb-4">
-        <div class="card flex-1" style="min-width:0;">
-          <div class="p-2 border-b" style="border-color:var(--border);">
-            <div class="section-label" style="font-size:0.6rem;">Meldingen per maand</div>
-          </div>
-          <div class="p-2">
-            <canvas id="chart-monthly" height="80"></canvas>
-          </div>
-        </div>
-        <div class="card flex-1" style="min-width:0;">
-          <div class="p-2 border-b" style="border-color:var(--border);">
-            <div class="section-label" style="font-size:0.6rem;">Type Verdeling</div>
-          </div>
-          <div class="p-2" style="position:relative;height:80px;display:flex;align-items:center;justify-content:center;">
-            <canvas id="chart-types" style="max-height:80px;"></canvas>
-          </div>
-        </div>
-      </div>
+
 
       <!-- Recent entries -->
       <div class="section-label mb-2">Recente Meldingen</div>
@@ -1722,7 +1720,6 @@ let dashMap = null;
 let compassDeg = 0;
 let pendingFiles = [];
 let chartMonthly = null;
-let chartTypes = null;
 
 // ============================================================
 // SUPABASE CLIENT & SYNC MODULE
@@ -5098,55 +5095,6 @@ function renderCharts(meldingen) {
     }
   });
 
-  // Types chart
-  const typeCount = {};
-  meldingen.forEach(m => { typeCount[m.type] = (typeCount[m.type] || 0) + 1; });
-  const typeLabels = { spuitactiviteit: 'Spuiten', drift: 'Drift', geur: 'Geur', geluid: 'Geluid', gezondheid: 'Gezondheid', overig: 'Overig' };
-  const typeColors = ['#f59e0b','#3b82f6','#8b5cf6','#f97316','#ef4444','#6b7280'];
-
-  const ctx2 = document.getElementById('chart-types').getContext('2d');
-  if (chartTypes) chartTypes.destroy();
-  if (Object.keys(typeCount).length > 0) {
-    chartTypes = new Chart(ctx2, {
-      type: 'doughnut',
-      data: {
-        labels: Object.keys(typeCount).map(k => typeLabels[k] || k),
-        datasets: [{
-          data: Object.values(typeCount),
-          backgroundColor: Object.keys(typeCount).map((k,i) => typeColors[i % typeColors.length] + '99'),
-          borderColor: Object.keys(typeCount).map((k,i) => typeColors[i % typeColors.length]),
-          borderWidth: 1.5,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: 0 },
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              color: '#7a90b0',
-              font: { family: 'JetBrains Mono', size: 7 },
-              boxWidth: 7,
-              padding: 4,
-              generateLabels: chart => {
-                const data = chart.data;
-                return data.labels.map((label, i) => ({
-                  text: `${label} (${data.datasets[0].data[i]})`,
-                  fillStyle: data.datasets[0].backgroundColor[i],
-                  strokeStyle: data.datasets[0].borderColor[i],
-                  lineWidth: 1,
-                  index: i
-                }));
-              }
-            }
-          }
-        },
-        cutout: '55%'
-      }
-    });
-  }
 }
 
 // ============================================================
@@ -5156,25 +5104,54 @@ function renderCharts(meldingen) {
 // SPUITGEBEURTENIS CLUSTERING
 // ============================================================
 
-window._driftAan = true;
+window._driftAan = false; // standaard UIT
+window._dashLuchtAan = false;
+
+function toggleDashLuchtfoto() {
+  window._dashLuchtAan = !window._dashLuchtAan;
+  const btn = document.getElementById('dash-lucht-btn');
+  if (btn) {
+    btn.style.background  = window._dashLuchtAan ? 'rgba(0,212,170,0.15)' : 'var(--bg-secondary)';
+    btn.style.borderColor = window._dashLuchtAan ? 'var(--accent)'         : 'var(--border)';
+    btn.style.color       = window._dashLuchtAan ? 'var(--accent)'         : 'var(--text-muted)';
+    btn.textContent       = window._dashLuchtAan ? '🗺️ Kaart'             : '🛰️ Luchtfoto';
+  }
+  if (!dashMap) return;
+  if (!window._dashLayerOSM) {
+    window._dashLayerOSM   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 });
+    window._dashLayerLucht = L.tileLayer(
+      'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=Actueel_ortho25&STYLE=default&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png',
+      { attribution: '© PDOK Luchtfoto 2025', maxZoom: 19, tileSize: 256 }
+    );
+    // Verwijder huidige base layer en voeg beide toe
+    dashMap.eachLayer(l => { if (l instanceof L.TileLayer) dashMap.removeLayer(l); });
+    window._dashLayerOSM.addTo(dashMap);
+  }
+  if (window._dashLuchtAan) {
+    dashMap.removeLayer(window._dashLayerOSM);
+    window._dashLayerLucht.addTo(dashMap);
+  } else {
+    dashMap.removeLayer(window._dashLayerLucht);
+    window._dashLayerOSM.addTo(dashMap);
+  }
+}
 
 function toggleDashDriftLaag() {
   window._driftAan = !window._driftAan;
   const btn  = document.getElementById('drift-toggle-btn');
   const info = document.getElementById('drift-uitleg');
   if (btn) {
-    btn.textContent    = window._driftAan ? '🌬️ Driftzone aan' : '🌬️ Driftzone uit';
-    btn.style.background   = window._driftAan ? 'rgba(59,130,246,0.15)' : 'var(--bg-secondary)';
-    btn.style.borderColor  = window._driftAan ? 'rgba(59,130,246,0.5)'  : 'var(--border)';
-    btn.style.color        = window._driftAan ? '#60a5fa'                : 'var(--text-muted)';
+    btn.textContent       = window._driftAan ? '🌬️ Driftzone aan' : '🌬️ Driftzone';
+    btn.style.background  = window._driftAan ? 'rgba(59,130,246,0.15)' : 'var(--bg-secondary)';
+    btn.style.borderColor = window._driftAan ? 'rgba(59,130,246,0.5)'  : 'var(--border)';
+    btn.style.color       = window._driftAan ? '#60a5fa'                : 'var(--text-muted)';
   }
   if (info) info.style.display = window._driftAan ? 'block' : 'none';
-
   if (window._driftLayer) {
     if (window._driftAan) {
       if (dashMap && !dashMap.hasLayer(window._driftLayer)) window._driftLayer.addTo(dashMap);
     } else {
-      if (dashMap && dashMap.hasLayer(window._driftLayer)) dashMap.removeLayer(window._driftLayer);
+      if (dashMap) dashMap.removeLayer(window._driftLayer);
     }
   }
 }
@@ -5987,9 +5964,7 @@ async function exportPDF() {
         ${m.gps?.lat && m.gps?.lng ? (() => {
           const lat  = m.gps.lat;
           const lng  = m.gps.lng;
-          const zoom = 15;
-          // OSM tile URL voor statische kaartafbeelding (OpenStreetMap standaard tiles)
-          // Bereken tile coördinaten
+          const zoom = 13; // Zoom 13 geeft voldoende context voor driftzone
           const tileX = Math.floor((lng + 180) / 360 * Math.pow(2, zoom));
           const tileY = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
           const windInfo = m.weather?.wind_dir != null
@@ -6166,7 +6141,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '8.12';
+const APP_VERSION_CLIENT = '8.13';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
