@@ -1085,7 +1085,7 @@
           <button type="button" onclick="toggleGezondheid(this)" class="w-full flex items-center justify-between section-label py-2" style="background:none;border:none;cursor:pointer;text-align:left;">
             <span class="flex items-center gap-2">
               <span>Gezondheidsklachten <span id="gezondheid-badge" style="display:none;font-size:0.6rem;color:var(--accent);font-weight:700;margin-left:6px;"></span></span>
-              <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);font-weight:400;">Uitklappen voor het melden van gezondheidsklachten.</span>
+              <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-primary);font-weight:400;">(Optioneel)</span>
             </span>
             <span id="gezondheid-chevron" style="font-size:0.75rem;color:var(--text-muted);transition:transform 0.2s;">▼</span>
           </button>
@@ -1103,9 +1103,16 @@
           </div>
         </div>
 
-        <!-- Teler & Perceel -->
+        <!-- Teler & Gewas -->
         <div>
-          <label class="section-label block mb-2">Teler & Perceel <span style="color:var(--text-muted);font-size:0.6rem;">(optioneel)</span></label>
+          <button type="button" onclick="toggleTelerGewas()" class="w-full flex items-center justify-between section-label py-2 mb-2" style="background:none;border:none;cursor:pointer;text-align:left;">
+            <span class="flex items-center gap-2">
+              <span>Teler &amp; Gewas</span>
+              <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-primary);font-weight:400;">(Optioneel)</span>
+            </span>
+            <span id="teler-chevron" style="font-size:0.75rem;color:var(--text-muted);transition:transform 0.2s;">▼</span>
+          </button>
+          <div id="teler-panel" style="display:none;">
 
           <!-- Bedrijfsnaam met autocomplete -->
           <div style="position:relative;margin-bottom:10px;">
@@ -1146,6 +1153,7 @@
               </optgroup>
             </select>
           </div>
+          </div><!-- /teler-panel -->
 
           <!-- Perceelnummer -->
           <div style="margin-bottom:10px;">
@@ -1172,6 +1180,13 @@
             <div style="font-weight:700;font-size:0.8rem;color:var(--warning);">⚠️ Natura 2000 gebied nabij</div>
             <div id="natura2000-naam" style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;"></div>
             <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Op basis van Raad van State uitspraak 2 april 2025 is voor pesticiden nabij Natura 2000-gebieden een <strong>natuurvergunning vereist</strong>.</div>
+          </div>
+
+          <!-- Kwetsbare locaties indicator -->
+          <div id="kwetsbare-locaties-melding" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);border-radius:8px;padding:10px 12px;margin-bottom:4px;">
+            <div style="font-weight:700;font-size:0.8rem;color:var(--danger);">🚨 Kwetsbare locatie nabij</div>
+            <div id="kwetsbare-locaties-lijst" style="font-size:0.72rem;color:var(--text-secondary);margin-top:4px;line-height:1.6;"></div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">Blootstelling aan pesticiden weegt extra zwaar bij scholen, speeltuinen, zorginstellingen en recreatiegebieden. Juridisch verzwarende omstandigheid.</div>
           </div>
         </div>
 
@@ -3310,6 +3325,100 @@ async function detecteerAfstandEnNatura2000(lat, lng) {
   } catch (e) {
     console.warn('[Natura2000] Check mislukt:', e.message);
   }
+
+  // Kwetsbare locaties — BAG gebruiksdoelen + OSM Overpass binnen 300m
+  try {
+    const kwetsbareEl   = document.getElementById('kwetsbare-locaties-melding');
+    const kwetsbareLijst = document.getElementById('kwetsbare-locaties-lijst');
+    const gevonden = [];
+
+    // BAG: onderwijs, zorg, sport binnen 300m
+    const deltaK = 0.003;
+    const bboxK  = `${lat - deltaK},${lng - deltaK},${lat + deltaK},${lng + deltaK},EPSG:4326`;
+    const urlK   = `https://service.pdok.nl/lv/bag/wfs/v2_0?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=bag:pand&outputFormat=application/json&srsName=EPSG:4326&BBOX=${bboxK}&count=100`;
+    const resK   = await fetch(urlK);
+    if (resK.ok) {
+      const textK = await resK.text();
+      if (textK.trim().startsWith('{')) {
+        const dataK = JSON.parse(textK);
+        const bagTypeMap = {
+          'onderwijsfunctie':       { label: '🏫 School/onderwijsinstelling', icoon: '🏫' },
+          'gezondheidszorgfunctie': { label: '🏥 Zorginstelling', icoon: '🏥' },
+          'sportfunctie':           { label: '⚽ Sportaccommodatie', icoon: '⚽' },
+        };
+        const gevondenBagTypes = new Set();
+        (dataK.features || []).forEach(f => {
+          const doel = f.properties?.gebruiksdoel;
+          if (doel && bagTypeMap[doel] && !gevondenBagTypes.has(doel)) {
+            const centroid = f.geometry?.type === 'Polygon'
+              ? polygonCentroid(f.geometry.coordinates)
+              : { lat: f.geometry?.coordinates[1], lng: f.geometry?.coordinates[0] };
+            if (centroid) {
+              const afst = Math.round(haversineAfstand(lat, lng, centroid.lat, centroid.lng));
+              gevonden.push(`${bagTypeMap[doel].label} (${afst}m)`);
+              gevondenBagTypes.add(doel);
+            }
+          }
+        });
+      }
+    }
+
+    // OSM Overpass: speeltuinen, parken, recreatie binnen 300m
+    const overpassQuery = `[out:json][timeout:8];(
+      node["amenity"="playground"](around:300,${lat},${lng});
+      way["amenity"="playground"](around:300,${lat},${lng});
+      node["leisure"="playground"](around:300,${lat},${lng});
+      way["leisure"="playground"](around:300,${lat},${lng});
+      way["leisure"="recreation_ground"](around:300,${lat},${lng});
+      way["leisure"="park"](around:200,${lat},${lng});
+      node["amenity"="school"](around:300,${lat},${lng});
+      node["amenity"="kindergarten"](around:300,${lat},${lng});
+      node["amenity"="hospital"](around:300,${lat},${lng});
+      node["amenity"="clinic"](around:300,${lat},${lng});
+      node["amenity"="nursing_home"](around:300,${lat},${lng});
+    );out center;`;
+    const resOSM = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: overpassQuery
+    });
+    if (resOSM.ok) {
+      const dataOSM = await resOSM.json();
+      const osmTypeMap = {
+        'playground':         '🛝 Speeltuin',
+        'recreation_ground':  '🌳 Recreatiegebied',
+        'park':               '🌳 Park',
+        'school':             '🏫 School',
+        'kindergarten':       '🏫 Kinderdagverblijf',
+        'hospital':           '🏥 Ziekenhuis',
+        'clinic':             '🏥 Kliniek/huisartspraktijk',
+        'nursing_home':       '🏥 Verpleeghuis',
+      };
+      const gezienOSM = new Set();
+      (dataOSM.elements || []).forEach(el => {
+        const tags = el.tags || {};
+        const type = tags.amenity || tags.leisure;
+        if (!type || !osmTypeMap[type]) return;
+        const key = osmTypeMap[type];
+        if (gezienOSM.has(key)) return;
+        const naam = tags.name ? ` — ${tags.name}` : '';
+        const elLat = el.lat || el.center?.lat;
+        const elLng = el.lon || el.center?.lon;
+        const afst = (elLat && elLng) ? ` (${Math.round(haversineAfstand(lat, lng, elLat, elLng))}m)` : '';
+        gevonden.push(`${key}${naam}${afst}`);
+        gezienOSM.add(key);
+      });
+    }
+
+    if (gevonden.length > 0 && kwetsbareEl && kwetsbareLijst) {
+      kwetsbareLijst.innerHTML = gevonden.map(t => `<div>• ${t}</div>`).join('');
+      kwetsbareEl.style.display = 'block';
+      console.log('[Kwetsbaar] Gevonden:', gevonden);
+    } else if (kwetsbareEl) {
+      kwetsbareEl.style.display = 'none';
+    }
+  } catch (e) {
+    console.warn('[Kwetsbaar] Check mislukt:', e.message);
+  }
 }
 
 function getBedrijfSuggesties(query) {
@@ -3772,6 +3881,15 @@ function updateRolBadge() {
   if (adminSection) adminSection.style.display = _gebruikerRol === 'admin' ? 'block' : 'none';
 }
 
+
+function toggleTelerGewas() {
+  const panel   = document.getElementById('teler-panel');
+  const chevron = document.getElementById('teler-chevron');
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display     = open ? 'none' : 'block';
+  chevron.style.transform = open ? '' : 'rotate(180deg)';
+}
 
 function toggleGezondheid(btn) {
   const panel   = document.getElementById('gezondheid-panel');
@@ -4711,6 +4829,8 @@ async function submitMelding() {
     if (afstandDisplay) { afstandDisplay.textContent = 'Wordt berekend na plaatsen pin op perceel'; afstandDisplay.style.color = 'var(--text-muted)'; }
     if (afstandInput) afstandInput.value = '';
     if (natura2000El) natura2000El.style.display = 'none';
+    const kwetsbareResetEl = document.getElementById('kwetsbare-locaties-melding');
+    if (kwetsbareResetEl) kwetsbareResetEl.style.display = 'none';
     updateGezondheidBadge();
     updateDriftLabel();
     // Gezondheid panel weer inklappen
@@ -4718,6 +4838,11 @@ async function submitMelding() {
     const gChevron = document.getElementById('gezondheid-chevron');
     if (gPanel) gPanel.style.display = 'none';
     if (gChevron) gChevron.style.transform = '';
+    // Teler & Gewas panel weer inklappen
+    const tPanel = document.getElementById('teler-panel');
+    const tChevron = document.getElementById('teler-chevron');
+    if (tPanel) tPanel.style.display = 'none';
+    if (tChevron) tChevron.style.transform = '';
     // Standaard activiteiten weer aanvinken
     const tractor = document.querySelector('.activity-check[value="tractor"]');
     const spuit   = document.querySelector('.activity-check[value="spuitmachine"]');
@@ -5606,7 +5731,7 @@ function showMeldingDetail(id) {
         ${spuitpatroonHTML(m)}
         ${(m.bedrijfsnaam || m.perceelnummer || m.gewas || m.afstand_woning) ? `
         <div class="mt-2" style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
-          <div class="section-label mb-1">Teler & Perceel</div>
+          <div class="section-label mb-1">Teler & Gewas</div>
           ${m.bedrijfsnaam  ? `<div style="font-size:0.75rem;">🏢 ${m.bedrijfsnaam}</div>` : ''}
           ${m.gewas         ? `<div style="font-size:0.75rem;">🌱 ${m.gewas}</div>` : ''}
           ${m.perceelnummer ? `<div style="font-size:0.75rem;font-family:var(--mono);">📋 ${m.perceelnummer}</div>` : ''}
@@ -5955,7 +6080,7 @@ async function exportPDF() {
         ${m.activiteiten?.length ? `<div style="margin-bottom:8px;"><div class="label">Activiteiten</div><div style="color:#b45309;font-size:9pt;">${m.activiteiten.join(', ')}</div></div>` : ''}
         ${(m.bedrijfsnaam || m.perceelnummer || m.gewas || m.afstand_woning != null) ? `
         <div style="margin-bottom:8px;padding:6px 8px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;">
-          <div class="label">Teler & Perceel</div>
+          <div class="label">Teler & Gewas</div>
           ${m.bedrijfsnaam  ? `<div style="font-size:9pt;">🏢 ${m.bedrijfsnaam}</div>` : ''}
           ${m.gewas         ? `<div style="font-size:9pt;">🌱 Gewas: ${m.gewas}${m.brp ? ` <span style="color:#16a34a;">(BRP/RVO ${m.brp.jaar || ''})</span>` : ''}</div>` : ''}
           ${m.brp?.gewascode ? `<div style="font-size:8pt;color:#374151;">Gewascode: ${m.brp.gewascode} · ${m.brp.category || ''}${m.brp.opp_ha ? ` · ${parseFloat(m.brp.opp_ha).toFixed(2)} ha` : ''} · ${m.brp.bron}</div>` : ''}
