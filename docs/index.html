@@ -945,15 +945,15 @@
       <div class="space-y-4">
 
         <!-- Type waarneming — multi-checkbox dropdown -->
-        <div style="position:relative;">
+        <div style="position:relative;z-index:600;">
           <label class="section-label block mb-2">Type Waarneming *</label>
           <button type="button" id="type-dropdown-btn" onclick="toggleTypeDropdown()" class="form-select px-3 py-3 text-sm w-full flex items-center justify-between" style="cursor:pointer;text-align:left;">
             <span id="type-dropdown-label" style="color:var(--text-muted);">Selecteer type(s)...</span>
             <span style="font-size:0.75rem;color:var(--text-muted);">▼</span>
           </button>
-          <div id="type-dropdown-panel" style="display:none;position:absolute;left:0;right:0;z-index:200;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:10px;margin-top:4px;padding:8px 0;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+          <div id="type-dropdown-panel" style="display:none;position:absolute;left:0;right:0;z-index:1400;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:10px;margin-top:4px;padding:8px 0;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" style="transition:background 0.1s;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="type-check" value="spuitactiviteit" onchange="updateTypeLabel()"> 🚜 Spuitactiviteit</label>
-            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="type-check" value="drift" onchange="updateTypeLabel()"> 🌫️ Drift / nevel zichtbaar</label>
+            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="type-check" value="drift" onchange="updateTypeLabel()"> 🌫 Drift / nevel zichtbaar</label>
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="type-check" value="geur" onchange="updateTypeLabel()"> 👃 Chemische geur</label>
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="type-check" value="nachtelijk" onchange="updateTypeLabel()"> 🌙 Nachtelijke activiteit</label>
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="type-check" value="gezondheid" onchange="updateTypeLabel()"> 🏥 Gezondheidsklachten</label>
@@ -962,13 +962,13 @@
         </div>
 
         <!-- Activiteit Waargenomen — multi-checkbox dropdown -->
-        <div style="position:relative;">
+        <div style="position:relative;z-index:500;">
           <label class="section-label block mb-2">Activiteit Waargenomen</label>
           <button type="button" id="activiteit-dropdown-btn" onclick="toggleActiviteitDropdown()" class="form-select px-3 py-3 text-sm w-full flex items-center justify-between" style="cursor:pointer;text-align:left;">
             <span id="activiteit-dropdown-label" style="color:var(--text-primary);">🚜 Tractor · 💦 Spuitmachine</span>
             <span style="font-size:0.75rem;color:var(--text-muted);">▼</span>
           </button>
-          <div id="activiteit-dropdown-panel" style="display:none;position:absolute;left:0;right:0;z-index:200;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:10px;margin-top:4px;padding:8px 0;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+          <div id="activiteit-dropdown-panel" style="display:none;position:absolute;left:0;right:0;z-index:1200;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:10px;margin-top:4px;padding:8px 0;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" style="transition:background 0.1s;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="activity-check" value="tractor" onchange="updateActiviteitLabel()" checked> 🚜 Tractor</label>
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="activity-check" value="spuitmachine" onchange="updateActiviteitLabel()" checked> 💦 Spuitmachine</label>
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="activity-check" value="zwenksproeier" onchange="updateActiviteitLabel()"> 💧 Zwenksproeier / mestspuiten</label>
@@ -1178,7 +1178,7 @@
           </button>
           <div id="drift-dropdown-panel" style="display:none;position:absolute;left:0;right:0;z-index:200;background:var(--bg-card);border:1px solid var(--border-bright);border-radius:10px;margin-top:4px;padding:8px 0;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" style="transition:background 0.1s;border-bottom:1px solid var(--border);margin-bottom:4px;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="nvt" onchange="updateDriftLabel(this)"> 🚫 Niet van toepassing</label>
-            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" style="transition:background 0.1s;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="nevel_zichtbaar" onchange="updateDriftLabel(this)"> 🌫️ Nevel/drift zichtbaar in de lucht</label>
+            <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" style="transition:background 0.1s;" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="nevel_zichtbaar" onchange="updateDriftLabel(this)"> 🌫 Nevel/drift zichtbaar in de lucht</label>
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="druppels_voelbaar" onchange="updateDriftLabel(this)"> 💦 Druppels/nevel voelbaar op huid</label>
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="drift_ver" onchange="updateDriftLabel(this)"> 📏 Drift zichtbaar op meer dan 10 meter</label>
             <label class="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''"><input type="checkbox" class="drift-check" value="geur_direct" onchange="updateDriftLabel(this)"> 👃 Geur direct waargenomen tijdens spuiten</label>
@@ -3095,74 +3095,100 @@ function perceelSamenvattingPDF(perceelnummer, meldingId) {
 // PESTICIDE-WEERPATROON ANALYSE
 // ============================================================
 
-// Analyseer weerpatroon en gewas → indicatie van spuittype
+// Omstandighedenregister — registreert objectieve weerfeiten en toetst aan juridische normen
+// Geen spuittypeindicaties — die zijn aanvechtbaar en niet bewijs. De teler is verplicht
+// een spuitregistratie bij te houden (art. 67 EU-Vo 1107/2009), opvraagbaar via NVWA.
 function analyseerSpuitpatroon(melding) {
   const gewas  = melding.gewas || '';
   const weer   = melding.weather || {};
-  // Correcte veldnamen uit het weer-object (Open-Meteo structuur)
   const regen  = weer.precipitation ?? 0;
   const rv     = weer.humidity ?? weer.relative_humidity ?? 0;
   const temp   = weer.temperature ?? 0;
   const wind   = weer.wind_speed ?? 0;
+  const windDir = weer.wind_dir ?? null;
+  const gusts  = weer.wind_gusts ?? 0;
   const uur    = new Date(melding.timestamp_local).getHours();
   const isNacht = uur >= 21 || uur <= 5;
-  const isSierteelt = ['lelies','tulpen','hyacinten','narcissen','gladiolen','pioenrozen','dahlia','overige_sierteelt'].includes(gewas);
 
-  const indicaties = [];
+  const feiten = [];
   let risicoScore = 0;
 
-  // Fungicide patronen
-  if (regen > 2 && isSierteelt) {
-    indicaties.push({ type: 'fungicide', label: '🍄 Fungicide waarschijnlijk', reden: `${regen}mm neerslag recent + sierteelt (schimmelpreventie na regen)`, score: 3 });
+  // Norm: wind >5 m/s (18 km/h) — Besluit gewasbeschermingsmiddelen art. 4
+  if (wind > 18) {
+    feiten.push({
+      label: `⚠️ Wind boven spuitnorm`,
+      reden: `${wind} km/h gemeten — norm is ≤18 km/h (5 m/s) bij toepassing gewasbeschermingsmiddelen (Besluit gewasbeschermingsmiddelen art. 4)`,
+      score: 3, kleur: 'danger'
+    });
     risicoScore += 3;
-  } else if (rv > 80 && isSierteelt) {
-    indicaties.push({ type: 'fungicide', label: '🍄 Fungicide mogelijk', reden: `Hoge luchtvochtigheid (${rv}%) gunstig voor schimmelontwikkeling in sierteelt`, score: 2 });
+  } else if (wind > 12) {
+    feiten.push({
+      label: `⚠️ Wind nabij spuitnorm`,
+      reden: `${wind} km/h gemeten — norm is ≤18 km/h (5 m/s); windstoten ${gusts} km/h`,
+      score: 2, kleur: 'warning'
+    });
     risicoScore += 2;
   }
 
-  // Insecticide patronen
-  if (isNacht && temp > 12) {
-    indicaties.push({ type: 'insecticide', label: '🦟 Insecticide patroon', reden: `Nachtelijk spuiten (${uur}:00u) + temp ${temp}°C — optimaal voor pyrethroïden`, score: 2 });
+  // Nachtelijk spuiten
+  if (isNacht) {
+    feiten.push({
+      label: `🌙 Nachtelijke spuitactiviteit`,
+      reden: `Tijdstip: ${uur}:00u — nachtelijk spuiten valt buiten gangbare agrarische werktijden en is bij sommige vergunningen verboden`,
+      score: 2, kleur: 'warning'
+    });
     risicoScore += 2;
   }
 
-  // Herbicide/drift patroon
-  if (wind > 10 && !isSierteelt) {
-    indicaties.push({ type: 'herbicide', label: '💨 Drift risico herbicide', reden: `Wind ${wind} km/h bij akkerbouw — verhoogd driftrisico`, score: 2 });
-    risicoScore += 2;
-  }
-
-  // PFAS-waarschuwing bij sierteelt — altijd tonen als gewas bekend is
-  if (isSierteelt) {
-    indicaties.push({ type: 'pfas', label: '⚠️ PFAS-risico', reden: 'In sierteelt (m.n. lelies) worden PFAS-houdende middelen gebruikt (TFA)', score: 1 });
+  // Hoge luchtvochtigheid — objectief feit, geen conclusie
+  if (rv > 85) {
+    feiten.push({
+      label: `💧 Hoge luchtvochtigheid`,
+      reden: `${rv}% relatieve luchtvochtigheid — bij hoge RV vertraagt verdamping van gewasbeschermingsmiddelen en neemt blootstellingsrisico toe`,
+      score: 1, kleur: 'info'
+    });
     risicoScore += 1;
   }
 
-  // Geen gewas maar weerpatroon wijst op spuiten
-  if (!gewas && regen > 2) {
-    indicaties.push({ type: 'algemeen', label: '🌧️ Spuiten na regen', reden: `${regen}mm neerslag recent — typisch fungicide- of herbicidemoment`, score: 1 });
+  // Neerslag recent
+  if (regen > 1) {
+    feiten.push({
+      label: `🌧️ Recente neerslag`,
+      reden: `${regen} mm neerslag geregistreerd — spuiten tijdens of direct na neerslag verhoogt afspoeling naar oppervlaktewater (Wm art. 6.3)`,
+      score: 1, kleur: 'info'
+    });
     risicoScore += 1;
   }
 
-  return { indicaties, risicoScore };
+  // Altijd: verwijzing naar registratieplicht
+  feiten.push({
+    label: `📋 Spuitregistratieplicht`,
+    reden: `De teler is verplicht elke toepassing vast te leggen (art. 67 EU-Vo 1107/2009). Opvraagbaar via NVWA. Gebruik dit dossier als aanleiding voor een handhavingsverzoek.`,
+    score: 0, kleur: 'muted'
+  });
+
+  return { indicaties: feiten, risicoScore };
 }
 
 function spuitpatroonHTML(melding, voorPDF = false) {
   const { indicaties, risicoScore } = analyseerSpuitpatroon(melding);
-  if (!indicaties.length) return '';
+  // Alleen tonen als er meer is dan alleen de registratieplicht-opmerking
+  const relevante = indicaties.filter(i => i.score > 0);
+  if (!relevante.length) return '';
 
   if (voorPDF) {
+    const kleurMap = { danger: '#dc2626', warning: '#d97706', info: '#2563eb', muted: '#64748b' };
     return `
-      <div style="margin:8px 0;padding:8px 10px;background:#eff6ff;border:1px solid #93c5fd;border-radius:4px;font-size:8.5pt;">
-        <div style="font-weight:bold;color:#1e40af;margin-bottom:4px;">🔬 SPUITTYPE INDICATIE (weerpatroon)</div>
-        ${indicaties.map(i => `<div><strong>${i.label}</strong> — ${i.reden}</div>`).join('')}
-        <div style="color:#1e40af;font-size:7.5pt;margin-top:4px;">Dit is een indicatie op basis van weerpatroon en gewas, geen bewijs. Gebruik art. 67 EU-Vo 1107/2009 voor inzage in spuitregistratie.</div>
+      <div style="margin:8px 0;padding:8px 10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:4px;font-size:8.5pt;">
+        <div style="font-weight:bold;color:#1e293b;margin-bottom:6px;">📋 WEEROMSTANDIGHEDENREGISTER</div>
+        ${indicaties.map(i => `<div style="margin-bottom:3px;color:${kleurMap[i.kleur]||'#374151'};"><strong>${i.label}</strong> — ${i.reden}</div>`).join('')}
+        <div style="color:#475569;font-size:7.5pt;margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px;">Bovenstaande zijn geregistreerde weerfeiten, geen juridische conclusies. De teler draagt bewijslast voor naleving (art. 67 EU-Vo 1107/2009).</div>
       </div>`;
   }
 
   const kleur = risicoScore >= 4 ? 'var(--danger)' : risicoScore >= 2 ? 'var(--warning)' : 'var(--text-muted)';
   return `<div style="font-family:var(--mono);font-size:0.6rem;color:${kleur};margin-top:4px;">
-    🔬 ${indicaties.map(i => i.label).join(' · ')}
+    📋 ${relevante.map(i => i.label).join(' · ')}
   </div>`;
 }
 
@@ -3910,7 +3936,7 @@ function updateTypeLabel() {
   if (!label) return;
   const labelMap = {
     spuitactiviteit: '🚜 Spuitactiviteit',
-    drift:           '🌫️ Drift / nevel',
+    drift:           '🌫 Drift / nevel',
     geur:            '👃 Chemische geur',
     nachtelijk:      '🌙 Nachtelijk',
     gezondheid:      '🏥 Gezondheidsklachten',
@@ -4291,10 +4317,11 @@ function maakDriftZoneLayer(melding) {
     L.polygon(punten, {
       color:       zone.kleur,
       fillColor:   zone.kleur,
-      fillOpacity: zone.alpha,
+      fillOpacity: zone.alpha * 0.7, // verlaagd zodat gestapelde zones niet optellen tot zwart
       weight:      1,
-      opacity:     0.6,
+      opacity:     0.5,
       dashArray:   zone.naam === 'laag' ? '4,4' : null,
+      interactive: false, // klikken gaat door naar markers eronder
     }).addTo(groep);
   });
 
