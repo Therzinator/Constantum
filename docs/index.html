@@ -753,7 +753,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.38</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.39</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -3958,143 +3958,149 @@ async function hashFile(file) {
 // Leest JPEG APP1/EXIF segment: datum, GPS, camera
 // ============================================================
 async function extractEXIF(file) {
-  if (!file.type.startsWith('image/jpeg') && !file.type.startsWith('image/jpg')) {
-    return null; // Alleen JPEG heeft EXIF
+  // Accepteer alle image types — type kan leeg zijn bij camera capture
+  if (file.type && !file.type.startsWith('image/jpeg') &&
+      !file.type.startsWith('image/jpg') &&
+      file.type !== '' && !file.name?.toLowerCase().endsWith('.jpg') &&
+      !file.name?.toLowerCase().endsWith('.jpeg')) {
+    return null;
   }
   try {
     const buffer = await file.arrayBuffer();
+    const bytes  = new Uint8Array(buffer);
     const view   = new DataView(buffer);
 
-    // Zoek APP1 marker (0xFFE1) in JPEG
-    if (view.getUint16(0) !== 0xFFD8) return null; // Geen JPEG
-    let offset = 2;
-    while (offset < view.byteLength - 4) {
-      const marker = view.getUint16(offset);
-      const segLen = view.getUint16(offset + 2);
-      if (marker === 0xFFE1) break; // APP1 gevonden
-      if ((marker & 0xFF00) !== 0xFF00) return null; // Geen geldige marker
-      offset += 2 + segLen;
+    // Controleer JPEG SOI marker
+    if (bytes[0] !== 0xFF || bytes[1] !== 0xD8) return null;
+
+    // Zoek APP1 (0xFFE1) segment
+    let segStart = 2;
+    while (segStart < bytes.length - 4) {
+      if (bytes[segStart] !== 0xFF) return null;
+      const marker = bytes[segStart + 1];
+      const segLen = view.getUint16(segStart + 2, false); // big-endian
+      if (marker === 0xE1) break; // APP1
+      if (marker === 0xD9 || marker === 0xDA) return null; // EOI/SOS
+      segStart += 2 + segLen;
     }
-    if (view.getUint16(offset) !== 0xFFE1) return null;
+    if (bytes[segStart] !== 0xFF || bytes[segStart + 1] !== 0xE1) return null;
 
-    const exifOffset = offset + 4; // Sla marker + length over
-    // Controleer EXIF header "Exif\0\0"
-    const exifHeader = String.fromCharCode(...new Uint8Array(buffer, exifOffset, 6));
-    if (!exifHeader.startsWith('Exif')) return null;
+    const app1Start = segStart + 4; // sla FF E1 + length over
+    // EXIF header "Exif\0\0"
+    if (bytes[app1Start]   !== 0x45 || bytes[app1Start+1] !== 0x78 ||
+        bytes[app1Start+2] !== 0x69 || bytes[app1Start+3] !== 0x66) return null;
 
-    const tiffOffset = exifOffset + 6;
-    const littleEndian = view.getUint16(tiffOffset) === 0x4949;
-    const getUint16 = (o) => view.getUint16(tiffOffset + o, littleEndian);
-    const getUint32 = (o) => view.getUint32(tiffOffset + o, littleEndian);
+    const tiff = app1Start + 6; // Begin van TIFF header
+    const le   = bytes[tiff] === 0x49; // little endian
+    const r16  = (o) => view.getUint16(tiff + o, le);
+    const r32  = (o) => view.getUint32(tiff + o, le);
 
-    // Lees IFD0
-    const ifd0Offset = getUint32(4);
+    if (r16(0) !== (le ? 0x4949 : 0x4D4D)) return null;
+    if (r16(2) !== 0x002A) return null; // TIFF magic
+
     const result = {};
 
-    function readIFD(ifdOffset) {
-      const count = getUint16(ifdOffset);
-      for (let i = 0; i < count; i++) {
-        const entryOffset = ifdOffset + 2 + i * 12;
-        const tag  = getUint16(entryOffset);
-        const type = getUint16(entryOffset + 2);
-        const num  = getUint32(entryOffset + 4);
-        const valOffset = entryOffset + 8;
+    // Lees ASCII string tag — waarde inline als num ≤ 4, anders op offset
+    function readASCII(entryOff) {
+      const num = r32(entryOff + 4);
+      const off = num <= 4 ? (entryOff + 8) : r32(entryOff + 8);
+      try {
+        return new TextDecoder('ascii')
+          .decode(new Uint8Array(buffer, tiff + off, Math.max(0, num - 1)))
+          .replace(/\0/g, '').trim();
+      } catch(e) { return null; }
+    }
 
-        // Tag 0x010F: Make
-        if (tag === 0x010F && type === 2) {
-          const strOff = num > 4 ? getUint32(valOffset) : valOffset - (tiffOffset - exifOffset - 6) % 4;
+    // Lees RATIONAL (teller/noemer)
+    function readRational(absOff) {
+      const n = view.getUint32(absOff,     le);
+      const d = view.getUint32(absOff + 4, le);
+      return d ? n / d : 0;
+    }
+
+    function parseIFD(ifdOff) {
+      if (ifdOff + 2 > bytes.length) return;
+      const count = r16(ifdOff);
+      for (let i = 0; i < count; i++) {
+        const e   = ifdOff + 2 + i * 12;
+        const tag = r16(e);
+        const typ = r16(e + 2);
+        const num = r32(e + 4);
+
+        if (tag === 0x010F) result.make  = readASCII(e); // Make
+        if (tag === 0x0110) result.model = readASCII(e); // Model
+        if (tag === 0x8769 && typ === 4) parseExifIFD(r32(e + 8)); // ExifIFD
+        if (tag === 0x8825 && typ === 4) parseGPSIFD(r32(e + 8));  // GPSIFD
+      }
+    }
+
+    function parseExifIFD(ifdOff) {
+      if (ifdOff + 2 > bytes.length) return;
+      const count = r16(ifdOff);
+      for (let i = 0; i < count; i++) {
+        const e   = ifdOff + 2 + i * 12;
+        const tag = r16(e);
+        const typ = r16(e + 2);
+        const num = r32(e + 4);
+
+        // DateTimeOriginal (0x9003) — ASCII "YYYY:MM:DD HH:MM:SS" (19-20 bytes)
+        if (tag === 0x9003 && typ === 2 && num >= 19) {
+          const off = r32(e + 8);
           try {
-            result.make = new TextDecoder().decode(new Uint8Array(buffer, tiffOffset + getUint32(valOffset), num - 1)).replace(/\0/g,'').trim();
+            const raw = new TextDecoder('ascii')
+              .decode(new Uint8Array(buffer, tiff + off, 19));
+            // EXIF datetime is LOKALE tijd — opslaan als lokale ISO zonder Z
+            if (/^\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)) {
+              result.datetime_original = raw.replace(/^(\d{4}):(\d{2}):(\d{2}) /, '$1-$2-$3T');
+            }
           } catch(e) {}
-        }
-        // Tag 0x0110: Model
-        if (tag === 0x0110 && type === 2) {
-          try {
-            result.model = new TextDecoder().decode(new Uint8Array(buffer, tiffOffset + getUint32(valOffset), num - 1)).replace(/\0/g,'').trim();
-          } catch(e) {}
-        }
-        // Tag 0x8769: ExifIFD pointer → recursief lezen voor DateTime
-        if (tag === 0x8769 && type === 4) {
-          readExifIFD(getUint32(valOffset));
-        }
-        // Tag 0x8825: GPS IFD pointer
-        if (tag === 0x8825 && type === 4) {
-          readGPSIFD(getUint32(valOffset));
         }
       }
     }
 
-    function readExifIFD(ifdOffset) {
-      try {
-        const count = getUint16(ifdOffset);
-        for (let i = 0; i < count; i++) {
-          const entryOffset = ifdOffset + 2 + i * 12;
-          const tag  = getUint16(entryOffset);
-          const type = getUint16(entryOffset + 2);
-          const num  = getUint32(entryOffset + 4);
-          // Tag 0x9003: DateTimeOriginal (ASCII 20 bytes: "YYYY:MM:DD HH:MM:SS\0")
-          if (tag === 0x9003 && type === 2 && num === 20) {
-            try {
-              const strOff = getUint32(entryOffset + 8);
-              const raw = new TextDecoder().decode(new Uint8Array(buffer, tiffOffset + strOff, 19));
-              // Omzetten van "YYYY:MM:DD HH:MM:SS" naar ISO 8601
-              result.datetime_original = raw.replace(/^(\d{4}):(\d{2}):(\d{2}) /, '$1-$2-$3T') + 'Z';
-            } catch(e) {}
-          }
-          // Tag 0x9290: SubSecTimeOriginal
-          if (tag === 0x9290 && type === 2) {
-            try {
-              const strOff = num > 4 ? getUint32(entryOffset + 8) : entryOffset + 8;
-              result.subsec = new TextDecoder().decode(new Uint8Array(buffer, tiffOffset + (num > 4 ? getUint32(entryOffset + 8) : 0) + (num <= 4 ? entryOffset + 8 - tiffOffset : 0), num - 1));
-            } catch(e) {}
-          }
+    function parseGPSIFD(ifdOff) {
+      if (ifdOff + 2 > bytes.length) return;
+      const count = r16(ifdOff);
+      const gps   = {};
+      for (let i = 0; i < count; i++) {
+        const e   = ifdOff + 2 + i * 12;
+        const tag = r16(e);
+        const typ = r16(e + 2);
+        const num = r32(e + 4);
+
+        // GPSLatitudeRef (1), GPSLatitude (2), GPSLongitudeRef (3), GPSLongitude (4)
+        if (tag === 0x0001 && typ === 2) gps.latRef = String.fromCharCode(bytes[tiff + e + 8] || 78);
+        if (tag === 0x0003 && typ === 2) gps.lngRef = String.fromCharCode(bytes[tiff + e + 8] || 69);
+        if ((tag === 0x0002 || tag === 0x0004) && typ === 5 && num === 3) {
+          const base = tiff + r32(e + 8);
+          const deg  = readRational(base);
+          const min  = readRational(base + 8);
+          const sec  = readRational(base + 16);
+          const val  = deg + min / 60 + sec / 3600;
+          if (tag === 0x0002) gps.lat = val;
+          else                gps.lng = val;
         }
-      } catch(e) {}
+        if (tag === 0x0006 && typ === 5) {
+          const base = tiff + r32(e + 8);
+          gps.altitude = readRational(base);
+        }
+      }
+      if (gps.lat != null && gps.lng != null) {
+        result.gps_lat      = gps.latRef === 'S' ? -gps.lat : gps.lat;
+        result.gps_lng      = gps.lngRef === 'W' ? -gps.lng : gps.lng;
+        result.gps_altitude = gps.altitude ?? null;
+      }
     }
 
-    function readGPSIFD(gpsOffset) {
-      try {
-        const count = getUint16(gpsOffset);
-        const gps = {};
-        for (let i = 0; i < count; i++) {
-          const entryOffset = gpsOffset + 2 + i * 12;
-          const tag  = getUint16(entryOffset);
-          const type = getUint16(entryOffset + 2);
-          const num  = getUint32(entryOffset + 4);
-          // Lees RATIONAL (type 5): teller/noemer paren
-          const readRat = (o) => {
-            const absO = tiffOffset + getUint32(entryOffset + 8) + o * 8;
-            const num  = view.getUint32(absO, littleEndian);
-            const den  = view.getUint32(absO + 4, littleEndian);
-            return den ? num / den : 0;
-          };
-          if (tag === 0x0001 && type === 2) gps.lat_ref = String.fromCharCode(view.getUint8(entryOffset + 8));
-          if (tag === 0x0002 && type === 5 && num === 3) {
-            gps.lat = readRat(0) + readRat(1)/60 + readRat(2)/3600;
-          }
-          if (tag === 0x0003 && type === 2) gps.lng_ref = String.fromCharCode(view.getUint8(entryOffset + 8));
-          if (tag === 0x0004 && type === 5 && num === 3) {
-            gps.lng = readRat(0) + readRat(1)/60 + readRat(2)/3600;
-          }
-          if (tag === 0x0006 && type === 5) {
-            const absO = tiffOffset + getUint32(entryOffset + 8);
-            const n = view.getUint32(absO, littleEndian);
-            const d = view.getUint32(absO + 4, littleEndian);
-            gps.altitude = d ? n / d : null;
-          }
-        }
-        if (gps.lat != null) {
-          result.gps_lat = gps.lat_ref === 'S' ? -gps.lat : gps.lat;
-          result.gps_lng = gps.lng_ref === 'W' ? -gps.lng : gps.lng;
-          result.gps_altitude = gps.altitude ?? null;
-        }
-      } catch(e) {}
-    }
+    const ifd0 = r32(4);
+    parseIFD(ifd0);
 
-    readIFD(ifd0Offset);
-    return Object.keys(result).length > 0 ? result : null;
+    const found = Object.keys(result).filter(k => result[k] != null);
+    if (found.length === 0) return null;
+    console.log('[EXIF] Gevonden:', found.join(', '), '—', file.name);
+    return result;
   } catch (e) {
-    console.warn('[EXIF] Extractie mislukt:', e.message);
+    console.warn('[EXIF] Extractie mislukt:', e.message, '—', file.name);
     return null;
   }
 }
@@ -6630,6 +6636,20 @@ async function exportPDF() {
         <div><div class="label">Totaal meldingen</div><div class="value">${verrijkt.length}</div></div>
         <div><div class="label">Periode</div><div class="value">${verrijkt.length ? new Date(verrijkt[verrijkt.length-1].timestamp_local).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }) + ' — ' + new Date(verrijkt[0].timestamp_local).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : '—'}</div></div>
         <div><div class="label">Dossier versie</div><div class="value">SpuitLogger v${APP_VERSION_CLIENT}</div></div>
+        <div><div class="label">Weerdata bron</div><div class="value">${Object.values(knmiData).some(k => k !== null)
+          ? `✓ KNMI Open Data (CC BY 4.0) — ${Object.values(knmiData).filter(k=>k!==null).length}/${verrijkt.length} meldingen gedekt`
+          : 'Open-Meteo (open source) — geen KNMI API key'
+        }</div></div>
+        ${Object.values(knmiData).some(k => k !== null) ? `
+        <div style="grid-column:1/-1;margin-top:4px;padding:8px 10px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:#14532d;">
+          ✓ Meteorologische data in dit dossier is gedekt door officiële KNMI meetstationdata (CC BY 4.0 © KNMI).
+          Stations: ${[...new Set(Object.values(knmiData).filter(k=>k).map(k=>k.station))].join(', ')}.
+          Geschikt als bewijsmateriaal in juridische procedures.
+        </div>` : `
+        <div style="grid-column:1/-1;margin-top:4px;padding:6px 10px;background:#fefce8;border:1px solid #fde047;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:#854d0e;">
+          ⚠️ Geen KNMI API key ingesteld. Weerdata afkomstig van Open-Meteo (open source, CC BY).
+          Voor maximale juridische bewijswaarde: stel een KNMI API key in via Instellingen.
+        </div>`}
       </div>
     </div>
 
@@ -6912,7 +6932,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '8.38';
+const APP_VERSION_CLIENT = '8.39';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
