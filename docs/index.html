@@ -753,7 +753,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.28</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.30</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -4514,8 +4514,9 @@ function setCompassDegrees(deg) {
 }
 
 // Windpijl-popup op de meldingpin — toont actuele windrichting en -snelheid
+// Alleen zichtbaar nadat de bewoner handmatig een pin heeft geplaatst
 function updateFormMarkerWindPopup() {
-  if (!formMarker || !currentWeather) return;
+  if (!formMarker || !currentWeather || !window._pinManuallyPlaced) return;
   const deg    = currentWeather.wind_dir ?? 0;
   const speed  = currentWeather.wind_speed ?? '?';
   const gusts  = currentWeather.wind_gusts ?? '?';
@@ -4931,6 +4932,7 @@ async function submitMelding() {
     const defaultType = document.querySelector('.type-check[value="spuitactiviteit"]');
     if (defaultType) defaultType.checked = true;
     updateTypeLabel();
+    window._pinManuallyPlaced = false; // reset windpijl-popup trigger
     document.getElementById('f-desc').value = '';
     document.getElementById('f-geur').value = 0;
     document.querySelectorAll('.health-check, .activity-check, .drift-check').forEach(el => el.checked = false);
@@ -5117,6 +5119,7 @@ function initFormMap() {
       const p = e.target.getLatLng();
       document.getElementById('f-lat').value = p.lat.toFixed(6);
       document.getElementById('f-lng').value = p.lng.toFixed(6);
+      window._pinManuallyPlaced = true;
       detecteerPerceel();
       detecteerAfstandEnNatura2000(p.lat, p.lng);
       updateFormMarkerWindPopup();
@@ -5125,6 +5128,7 @@ function initFormMap() {
       formMarker.setLatLng(e.latlng);
       document.getElementById('f-lat').value = e.latlng.lat.toFixed(6);
       document.getElementById('f-lng').value = e.latlng.lng.toFixed(6);
+      window._pinManuallyPlaced = true;
       detecteerPerceel();
       detecteerAfstandEnNatura2000(e.latlng.lat, e.latlng.lng);
       updateFormMarkerWindPopup();
@@ -6038,6 +6042,20 @@ async function exportPDF() {
   let meldingen = getMeldingen();
   if (!meldingen.length) { toast('Geen meldingen om te exporteren', 'error'); return; }
 
+  // Logo als base64 inladen zodat het werkt vanuit blob: URL
+  let logoDataUrl = '';
+  try {
+    const logoRes = await fetch('icons/header-logo.png');
+    if (logoRes.ok) {
+      const blob = await logoRes.blob();
+      logoDataUrl = await new Promise(res => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (e) { /* logo niet beschikbaar, geen probleem */ }
+
   // Datumfilter van/tot
   const vanMaand = document.getElementById('pdf-van-maand')?.value;
   const vanJaar  = document.getElementById('pdf-van-jaar')?.value;
@@ -6112,8 +6130,10 @@ async function exportPDF() {
 <head>
   <meta charset="UTF-8">
   <title>SpuitLogger — Juridisch Dossier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Syne:wght@400;600;700;800&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Syne', sans-serif; background: white; color: #1a1a2e; font-size: 11pt; line-height: 1.6; }
     p, li, td, th { font-family: 'Syne', sans-serif; }
@@ -6178,7 +6198,7 @@ async function exportPDF() {
   <!-- Header -->
   <div class="header">
     <div class="header-left">
-      <img src="icons/header-logo.png" width="48" height="48" style="border-radius:6px;flex-shrink:0;" alt="SpuitLogger logo" onerror="this.style.display='none'">
+      ${logoDataUrl ? `<img src="${logoDataUrl}" width="48" height="48" style="border-radius:6px;flex-shrink:0;" alt="SpuitLogger logo">` : ''}
       <div>
         <div class="header-title">SpuitLogger</div>
         <div class="header-sub">JURIDISCH DOSSIER — SPUITACTIVITEITEN REGISTRATIE</div>
@@ -6214,14 +6234,19 @@ async function exportPDF() {
       const mapHtml = m.gps?.lat && m.gps?.lng ? (() => {
         const lat  = m.gps.lat;
         const lng  = m.gps.lng;
-        const zoom = 15;
+        const zoom = 17; // zoom 17: straatniveau, percelen duidelijk zichtbaar
         const zoom2 = Math.pow(2, zoom);
         const tileXf = (lng + 180) / 360 * zoom2;
         const tileYf = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * zoom2;
         const tileX  = Math.floor(tileXf);
         const tileY  = Math.floor(tileYf);
+        // Pin pixel-offset binnen de 3×3 tile-grid (768×768px native)
         const pinPixelX = Math.round(((tileXf - tileX) + 1) * 256);
         const pinPixelY = Math.round(((tileYf - tileY) + 1) * 256);
+        // Weergavegrootte: 384px = native 768px × 0.5 schaal
+        const scale = 0.5;
+        const px = Math.round(pinPixelX * scale);
+        const py = Math.round(pinPixelY * scale);
         const windInfo = m.weather?.wind_dir != null
           ? `Wind: ${m.weather.wind_speed ?? '?'} km/h uit ${degToCompass(m.weather.wind_dir)} (${m.weather.wind_dir}°)`
           : 'Winddata niet beschikbaar';
@@ -6232,18 +6257,17 @@ async function exportPDF() {
             `<img src="https://tile.openstreetmap.org/${zoom}/${tileX+dx}/${tileY+dy}.png" style="width:256px;height:256px;display:block;float:left;" crossorigin="anonymous">`
           ).join('')
         ).join('<div style="clear:both;"></div>');
+        // SVG GPS-pin icoon (standaard teardrop shape)
+        const gpsPinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32"><path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20C24 5.373 18.627 0 12 0z" fill="#ef4444" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg>`;
+        const gpsPinDataUrl = 'data:image/svg+xml;base64,' + btoa(gpsPinSvg);
         return `<div class="map-col">
           <div class="label" style="margin-bottom:6px;">Locatiekaart & Driftzone</div>
           <div style="position:relative;width:384px;max-width:100%;height:384px;overflow:hidden;border-radius:4px;border:1px solid #e2e8f0;">
-            <div style="position:absolute;top:0;left:0;width:768px;height:768px;transform:scale(0.5);transform-origin:top left;">
+            <div style="position:absolute;top:0;left:0;width:768px;height:768px;transform:scale(${scale});transform-origin:top left;">
               ${rows}
             </div>
-            <div style="position:absolute;left:${pinPixelX/2}px;top:${pinPixelY/2}px;transform:translate(-50%,-100%);pointer-events:none;">
-              <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:14px solid #ef4444;margin:0 auto;"></div>
-              <div style="width:9px;height:9px;border-radius:50%;background:#ef4444;border:2px solid #fff;margin:-3px auto 0;"></div>
-            </div>
-            <div style="position:absolute;left:${pinPixelX/2}px;top:${pinPixelY/2 - 7}px;width:1px;height:14px;background:rgba(239,68,68,0.5);transform:translateX(-50%);"></div>
-            <div style="position:absolute;left:${pinPixelX/2 - 7}px;top:${pinPixelY/2}px;width:14px;height:1px;background:rgba(239,68,68,0.5);transform:translateY(-50%);"></div>
+            <!-- SVG GPS-pin -->
+            <img src="${gpsPinDataUrl}" width="24" height="32" style="position:absolute;left:${px}px;top:${py}px;transform:translate(-50%,-100%);pointer-events:none;">
           </div>
           <div class="mono" style="font-size:7pt;color:#374151;margin-top:4px;">📍 ${lat.toFixed(6)}°N · ${lng.toFixed(6)}°E · ${windInfo}</div>
           ${zones.length ? `<div class="mono" style="font-size:6.5pt;color:#6b7280;margin-top:2px;">FOCUS STEP: ${zonesText}</div>` : ''}
@@ -6480,7 +6504,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '8.28';
+const APP_VERSION_CLIENT = '8.30';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
