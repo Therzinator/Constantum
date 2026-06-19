@@ -753,7 +753,7 @@
       <div>
         <div style="font-family:var(--sans); font-weight:800; font-size:1rem; letter-spacing:-0.02em; display:flex; align-items:baseline; gap:6px;">
           SpuitLogger
-          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.39</span>
+          <span id="header-versie" style="font-family:var(--mono);font-size:0.5rem;color:var(--text-muted);font-weight:400;letter-spacing:0;">v8.43</span>
         </div>
         <div style="font-family:var(--mono); font-size:0.55rem; color:var(--text-muted); margin-top:-2px;" id="app-version-label">SPUITACTIVITEITEN DOSSIER</div>
       </div>
@@ -1125,7 +1125,12 @@
               </button>
             </div>
           </div>
-          <textarea id="f-desc" class="form-textarea px-3 py-3 text-sm" rows="4" placeholder="Beschrijf zo objectief mogelijk wat u waarneemt..." list="desc-suggestions"></textarea>
+          <textarea id="f-desc" class="form-textarea px-3 py-3 text-sm" rows="4"
+            placeholder="Beschrijf zo objectief mogelijk wat u waarneemt..."
+            list="desc-suggestions"
+            onblur="if(!this.value.trim()){toonVeldFout('f-desc','Omschrijving is verplicht voor juridische documentatie')}else{verwijderVeldFout('f-desc')}"
+            oninput="if(this.value.trim())verwijderVeldFout('f-desc')"></textarea>
+          <div style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted);margin-top:4px;">Beschrijf wat je ziet, hoort of ruikt. Wees zo feitelijk mogelijk — geen aannames.</div>
           <datalist id="desc-suggestions">
             <option value="Spuiten binnen 50 meter van de woning waargenomen">
             <option value="Spuitmachine actief op aangrenzend perceel">
@@ -1712,6 +1717,11 @@ const HOME_LAT  = DEFAULT_LOCATION.lat;
 const HOME_LNG  = DEFAULT_LOCATION.lng;
 const HOME_NAME = DEFAULT_LOCATION.label;
 
+// Privacy: thuislocatie anonimiseren voor externe outputs
+// Afgerond op 2 decimalen = ~1.1km nauwkeurigheid — niet herleidbaar tot exact adres
+const HOME_LAT_ANON = Math.round(HOME_LAT * 100) / 100;
+const HOME_LNG_ANON = Math.round(HOME_LNG * 100) / 100;
+
 // [WIJZIGING 1] Lightbox state
 let lightboxFiles = [];
 let lightboxIndex = 0;
@@ -2030,6 +2040,13 @@ async function sbSyncMelding(melding) {
   // type, description, gps_lat, gps_lng, weather,
   // gezondheidsklachten, activiteiten, client_hash,
   // sync_status, warnings, deleted
+  // Privacy: e-mailadres hashen voor opslag in entries tabel (DPIA vereiste)
+  // Plaintext email blijft uitsluitend in auth.users (Supabase intern)
+  // De hash is consistent: dezelfde email geeft altijd dezelfde hash → melderCode werkt nog
+  const melderEmailHash = melding.melder_email
+    ? await sha256(melding.melder_email)
+    : (_sbUser.email ? await sha256(_sbUser.email) : null);
+
   const record = {
     id:                   melding.id,
     user_id:              _sbUser.id,
@@ -2055,7 +2072,7 @@ async function sbSyncMelding(melding) {
     kwetsbare_locaties:   melding.kwetsbare_locaties || [],
     client_hash:          melding.hash             || null,
     rfc3161:              melding.rfc3161          || null,
-    melder_email:         melding.melder_email     || _sbUser.email || null,
+    melder_email:         melderEmailHash,          // SHA-256 hash, niet plaintext
     bedrijfsnaam:         melding.bedrijfsnaam     || null,
     perceelnummer:        melding.perceelnummer    || null,
     gewas:                melding.gewas            || null,
@@ -2988,8 +3005,10 @@ function laadKNMIKey() {
 // Haal KNMI stationsdata op voor een locatie en tijdstip
 // Gebruikt EDR API: nearest station + datetime
 async function haalKNMIWeerdata(lat, lng, isoDatetime) {
-  const key = localStorage.getItem('spuitlog_knmi_key');
-  if (!key) return null;
+  const rawKey = localStorage.getItem('spuitlog_knmi_key');
+  if (!rawKey) return null;
+  // KNMI API vereist Bearer JWT — voeg prefix toe als die ontbreekt
+  const key = rawKey.startsWith('Bearer ') ? rawKey : `Bearer ${rawKey}`;
 
   try {
     // Stap 1: dichtstbijzijnd station vinden via /locations endpoint
@@ -3954,6 +3973,30 @@ async function hashFile(file) {
 }
 
 // ============================================================
+// EXIF-GPS STRIPPER — privacy bescherming melder
+// Rendert JPEG opnieuw via canvas zodat alle EXIF metadata
+// (inclusief GPS-coördinaten) wordt verwijderd uit het opgeslagen bestand.
+// De EXIF-data zelf wordt APART bewaard voor het juridisch dossier.
+// ============================================================
+async function stripEXIFGPS(dataUrl, mimeType) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      // Canvas-export heeft geen EXIF — alle metadata is verwijderd
+      const cleanDataUrl = canvas.toDataURL(mimeType || 'image/jpeg', 0.92);
+      resolve(cleanDataUrl);
+    };
+    img.onerror = () => resolve(dataUrl); // Fallback: origineel bij fout
+    img.src = dataUrl;
+  });
+}
+
+// ============================================================
 // EXIF EXTRACTIE — puur JavaScript, geen externe library
 // Leest JPEG APP1/EXIF segment: datum, GPS, camera
 // ============================================================
@@ -4258,11 +4301,33 @@ function toggleTypeDropdown() {
   const open = panel.style.display !== 'none';
   panel.style.display = open ? 'none' : 'block';
   if (btn) btn.querySelector('span:last-child').textContent = open ? '▼' : '▲';
+  // Sluit andere dropdowns
   if (!open) {
     document.getElementById('activiteit-dropdown-panel')?.style.setProperty('display','none');
     document.getElementById('drift-dropdown-panel')?.style.setProperty('display','none');
+    const activiteitBtn = document.getElementById('activiteit-dropdown-btn');
+    if (activiteitBtn) activiteitBtn.querySelector('span:last-child').textContent = '▼';
   }
 }
+
+// Sluit alle dropdowns bij klik buiten
+document.addEventListener('click', function(e) {
+  const dropdowns = [
+    { panel: 'type-dropdown-panel',      btn: 'type-dropdown-btn' },
+    { panel: 'activiteit-dropdown-panel', btn: 'activiteit-dropdown-btn' },
+    { panel: 'drift-dropdown-panel',      btn: 'drift-dropdown-btn' },
+  ];
+  dropdowns.forEach(({ panel, btn }) => {
+    const panelEl = document.getElementById(panel);
+    const btnEl   = document.getElementById(btn);
+    if (!panelEl || panelEl.style.display === 'none') return;
+    if (!panelEl.contains(e.target) && e.target !== btnEl && !btnEl?.contains(e.target)) {
+      panelEl.style.display = 'none';
+      const chevron = btnEl?.querySelector('span:last-child');
+      if (chevron) chevron.textContent = '▼';
+    }
+  });
+});
 
 function updateTypeLabel() {
   const checked = Array.from(document.querySelectorAll('.type-check:checked'));
@@ -4282,6 +4347,7 @@ function updateTypeLabel() {
   } else {
     label.style.color = 'var(--text-primary)';
     label.textContent = checked.map(el => labelMap[el.value] || el.value).join(' · ');
+    verwijderDropdownFout('type-dropdown-btn');
   }
 }
 
@@ -4388,15 +4454,6 @@ function updateDriftLabel(changedEl) {
     label.textContent = checked.map(el => labelMap[el.value]?.split(' ')[0] || '').join('  ');
   }
 }
-
-// Sluit drift dropdown bij klik buiten
-document.addEventListener('click', e => {
-  const panel = document.getElementById('drift-dropdown-panel');
-  const btn   = document.getElementById('drift-dropdown-btn');
-  if (panel && btn && !panel.contains(e.target) && !btn.contains(e.target)) {
-    panel.style.display = 'none';
-  }
-});
 
 // ============================================================
 // GPS
@@ -4911,16 +4968,23 @@ async function handleFiles(event) {
     // Hash berekenen op originele binary
     const hash = await hashFile(file);
 
-    // EXIF extractie (alleen JPEG)
+    // EXIF extractie (alleen JPEG) — metadata bewaren voor dossier
     const exif = await extractEXIF(file);
 
     // Lees volledige dataUrl (voor IndexedDB opslag + lightbox)
-    const dataUrl = await new Promise((resolve, reject) => {
+    const rawDataUrl = await new Promise((resolve, reject) => {
       const r = new FileReader();
       r.onload  = e => resolve(e.target.result);
       r.onerror = () => reject(new Error('Bestand lezen mislukt'));
       r.readAsDataURL(file);
     });
+
+    // EXIF-GPS strippen via canvas-rerender (privacy bescherming melder)
+    // GPS-coördinaten uit foto verwijderen; EXIF-data zelf bewaard in .exif veld
+    const dataUrl = isVideo ? rawDataUrl : await stripEXIFGPS(rawDataUrl, file.type);
+    if (!isVideo && exif?.gps_lat) {
+      console.log(`[Privacy] EXIF-GPS gestript uit ${file.name} (was: ${exif.gps_lat.toFixed(4)}, ${exif.gps_lng.toFixed(4)})`);
+    }
 
     // Maak thumbnail (alleen afbeeldingen; video's krijgen null)
     const isVideo = file.type.startsWith('video/');
@@ -5111,22 +5175,86 @@ function initLightboxEvents() {
 // ============================================================
 // SUBMIT MELDING — twee-fase opslag: metadata LS + bijlagen IDB
 // ============================================================
+// INLINE VALIDATIE HELPERS
+// ============================================================
+function toonVeldFout(elementId, bericht) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.style.borderColor = 'var(--danger)';
+  el.style.boxShadow   = '0 0 0 2px rgba(239,68,68,0.2)';
+  // Verwijder bestaande foutmelding
+  const bestaande = el.parentElement.querySelector('.veld-fout');
+  if (bestaande) bestaande.remove();
+  const fout = document.createElement('div');
+  fout.className = 'veld-fout';
+  fout.style.cssText = 'font-family:var(--mono);font-size:0.6rem;color:var(--danger);margin-top:4px;display:flex;align-items:center;gap:4px;';
+  fout.innerHTML = `⚠️ ${bericht}`;
+  el.parentElement.appendChild(fout);
+}
+
+function toonDropdownFout(btnId, bericht) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.style.borderColor = 'var(--danger)';
+  btn.style.boxShadow   = '0 0 0 2px rgba(239,68,68,0.2)';
+  const bestaande = btn.parentElement.querySelector('.veld-fout');
+  if (bestaande) bestaande.remove();
+  const fout = document.createElement('div');
+  fout.className = 'veld-fout';
+  fout.style.cssText = 'font-family:var(--mono);font-size:0.6rem;color:var(--danger);margin-top:4px;display:flex;align-items:center;gap:4px;';
+  fout.innerHTML = `⚠️ ${bericht}`;
+  btn.parentElement.appendChild(fout);
+}
+
+function verwijderVeldFout(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.style.borderColor = '';
+  el.style.boxShadow   = '';
+  const fout = el.parentElement?.querySelector('.veld-fout');
+  if (fout) fout.remove();
+}
+
+function verwijderDropdownFout(btnId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.style.borderColor = '';
+  btn.style.boxShadow   = '';
+  const fout = btn.parentElement?.querySelector('.veld-fout');
+  if (fout) fout.remove();
+}
+
+function scrollNaarEersteFout() {
+  const fout = document.querySelector('#page-melding .veld-fout');
+  if (fout) {
+    fout.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// ============================================================
 async function submitMelding() {
+  // Reset alle inline fouten
+  ['f-desc'].forEach(id => verwijderVeldFout(id));
+  ['type-dropdown-btn'].forEach(id => verwijderDropdownFout(id));
+
   const typeChecks = Array.from(document.querySelectorAll('.type-check:checked')).map(el => el.value);
-  const type = typeChecks[0] || ''; // primair type voor achterwaartse compatibiliteit
+  const type = typeChecks[0] || '';
   const desc = document.getElementById('f-desc').value.trim();
 
-  if (!typeChecks.length) { toast('Selecteer minstens één type waarneming', 'error'); return; }
-  if (!desc) { toast('Voer een omschrijving in', 'error'); return; }
+  let heeftFouten = false;
 
-  // Verplichte subjectieve waarnemingen
-  const geurVal = document.getElementById('f-geur').value;
-  const windVal = document.getElementById('f-wind-subj').value;
-  if (geurVal === null || geurVal === undefined || geurVal === '') {
-    toast('Selecteer een geurintensiteit', 'error'); return;
+  if (!typeChecks.length) {
+    toonDropdownFout('type-dropdown-btn', 'Selecteer minstens één type waarneming');
+    heeftFouten = true;
   }
-  if (!windVal || windVal === '') {
-    toast('Selecteer een wind waarneming', 'error'); return;
+  if (!desc) {
+    toonVeldFout('f-desc', 'Voer een omschrijving in — beschrijf wat je waarneemt');
+    heeftFouten = true;
+  }
+
+  if (heeftFouten) {
+    scrollNaarEersteFout();
+    return;
   }
 
   const btn = document.getElementById('submit-btn');
@@ -5175,7 +5303,7 @@ async function submitMelding() {
       type,
       types: typeChecks,  // alle geselecteerde types
       description: desc,
-      melder_email: _sbUser?.email || null,
+      melder_email: _sbUser?.email ? await sha256(_sbUser.email) : null,
       bedrijfsnaam:   document.getElementById('f-bedrijfsnaam')?.value.trim() || null,
       perceelnummer:  document.getElementById('f-perceelnummer')?.value.trim() || null,
       gewas:          document.getElementById('f-gewas')?.value || null,
@@ -5290,7 +5418,10 @@ async function submitMelding() {
       toast('⚡ Offline — melding in sync-wachtrij', '');
     }
 
-    // ── Reset formulier ────────────────────────────────────────
+    // Reset inline validatie-fouten
+    ['f-desc'].forEach(id => verwijderVeldFout(id));
+    ['type-dropdown-btn'].forEach(id => verwijderDropdownFout(id));
+    // Reset formulier velden
     document.querySelectorAll('.type-check').forEach(el => el.checked = false);
     const defaultType = document.querySelector('.type-check[value="spuitactiviteit"]');
     if (defaultType) defaultType.checked = true;
@@ -5395,6 +5526,11 @@ function showPage(name) {
   }
   if (name === 'dashboard') {
     updateDashboard();
+    // Leaflet zwarte frames fix: invalidateSize na CSS display:block
+    if (dashMap) {
+      setTimeout(() => dashMap.invalidateSize(), 50);
+      setTimeout(() => dashMap.invalidateSize(), 250);
+    }
   }
   if (name === 'tijdlijn') {
     renderTimeline();
@@ -5503,7 +5639,7 @@ function initFormMap() {
 // DASHBOARD
 // ============================================================
 function initDashMap() {
-  dashMap = L.map('leaflet-map').setView([HOME_LAT, HOME_LNG], 13);
+  dashMap = L.map('leaflet-map', { zoomControl: true }).setView([HOME_LAT, HOME_LNG], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap', maxZoom: 19
   }).addTo(dashMap);
@@ -5512,6 +5648,12 @@ function initDashMap() {
     iconSize: [16,16], className: ''
   });
   L.marker([HOME_LAT, HOME_LNG], { icon: homeIcon }).addTo(dashMap).bindPopup('🏠 ' + HOME_NAME);
+
+  // Fix zwarte frames bij schermrotatie en venster-resize
+  window.addEventListener('resize', () => {
+    if (dashMap) setTimeout(() => dashMap.invalidateSize(), 100);
+    if (formMap) setTimeout(() => formMap.invalidateSize(), 100);
+  });
 }
 
 
@@ -6705,8 +6847,21 @@ async function exportPDF() {
       const fotoHtml = fotos.length ? `<div class="photo-col">
         <div class="label" style="margin-bottom:6px;">Fotobewijs (${fotos.length})</div>
         ${fotos.length === 1
-          ? `<div class="photo-single"><img src="${fotos[0].dataUrl}" alt="${fotos[0].name}" onclick="openLightbox('${fotos[0].dataUrl.replace(/'/g,"\\'")}')"></div>`
-          : `<div class="photo-grid-pdf">${fotos.map(f => `<img src="${f.dataUrl}" alt="${f.name}" onclick="openLightbox('${f.dataUrl.replace(/'/g,"\\'")}')"`+`>`).join('')}</div>`
+          ? `<div class="photo-single">
+               <img src="${fotos[0].dataUrl}" alt="${fotos[0].name}" onclick="openLightbox('${fotos[0].dataUrl.replace(/'/g,"\\'")}')">
+               ${fotos[0].exif ? `<div style="font-family:'JetBrains Mono',monospace;font-size:6.5pt;color:#374151;margin-top:4px;padding:4px 6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;">
+                 ${fotos[0].exif.datetime_original ? `📅 ${fotos[0].exif.datetime_original.replace('T',' ')} (lokale tijd camera)` : ''}
+                 ${fotos[0].exif.gps_lat ? ` · 📍 ${fotos[0].exif.gps_lat.toFixed(5)}°N · ${fotos[0].exif.gps_lng.toFixed(5)}°E` : ''}
+                 ${fotos[0].exif.make ? ` · 📷 ${fotos[0].exif.make} ${fotos[0].exif.model || ''}` : ''}
+               </div>` : ''}
+             </div>`
+          : `<div class="photo-grid-pdf">${fotos.map(f => `
+               <div>
+                 <img src="${f.dataUrl}" alt="${f.name}" onclick="openLightbox('${f.dataUrl.replace(/'/g,"\\'")}')">
+                 ${f.exif ? `<div style="font-family:'JetBrains Mono',monospace;font-size:6pt;color:#374151;margin-top:2px;padding:2px 4px;background:#f8fafc;border-radius:3px;">
+                   ${f.exif.datetime_original ? f.exif.datetime_original.replace('T',' ') : ''}${f.exif.gps_lat ? ` · 📍 ${f.exif.gps_lat.toFixed(4)}°N ${f.exif.gps_lng.toFixed(4)}°E` : ''}
+                 </div>` : ''}
+               </div>`).join('')}</div>`
         }
       </div>` : '';
 
@@ -6932,7 +7087,7 @@ window.addEventListener('offline', updateOnlineStatus);
 // ============================================================
 // SERVICE WORKER — REGISTRATIE & UPDATE MANAGEMENT
 // ============================================================
-const APP_VERSION_CLIENT = '8.39';
+const APP_VERSION_CLIENT = '8.43';
 
 let _swRegistration  = null;   // actieve SW registratie
 let _updateCheckTimer = null;  // interval ID voor periodieke check
@@ -7163,6 +7318,9 @@ window.addEventListener('DOMContentLoaded', () => {
   if (nvtCheck) { nvtCheck.checked = true; updateDriftLabel(nvtCheck); }
   updateOnlineStatus();
   initDashMap();
+  // Leaflet zwarte frames fix bij initieel laden
+  setTimeout(() => { if (dashMap) dashMap.invalidateSize(); }, 100);
+  setTimeout(() => { if (dashMap) dashMap.invalidateSize(); }, 500);
   updateDashboard();
   initLightboxEvents();
   laadOfflineQueue();
