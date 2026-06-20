@@ -2,13 +2,19 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  /* Plakt direct onder .app-header (zelfde sticky-truc, zie AppHeader.css)
-     zodat de melder tijdens het invullen altijd snel naar een ontbrekend
-     onderdeel kan springen zonder terug te scrollen. */
-  position: sticky;
+  /* Vast (niet sticky) direct onder .app-header — blijft daardoor altijd
+     boven de rest van de Melding-pagina staan, ook als sticky door een
+     tussenliggende scroll-container zou kunnen losraken. Beslaat de volle
+     breedte, los van de padding van de kaart waarin het formulier staat
+     (zie de spacer-div in MeldingForm.jsx die de weggevallen ruimte in de
+     normale flow teruggeeft). */
+  position: fixed;
   top: var(--header-hoogte);
+  left: 0;
+  width: 100%;
   z-index: 1900;
-  padding: 8px 0;
+  padding: 8px 16px;
+  box-sizing: border-box;
   /* Zelfde achtergrond als .card (de melding-form zelf) — anders ontstaat
      een visuele naad tijdens scrollen. */
   background: var(--bg-card);
