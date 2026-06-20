@@ -38,7 +38,7 @@ async function meldingNaarHTML(m) {
         <tr><td>Tijdstip (lokaal)</td><td>${escapeHTML(m.date)} ${escapeHTML(m.time)} (${escapeHTML(m.timezone || 'Europe/Amsterdam')})</td></tr>
         <tr><td>Tijdstip (UTC)</td><td>${escapeHTML(m.timestamp_utc)}</td></tr>
         ${m.gps?.lat ? `<tr><td>GPS-locatie</td><td>${m.gps.lat.toFixed(6)}°N, ${m.gps.lng.toFixed(6)}°E</td></tr>` : ''}
-        ${m.afstand_woning != null ? `<tr><td>Afstand tot woning</td><td>${m.afstand_woning} m${m.afstand_woning < 50 ? ' — ONDER 50m NORM' : ''}</td></tr>` : ''}
+        ${m.afstand_woning != null ? `<tr><td>Afstand tot perceel met woonbestemming</td><td>${m.afstand_woning} m${m.afstand_woning < 50 ? ' — ONDER 50m NORM' : ''}</td></tr>` : ''}
         ${m.perceelnummer ? `<tr><td>Perceelnummer (BRK)</td><td>${escapeHTML(m.perceelnummer)}</td></tr>` : ''}
         ${m.bedrijfsnaam ? `<tr><td>Bedrijfsnaam teler</td><td>${escapeHTML(m.bedrijfsnaam)}</td></tr>` : ''}
         ${m.gewas ? `<tr><td>Gewas</td><td>${escapeHTML(m.gewas)}</td></tr>` : ''}

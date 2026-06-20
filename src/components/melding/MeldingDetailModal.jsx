@@ -164,7 +164,7 @@ export function MeldingDetailModal({ melding, alleMeldingen, onClose }) {
               {melding.perceelnummer && <div style={{ fontFamily: 'var(--mono)' }}>📋 {melding.perceelnummer}</div>}
               {melding.afstand_woning != null && (
                 <div style={{ color: melding.afstand_woning < 50 ? 'var(--danger)' : melding.afstand_woning < 100 ? 'var(--warning)' : 'var(--accent)' }}>
-                  📏 {melding.afstand_woning}m tot dichtstbijzijnde woning{melding.afstand_woning < 50 ? ' ⛔ ONDER 50m NORM' : ''}
+                  📏 {melding.afstand_woning}m tot perceel met woonbestemming{melding.afstand_woning < 50 ? ' ⛔ ONDER 50m NORM' : ''}
                 </div>
               )}
               {melding.wind_naar_woning?.waait && (() => {

@@ -197,11 +197,12 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
           />
         </div>
         {veld.perceelStatus && <div className="locatie-kaart-status">{veld.perceelStatus}</div>}
+        <label className="section-label">Afstand tot perceel met woonbestemming</label>
         <div className="locatie-kaart-afstand">
           {veld.afstandWoning != null ? (
             <>
               <div>
-                {veld.afstandWoning < 50 ? '⛔' : veld.afstandWoning < 100 ? '⚠️' : '✓'} {veld.afstandWoning}m tot dichtstbijzijnde woning
+                {veld.afstandWoning < 50 ? '⛔' : veld.afstandWoning < 100 ? '⚠️' : '✓'} {veld.afstandWoning}m tot perceel met woonbestemming
                 {veld.afstandWoning < 50 ? ' — ONDER DE 50m NORM' : ''}
               </div>
               {veld.afstandWoningLat != null && (
