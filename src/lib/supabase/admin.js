@@ -109,3 +109,35 @@ export async function haalBuurtdossiers() {
   if (error) throw error;
   return data || [];
 }
+
+// Backfill (Fase 1-4) — postcode heeft geen DEFAULT in migratie 0004 (in
+// tegenstelling tot opt_in_buurt/visibility, die Postgres bij ADD COLUMN
+// automatisch met de DEFAULT-waarde backfilt), dus oudere meldingen
+// missen 'm. Vereist een PDOK-lookup per rij, dus geen pure SQL — vandaar
+// hier i.p.v. een migratiebestand.
+export async function haalEntriesZonderPostcode() {
+  const sb = sbClient();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('entries')
+    .select('id, gps_lat, gps_lng')
+    .is('postcode', null)
+    .not('gps_lat', 'is', null)
+    .not('gps_lng', 'is', null);
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function zetPostcodeAdmin(entryId, postcode) {
+  const sb = sbClient();
+  if (!sb) return;
+
+  const { error } = await sb
+    .from('entries')
+    .update({ postcode })
+    .eq('id', entryId);
+
+  if (error) throw error;
+}

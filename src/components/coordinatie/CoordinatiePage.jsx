@@ -4,8 +4,11 @@ import {
   haalAlleEntriesAdmin,
   haalAlleProfielenAdmin,
   zetTrustScoreAdmin,
-  zetVisibilityAdmin
+  zetVisibilityAdmin,
+  haalEntriesZonderPostcode,
+  zetPostcodeAdmin
 } from '../../lib/supabase/admin.js';
+import { zoekPostcodePDOK } from '../../lib/pdok/postcode.js';
 import { perceelStatistieken } from '../../lib/meldingen/statistieken.js';
 import { BuurtrapportGenerator } from './BuurtrapportGenerator.jsx';
 import {
@@ -25,6 +28,8 @@ export function CoordinatiePage({ user }) {
   const [profielen, setProfielen] = useState(null);
   const [fout, setFout] = useState(null);
   const [bezigId, setBezigId] = useState(null);
+  const [backfillBezig, setBackfillBezig] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState(null);
 
   const laad = async () => {
     try {
@@ -78,6 +83,33 @@ export function CoordinatiePage({ user }) {
     }
   };
 
+  // Backfill (Fase 1-4) — historische meldingen van vóór migratie 0004
+  // missen postcode (geen DEFAULT, dus niet automatisch ingevuld zoals
+  // opt_in_buurt/visibility). Loopt sequentieel om de PDOK Locatieserver
+  // niet te overbelasten.
+  const handleBackfillPostcode = async () => {
+    setBackfillBezig(true);
+    try {
+      const teBackfillen = await haalEntriesZonderPostcode();
+      let gelukt = 0;
+      for (let i = 0; i < teBackfillen.length; i++) {
+        const e = teBackfillen[i];
+        setBackfillStatus(`${i + 1} / ${teBackfillen.length}`);
+        const postcode = await zoekPostcodePDOK(e.gps_lat, e.gps_lng).catch(() => null);
+        if (postcode) {
+          await zetPostcodeAdmin(e.id, postcode);
+          gelukt++;
+        }
+      }
+      setBackfillStatus(`Klaar — ${gelukt} / ${teBackfillen.length} meldingen aangevuld`);
+      await laad();
+    } catch (err) {
+      setBackfillStatus(`Mislukt: ${err.message}`);
+    } finally {
+      setBackfillBezig(false);
+    }
+  };
+
   return (
     <div className="p-4 coordinatie-page">
       <div className="export-titel">Coördinatie</div>
@@ -92,6 +124,14 @@ export function CoordinatiePage({ user }) {
             <span>{r.aantalMelders} melder{r.aantalMelders === 1 ? '' : 's'}</span>
           </div>
         ))}
+        <div className="export-card-beschrijving mt-2">
+          Historische meldingen (vóór de postcode-koppeling) missen dit
+          veld nog — eenmalig aanvullen via PDOK.
+        </div>
+        <button type="button" className="btn-outline px-3 py-1 mt-2" disabled={backfillBezig} onClick={handleBackfillPostcode}>
+          {backfillBezig ? `⏳ Bezig... ${backfillStatus || ''}` : '📮 Postcode backfillen'}
+        </button>
+        {!backfillBezig && backfillStatus && <div className="export-card-beschrijving mt-2">{backfillStatus}</div>}
       </div>
 
       <div className="card p-4">
