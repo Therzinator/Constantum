@@ -214,7 +214,9 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
         </div>
         {form.windNaarWoning?.waait && (
           <div className="locatie-kaart-wind-woning">
-            💨 Wind waait naar woning ({form.windNaarWoning.windDeg}° → {form.windNaarWoning.hoekNaarWoning}°)
+            💨 Wind waait richting de woning — wind komt uit {degToCompass(form.windNaarWoning.windDeg)} ({form.windNaarWoning.windDeg}°,
+            dus naartoe {degToCompass(form.windNaarWoning.windToeRichting)}/{form.windNaarWoning.windToeRichting}°),
+            woning ligt vanaf het meldpunt op {degToCompass(form.windNaarWoning.hoekNaarWoning)}/{form.windNaarWoning.hoekNaarWoning}°
           </div>
         )}
         {veld.natura2000 && (

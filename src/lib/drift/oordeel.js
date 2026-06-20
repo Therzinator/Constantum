@@ -1,17 +1,26 @@
-// Bereken de hoek van perceel → woning (0° = Noord, 90° = Oost etc.)
+// Bereken de kompashoek van meldpunt → dichtstbijzijnde woonperceel
+// (0° = Noord, 90° = Oost etc.). Lengtegraad-verschil wordt gecorrigeerd
+// met cos(breedtegraad), omdat 1° lengtegraad in Nederland (±52°N) maar
+// ~0,62× zo veel afstand voorstelt als 1° breedtegraad — zonder die
+// correctie helt de berekende hoek systematisch te veel naar oost/west.
 export function berekenHoekNaarWoning(percLat, percLng, woningLat, woningLng) {
   const dLat = woningLat - percLat;
-  const dLng = woningLng - percLng;
+  const dLng = (woningLng - percLng) * Math.cos(percLat * Math.PI / 180);
   const hoek = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
   return Math.round(hoek);
 }
 
-// Bepaal of wind op dit moment naar de woning waait (±60° marge)
+// Bepaal of wind op dit moment vanaf het meldpunt richting de woning
+// waait (±60° marge). `windDeg` is de meteorologische windrichting —
+// de richting waar de wind VANDAAN komt (KNMI/Open-Meteo-conventie),
+// dus de richting waar de wind NAARTOE waait (en drift dus heen gaat)
+// is windDeg + 180°. Die toe-richting wordt vergeleken met de kompashoek
+// meldpunt → woning.
 export function windWaaitNaarWoning(windDeg, percLat, percLng, woningLat, woningLng) {
   if (windDeg == null) return null;
   const hoekNaarWoning = berekenHoekNaarWoning(percLat, percLng, woningLat, woningLng);
-  // Wind waait in de richting windDeg — dus drift gaat die kant op
-  let verschil = Math.abs(windDeg - hoekNaarWoning);
+  const windToeRichting = (windDeg + 180) % 360;
+  let verschil = Math.abs(windToeRichting - hoekNaarWoning);
   if (verschil > 180) verschil = 360 - verschil;
   return { waait: verschil <= 60, verschil: Math.round(verschil), hoekNaarWoning };
 }

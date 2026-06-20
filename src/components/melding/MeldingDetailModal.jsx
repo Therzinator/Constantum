@@ -167,11 +167,17 @@ export function MeldingDetailModal({ melding, alleMeldingen, onClose }) {
                   📏 {melding.afstand_woning}m tot dichtstbijzijnde woning{melding.afstand_woning < 50 ? ' ⛔ ONDER 50m NORM' : ''}
                 </div>
               )}
-              {melding.wind_naar_woning?.waait && (
-                <div style={{ color: 'var(--danger)', fontWeight: 700 }}>
-                  💨 Wind waait naar woning ({melding.wind_naar_woning.windDeg}° → {melding.wind_naar_woning.hoekNaarWoning}°)
-                </div>
-              )}
+              {melding.wind_naar_woning?.waait && (() => {
+                const w = melding.wind_naar_woning;
+                const toeRichting = w.windToeRichting ?? (w.windDeg + 180) % 360;
+                return (
+                  <div style={{ color: 'var(--danger)', fontWeight: 700 }}>
+                    💨 Wind waait richting de woning — wind komt uit {degToCompass(w.windDeg)} ({w.windDeg}°,
+                    dus naartoe {degToCompass(toeRichting)}/{toeRichting}°),
+                    woning ligt vanaf het meldpunt op {degToCompass(w.hoekNaarWoning)}/{w.hoekNaarWoning}°
+                  </div>
+                );
+              })()}
             </div>
           )}
 

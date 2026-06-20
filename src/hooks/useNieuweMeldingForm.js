@@ -201,7 +201,7 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
     if (windDeg == null || veld.afstandWoningLat == null || veld.afstandWoningLng == null) return null;
     const analyse = windWaaitNaarWoning(windDeg, veld.lat, veld.lng, veld.afstandWoningLat, veld.afstandWoningLng);
     return analyse?.waait
-      ? { waait: true, windDeg, hoekNaarWoning: analyse.hoekNaarWoning, afstandM: veld.afstandWoning }
+      ? { waait: true, windDeg, windToeRichting: (windDeg + 180) % 360, hoekNaarWoning: analyse.hoekNaarWoning, afstandM: veld.afstandWoning }
       : null;
   }, [veld.weather?.wind_dir, veld.afstandWoningLat, veld.afstandWoningLng, veld.lat, veld.lng, veld.afstandWoning]);
 
