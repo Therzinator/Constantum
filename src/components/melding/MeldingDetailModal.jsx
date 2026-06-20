@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { degToCompass, spuitWindOordeel } from '../../lib/drift/oordeel.js';
 import { idbGetBijlagen } from '../../lib/storage/indexedDB.js';
+import { perceelStatistieken } from '../../lib/meldingen/statistieken.js';
+import { analyseerSpuitpatroon } from '../../lib/meldingen/spuitpatroon.js';
 import { DriftZoneKaart } from './DriftZoneKaart.jsx';
 import { DriftZoneModal } from './DriftZoneModal.jsx';
 import { Lightbox } from './Lightbox.jsx';
 import './MeldingDetailModal.css';
+
+const SPUITPATROON_KLEUR = { danger: 'var(--danger)', warning: 'var(--warning)', info: 'var(--info)', muted: 'var(--text-muted)' };
 
 const TYPE_LABEL = {
   spuitactiviteit: '🚜 Spuitactiviteit',
@@ -36,10 +40,13 @@ const DRIFT_LABELS = {
 // perceelFrequentieBadge/spuitpatroonHTML/Natura2000 — die horen bij een
 // latere fase). Laadt ontbrekende foto-dataUrls uit IndexedDB voor de
 // foto-grid en lightbox, net als openLightboxFromSaved().
-export function MeldingDetailModal({ melding, onClose }) {
+export function MeldingDetailModal({ melding, alleMeldingen, onClose }) {
   const [bestanden, setBestanden] = useState(melding.bestanden || []);
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [driftZoneOpen, setDriftZoneOpen] = useState(false);
+
+  const perceelStats = melding.perceelnummer ? perceelStatistieken(alleMeldingen || [])[melding.perceelnummer] : null;
+  const spuitpatroon = analyseerSpuitpatroon(melding).indicaties.filter((i) => i.score > 0);
 
   useEffect(() => {
     let actief = true;
@@ -119,12 +126,31 @@ export function MeldingDetailModal({ melding, onClose }) {
             </div>
           )}
 
+          {perceelStats && perceelStats.totaal >= 2 && (
+            <div className="detail-perceel-frequentie" style={{ color: perceelStats.ditJaar >= 5 ? 'var(--danger)' : perceelStats.ditJaar >= 3 ? 'var(--warning)' : 'var(--accent)' }}>
+              📊 {perceelStats.ditJaar}× gemeld afgelopen jaar{perceelStats.bovenWindNorm > 0 ? ` · ${perceelStats.bovenWindNorm}× boven windnorm` : ''}
+            </div>
+          )}
+
+          {spuitpatroon.length > 0 && (
+            <div className="detail-spuitpatroon">
+              {spuitpatroon.map((i) => (
+                <span key={i.label} style={{ color: SPUITPATROON_KLEUR[i.kleur] }} title={i.reden}>{i.label}</span>
+              ))}
+            </div>
+          )}
+
           {(melding.perceelnummer || melding.afstand_woning != null) && (
             <div className="detail-teler-block">
               {melding.perceelnummer && <div style={{ fontFamily: 'var(--mono)' }}>📋 {melding.perceelnummer}</div>}
               {melding.afstand_woning != null && (
                 <div style={{ color: melding.afstand_woning < 50 ? 'var(--danger)' : melding.afstand_woning < 100 ? 'var(--warning)' : 'var(--accent)' }}>
                   📏 {melding.afstand_woning}m tot dichtstbijzijnde woning{melding.afstand_woning < 50 ? ' ⛔ ONDER 50m NORM' : ''}
+                </div>
+              )}
+              {melding.wind_naar_woning?.waait && (
+                <div style={{ color: 'var(--danger)', fontWeight: 700 }}>
+                  💨 Wind waait naar woning ({melding.wind_naar_woning.windDeg}° → {melding.wind_naar_woning.hoekNaarWoning}°)
                 </div>
               )}
             </div>
@@ -139,6 +165,27 @@ export function MeldingDetailModal({ melding, onClose }) {
             </div>
           )}
         </div>
+
+        {melding.natura2000 && (
+          <div className="card p-3 detail-natura2000-block">
+            <div className="section-label mb-2">🌿 Natura 2000</div>
+            <div style={{ fontSize: '0.8rem' }}>Nabij: {melding.natura2000.naam}</div>
+            {melding.natura2000.lat != null && (
+              <div className="detail-mono-block" style={{ marginTop: 4 }}>
+                {melding.natura2000.lat.toFixed(6)}°N · {melding.natura2000.lng.toFixed(6)}°E
+              </div>
+            )}
+          </div>
+        )}
+
+        {melding.kwetsbare_locaties?.length > 0 && (
+          <div className="card p-3 detail-kwetsbaar-block">
+            <div className="section-label mb-2" style={{ color: 'var(--danger)' }}>⚠️ Kwetsbare locaties in de buurt</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              {melding.kwetsbare_locaties.map((tekst) => <div key={tekst}>• {tekst}</div>)}
+            </div>
+          </div>
+        )}
 
         {melding.weather && melding.weather.wind_speed != null && (
           <div className="card p-3">

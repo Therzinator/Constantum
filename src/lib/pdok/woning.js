@@ -2,9 +2,9 @@ import { haversineAfstand } from '../geo/haversine.js';
 import { polygonCentroid } from '../geo/polygonCentroid.js';
 
 // Komt overeen met het BAG-woning-deel van detecteerAfstandEnNatura2000()
-// uit docs/index.html (Natura2000 en kwetsbare-locaties-checks horen bij
-// een latere fase). Zoekt panden met woonfunctie binnen 300m en geeft de
-// dichtstbijzijnde terug.
+// uit docs/index.html (zie lib/pdok/natura2000.js en
+// lib/pdok/kwetsbareLocaties.js voor de overige delen van die functie).
+// Zoekt panden met woonfunctie binnen 300m en geeft de dichtstbijzijnde terug.
 export async function zoekDichtstbijzijndeWoning(lat, lng) {
   const delta = 0.003;
   const bbox = `${lat - delta},${lng - delta},${lat + delta},${lng + delta},EPSG:4326`;

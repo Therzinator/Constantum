@@ -147,6 +147,27 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
             veld.afstandStatus || 'Wordt berekend na plaatsen pin op perceel'
           )}
         </div>
+        {veld.windNaarWoning?.waait && (
+          <div className="locatie-kaart-wind-woning">
+            💨 Wind waait naar woning ({veld.windNaarWoning.windDeg}° → {veld.windNaarWoning.hoekNaarWoning}°)
+          </div>
+        )}
+        {veld.natura2000 && (
+          <div className="locatie-kaart-natura2000">
+            🌿 Nabij: {veld.natura2000.naam}
+            {veld.natura2000.lat != null && (
+              <div className="locatie-kaart-natura2000-coords">
+                📍 {veld.natura2000.lat.toFixed(6)}°N · {veld.natura2000.lng.toFixed(6)}°E
+              </div>
+            )}
+          </div>
+        )}
+        {veld.kwetsbareLocaties.length > 0 && (
+          <div className="locatie-kaart-kwetsbaar">
+            <div className="locatie-kaart-kwetsbaar-titel">⚠️ Kwetsbare locaties in de buurt</div>
+            {veld.kwetsbareLocaties.map((tekst) => <div key={tekst}>• {tekst}</div>)}
+          </div>
+        )}
       </div>
 
       <div className="mf-field">

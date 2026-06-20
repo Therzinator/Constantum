@@ -9,6 +9,9 @@ import { sbAuditLog } from '../lib/supabase/auditLog.js';
 import { idbSaveBijlage } from '../lib/storage/indexedDB.js';
 import { zoekPerceelPDOK } from '../lib/pdok/perceel.js';
 import { zoekDichtstbijzijndeWoning } from '../lib/pdok/woning.js';
+import { zoekNatura2000InDeBuurt } from '../lib/pdok/natura2000.js';
+import { zoekKwetsbareLocaties } from '../lib/pdok/kwetsbareLocaties.js';
+import { windWaaitNaarWoning } from '../lib/drift/oordeel.js';
 import { haalWeerdata, windSubjectiefVanSnelheid } from '../lib/weather/openMeteo.js';
 import { APP_VERSION_CLIENT } from '../lib/version.js';
 import { SUPABASE_ENABLED } from '../lib/supabase/client.js';
@@ -36,6 +39,9 @@ function leegFormulier(thuislocatie) {
     afstandWoningLat: null,
     afstandWoningLng: null,
     afstandStatus: null,
+    natura2000: null,
+    kwetsbareLocaties: [],
+    windNaarWoning: null,
     weather: null,
     weatherStatus: 'laden'
   };
@@ -104,7 +110,7 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
     }
   }, []);
 
-  // Komt overeen met detecteerPerceel() + detecteerAfstandEnNatura2000() (BAG-deel),
+  // Komt overeen met detecteerPerceel() + detecteerAfstandEnNatura2000(),
   // aangeroepen na het zetten van de meldingspin. Deze pin mag UITSLUITEND door
   // de gebruiker zelf gezet worden (klikken/slepen op de kaart) — nooit
   // automatisch op basis van de eigen GPS-positie van de melder (die wordt apart
@@ -142,8 +148,32 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
       })
       .catch(() => setVeld((v) => ({ ...v, afstandStatus: 'Afstand berekenen mislukt' })));
 
+    zoekNatura2000InDeBuurt(lat, lng)
+      .then((natura2000) => setVeld((v) => ({ ...v, natura2000 })))
+      .catch(() => setVeld((v) => ({ ...v, natura2000: null })));
+
+    zoekKwetsbareLocaties(lat, lng)
+      .then((kwetsbareLocaties) => setVeld((v) => ({ ...v, kwetsbareLocaties })))
+      .catch(() => setVeld((v) => ({ ...v, kwetsbareLocaties: [] })));
+
     if (metWeer) haalWeer(lat, lng);
   }, [haalWeer]);
+
+  // Wind-naar-woning-analyse: kan pas berekend worden zodra zowel de
+  // woninglocatie (zetLocatie) als de windrichting (haalWeer, async en later)
+  // bekend zijn — komt overeen met het windanalyse-deel van
+  // detecteerAfstandEnNatura2000() uit docs/index.html.
+  useEffect(() => {
+    const windDeg = veld.weather?.wind_dir;
+    if (windDeg == null || veld.afstandWoningLat == null || veld.afstandWoningLng == null) return;
+    const analyse = windWaaitNaarWoning(windDeg, veld.lat, veld.lng, veld.afstandWoningLat, veld.afstandWoningLng);
+    setVeld((v) => ({
+      ...v,
+      windNaarWoning: analyse?.waait
+        ? { waait: true, windDeg, hoekNaarWoning: analyse.hoekNaarWoning, afstandM: v.afstandWoning }
+        : null
+    }));
+  }, [veld.weather?.wind_dir, veld.afstandWoningLat, veld.afstandWoningLng, veld.lat, veld.lng]);
 
   // Eerste weerdata ophalen voor de startlocatie (de pin staat bij het laden
   // van het formulier al op de thuislocatie/standaardlocatie)
@@ -232,6 +262,9 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
         melder_email: user?.email ? await sha256(user.email) : null,
         perceelnummer: veld.perceelnummer || null,
         afstand_woning: veld.afstandWoning ?? null,
+        wind_naar_woning: veld.windNaarWoning,
+        natura2000: veld.natura2000,
+        kwetsbare_locaties: veld.kwetsbareLocaties,
         geur_intensiteit: veld.geurIntensiteit,
         wind_subjectief: veld.windSubjectief,
         drift_waarneming: veld.driftWaarneming.filter((d) => d !== 'nvt'),

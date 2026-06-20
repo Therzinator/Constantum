@@ -68,7 +68,7 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
       </div>
 
       {geselecteerd && (
-        <MeldingDetailModal melding={geselecteerd} onClose={() => setGeselecteerdId(null)} />
+        <MeldingDetailModal melding={geselecteerd} alleMeldingen={meldingen} onClose={() => setGeselecteerdId(null)} />
       )}
     </div>
   );

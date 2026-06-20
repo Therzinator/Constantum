@@ -101,3 +101,26 @@
   font-size: 0.6rem;
   color: var(--text-muted);
 }
+
+.detail-perceel-frequentie {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  margin-top: 8px;
+}
+
+.detail-spuitpatroon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  margin-top: 6px;
+}
+
+.detail-natura2000-block {
+  border-left: 3px solid var(--warning);
+}
+
+.detail-kwetsbaar-block {
+  border-left: 3px solid var(--danger);
+}

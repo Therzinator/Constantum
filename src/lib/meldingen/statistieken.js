@@ -44,3 +44,29 @@ export function maandelijkseAantallen(meldingen) {
   });
   return { labels, aantallen: sleutels.map((k) => maanden[k]) };
 }
+
+// Frequentie per perceel (totaal/afgelopen 12 maanden/keer boven windnorm) —
+// komt overeen met perceelStatistieken() uit docs/index.html. Pure variant:
+// krijgt de meldingenlijst als parameter i.p.v. getMeldingen() aan te roepen.
+export function perceelStatistieken(meldingen) {
+  const nu = new Date();
+  const jaarGeleden = new Date(nu.getFullYear() - 1, nu.getMonth(), nu.getDate());
+  const stats = {};
+
+  meldingen.forEach((m) => {
+    const p = m.perceelnummer;
+    if (!p) return;
+    if (!stats[p]) stats[p] = { totaal: 0, ditJaar: 0, bovenWindNorm: 0, gewassen: new Set() };
+
+    stats[p].totaal++;
+    const d = new Date(m.timestamp_local);
+    if (d >= jaarGeleden) stats[p].ditJaar++;
+
+    const ws = m.weather?.wind_speed;
+    if (ws && ws > 18) stats[p].bovenWindNorm++;
+
+    if (m.gewas) stats[p].gewassen.add(m.gewas);
+  });
+
+  return stats;
+}
