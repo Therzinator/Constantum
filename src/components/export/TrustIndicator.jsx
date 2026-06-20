@@ -1,12 +1,17 @@
 // Coordinatie & Admin systeem, Fase 3 — trust-indicator zichtbaar voor de
-// melder zelf. Staat — net als NotificatieInstellingen/KNMIInstellingen —
-// voorlopig in ExportPage tot er een eigen Instellingen-pagina is (Fase G,
-// zie comment in ExportPage.jsx).
+// melder zelf. Staat in InstellingenPage (Fase G).
 export function TrustIndicator({ profiel }) {
   if (!profiel) return null;
 
-  const { trust_score: trustScore, telefoon_geverifieerd: telefoonGeverifieerd, account_aangemaakt: accountAangemaakt } = profiel;
+  const trustScore = profiel.trust_score;
+  const telefoonGeverifieerd = profiel.telefoon_geverifieerd;
+  const accountAangemaakt = profiel.account_aangemaakt;
+  // Date.now() in render is door de react-hooks/purity-regel als "impuur"
+  // gemarkeerd, maar voor dit puur informatieve (niet logica-kritische)
+  // weergaveveld is een effect + extra state-update overkill — bewust
+  // genegeerd in plaats van gekunsteld omgebouwd.
   const accountDagen = accountAangemaakt
+    // eslint-disable-next-line react-hooks/purity -- bewust niet via effect, zie comment hierboven
     ? Math.floor((Date.now() - new Date(accountAangemaakt).getTime()) / (24 * 60 * 60 * 1000))
     : null;
   const nieuwAccount = accountDagen != null && accountDagen < 7;

@@ -77,7 +77,7 @@ export async function extractEXIF(file) {
         return new TextDecoder('ascii')
           .decode(new Uint8Array(buffer, tiff + off, Math.max(0, num - 1)))
           .replace(/\0/g, '').trim();
-      } catch(e) { return null; }
+      } catch { return null; }
     }
 
     // Lees RATIONAL (teller/noemer)
@@ -94,7 +94,6 @@ export async function extractEXIF(file) {
         const e   = ifdOff + 2 + i * 12;
         const tag = r16(e);
         const typ = r16(e + 2);
-        const num = r32(e + 4);
 
         if (tag === 0x010F) result.make  = readASCII(e); // Make
         if (tag === 0x0110) result.model = readASCII(e); // Model
@@ -122,7 +121,7 @@ export async function extractEXIF(file) {
             if (/^\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)) {
               result.datetime_original = raw.replace(/^(\d{4}):(\d{2}):(\d{2}) /, '$1-$2-$3T');
             }
-          } catch(e) {}
+          } catch { /* EXIF-datum ontbreekt of is ongeldig — melding blijft zonder datum_original */ }
         }
       }
     }

@@ -15,7 +15,7 @@ export function getStorageSize() {
     for (const key of Object.keys(localStorage)) {
       total += (localStorage[key] || '').length + key.length;
     }
-  } catch {}
+  } catch { /* localStorage niet beschikbaar — toon 0 KB */ }
   return (total / 1024).toFixed(1) + ' KB';
 }
 
@@ -30,7 +30,7 @@ export function getMeldingen() {
         const parsed = JSON.parse(old);
         const stripped = parsed.map(m => stripDataUrls(m));
         localStorage.setItem('spuitlog_meldingen', JSON.stringify(stripped));
-      } catch {}
+      } catch { /* oude sleutel kon niet gemigreerd worden — blijft staan voor handmatig herstel */ }
     }
     return JSON.parse(localStorage.getItem('spuitlog_meldingen') || '[]');
   } catch { return []; }

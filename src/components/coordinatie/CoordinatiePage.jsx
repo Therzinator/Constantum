@@ -36,7 +36,18 @@ export function CoordinatiePage({ user }) {
     }
   };
 
-  useEffect(() => { laad(); }, []);
+  useEffect(() => {
+    let actief = true;
+    (async () => {
+      try {
+        const [e, p] = await Promise.all([haalAlleEntriesAdmin(), haalAlleProfielenAdmin()]);
+        if (actief) { setEntries(e); setProfielen(p); }
+      } catch (err) {
+        if (actief) setFout(err.message);
+      }
+    })();
+    return () => { actief = false; };
+  }, []);
 
   if (fout) return <div className="p-4"><div className="card p-4" style={{ color: 'var(--danger)' }}>Laden mislukt: {fout}</div></div>;
   if (!entries || !profielen) return <div className="p-4">Laden...</div>;

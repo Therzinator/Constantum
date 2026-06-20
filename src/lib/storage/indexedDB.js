@@ -112,7 +112,7 @@ export async function idbDeleteBijlagen(meldingId) {
 export async function idbCountBijlagen() {
   try {
     const db = await openIDB();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx  = db.transaction(IDB_STORE, 'readonly');
       const req = tx.objectStore(IDB_STORE).count();
       req.onsuccess = () => resolve(req.result);
@@ -125,7 +125,7 @@ export async function idbCountBijlagen() {
 export async function idbClearAll() {
   try {
     const db = await openIDB();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(IDB_STORE, 'readwrite');
       tx.objectStore(IDB_STORE).clear();
       tx.oncomplete = () => resolve(true);

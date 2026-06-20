@@ -5,7 +5,7 @@ const THUMB_MAX_PX   = 800;
 const THUMB_QUALITY  = 0.65;
 const THUMB_MAX_BYTES = 200 * 1024; // 200 KB
 
-export async function compressToThumbnail(dataUrl, mimeType) {
+export async function compressToThumbnail(dataUrl) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {

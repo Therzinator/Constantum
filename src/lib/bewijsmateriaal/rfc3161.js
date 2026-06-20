@@ -46,7 +46,6 @@ export function parseTSR(tsrBytes) {
   // Zoek de UTC/GeneralizedTime tag in de DER structuur
   let genTime = null;
   let serial  = null;
-  const dv    = new DataView(tsrBytes.buffer || tsrBytes);
   const bytes = new Uint8Array(tsrBytes.buffer || tsrBytes);
 
   // Simpele lineaire scan naar UTCTime (0x17) of GeneralizedTime (0x18)
@@ -64,7 +63,7 @@ export function parseTSR(tsrBytes) {
         const s  = bytes[i] === 0x18 ? str.slice(12,14) : str.slice(10,12);
         genTime  = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`).toISOString();
         break;
-      } catch(e) {}
+      } catch { /* geen geldige datum op deze offset — scan verder naar de volgende tag */ }
     }
   }
   // Zoek INTEGER na een SEQUENCE met OID (serial number zit vroeg in de TSR)

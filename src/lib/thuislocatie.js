@@ -7,7 +7,7 @@ export function laadThuislocatie() {
     try {
       const loc = JSON.parse(opgeslagen);
       if (loc.lat && loc.lng) return loc;
-    } catch (e) {}
+    } catch { /* corrupte opslag — val terug op NL-centrum */ }
   }
   // Fallback: centrum van Nederland
   return { lat: 52.3676, lng: 5.2006, label: 'Nederland' };
@@ -47,7 +47,7 @@ export async function reverseGeocode(lat, lng) {
     const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=nl`);
     const data = await res.json();
     return data.display_name?.split(',').slice(0, 3).join(',').trim() || null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

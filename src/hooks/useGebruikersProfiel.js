@@ -7,14 +7,11 @@ export function useGebruikersProfiel(user) {
   const [profiel, setProfiel] = useState(null);
 
   useEffect(() => {
-    if (!user) {
-      setProfiel(null);
-      return;
-    }
     let actief = true;
-    haalGebruikersProfiel(user.id).then((data) => {
+    (async () => {
+      const data = user ? await haalGebruikersProfiel(user.id) : null;
       if (actief) setProfiel(data);
-    });
+    })();
     return () => { actief = false; };
   }, [user]);
 

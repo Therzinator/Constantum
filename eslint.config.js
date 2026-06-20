@@ -5,7 +5,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // .claude/helpers zijn Node/CommonJS-scripts voor de Claude Code-tooling
+  // (statusline, etc.), geen onderdeel van de Vite/React-app — vallen
+  // buiten de browser-gerichte lintregels hieronder.
+  globalIgnores(['dist', '.claude/helpers/**']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
