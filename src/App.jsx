@@ -74,7 +74,7 @@ function App() {
       )}
 
       {pagina === 'coordinatie' && isAdmin(auth.gebruikerRol) && (
-        <CoordinatiePage />
+        <CoordinatiePage user={auth.user} />
       )}
 
       <BottomNav pagina={pagina} onPaginaChange={setPagina} gebruikerRol={auth.gebruikerRol} />

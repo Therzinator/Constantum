@@ -7,6 +7,7 @@ import {
   zetVisibilityAdmin
 } from '../../lib/supabase/admin.js';
 import { perceelStatistieken } from '../../lib/meldingen/statistieken.js';
+import { BuurtrapportGenerator } from './BuurtrapportGenerator.jsx';
 import {
   meldersPerPostcode,
   trustScoreVerdeling,
@@ -19,7 +20,7 @@ import './CoordinatiePage.css';
 // de "Coördinatie"-tab die enkel zichtbaar is voor role='admin' (zie
 // BottomNav.jsx/App.jsx) — de echte afscherming gebeurt via de admin-RLS-
 // bypass uit migratie 0004, niet hier.
-export function CoordinatiePage() {
+export function CoordinatiePage({ user }) {
   const [entries, setEntries] = useState(null);
   const [profielen, setProfielen] = useState(null);
   const [fout, setFout] = useState(null);
@@ -129,6 +130,8 @@ export function CoordinatiePage() {
           </div>
         ))}
       </div>
+
+      <BuurtrapportGenerator user={user} />
 
       <div className="card p-4">
         <div className="section-label mb-3" style={{ color: 'var(--danger)' }}>🚩 Onder review / shadow</div>

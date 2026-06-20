@@ -54,3 +54,58 @@ export async function zetVisibilityAdmin(entryId, visibility) {
 
   if (error) throw error;
 }
+
+// Coordinatie & Admin systeem, Fase 6/7 — rijkere selectie (weerdata,
+// RFC 3161) voor het buurtrapport, vooraf gefilterd op postcodegebied +
+// opt_in_buurt zodat alleen meldingen waarvoor de melder toestemming gaf
+// in een collectief dossier terechtkomen.
+export async function haalEntriesVoorBuurtrapport(postcodePrefix) {
+  const sb = sbClient();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('entries')
+    .select('id, user_id, melder_email, timestamp_local, postcode, perceelnummer, weather, rfc3161, opt_in_buurt, gps_lat, gps_lng')
+    .eq('deleted', false)
+    .eq('opt_in_buurt', true)
+    .ilike('postcode', `${postcodePrefix}%`)
+    .order('timestamp_local', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function maakBuurtdossier(dossier, userId) {
+  const sb = sbClient();
+  if (!sb) return null;
+
+  const { data, error } = await sb
+    .from('buurtdossiers')
+    .insert({
+      postcodegebied: dossier.postcodegebied,
+      aangemaakt_door: userId,
+      periode_van: dossier.periodeVan,
+      periode_tot: dossier.periodeTot,
+      aantal_melders: dossier.aantalMelders,
+      aantal_meldingen: dossier.aantalMeldingen,
+      rapport_json: dossier.rapportJson
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function haalBuurtdossiers() {
+  const sb = sbClient();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('buurtdossiers')
+    .select('id, postcodegebied, periode_van, periode_tot, aantal_melders, aantal_meldingen, rapport_json, created_at')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
