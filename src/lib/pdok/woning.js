@@ -1,5 +1,6 @@
 import { haversineAfstand } from '../geo/haversine.js';
 import { polygonCentroid } from '../geo/polygonCentroid.js';
+import { afstandTotPolygonRand } from '../geo/polygonAfstand.js';
 
 // Komt overeen met het BAG-woning-deel van detecteerAfstandEnNatura2000()
 // uit docs/index.html (zie lib/pdok/natura2000.js en
@@ -32,19 +33,25 @@ export async function zoekDichtstbijzijndeWoning(lat, lng) {
   for (const f of woningen) {
     const geom = f.geometry;
     if (!geom) continue;
+    let d;
     let pandLat;
     let pandLng;
     if (geom.type === 'Polygon') {
+      // Afstand tot de gevel/rand van het pand — nauwkeuriger dan tot het
+      // centroïde, vooral bij langwerpige of grote panden waar het midden
+      // van het gebouw veel verder weg kan liggen dan de dichtstbijzijnde muur.
+      d = afstandTotPolygonRand(lat, lng, geom.coordinates);
+      if (d == null) continue;
       const c = polygonCentroid(geom.coordinates);
       pandLat = c.lat;
       pandLng = c.lng;
     } else if (geom.type === 'Point') {
       pandLng = geom.coordinates[0];
       pandLat = geom.coordinates[1];
+      d = haversineAfstand(lat, lng, pandLat, pandLng);
     } else {
       continue;
     }
-    const d = haversineAfstand(lat, lng, pandLat, pandLng);
     if (d < minAfstand) {
       minAfstand = d;
       woningLat = pandLat;

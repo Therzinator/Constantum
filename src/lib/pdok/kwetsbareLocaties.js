@@ -1,5 +1,6 @@
 import { haversineAfstand } from '../geo/haversine.js';
 import { polygonCentroid } from '../geo/polygonCentroid.js';
+import { afstandTotPolygonRand } from '../geo/polygonAfstand.js';
 
 const BAG_TYPE_MAP = {
   onderwijsfunctie: '🏫 School/onderwijsinstelling',
@@ -36,13 +37,18 @@ async function zoekBagKwetsbareGebouwen(lat, lng) {
     const doel = f.properties?.gebruiksdoel;
     if (!doel || !BAG_TYPE_MAP[doel] || gezienTypes.has(doel)) return;
     const geom = f.geometry;
-    const centroid = geom?.type === 'Polygon'
+    if (!geom) return;
+    // Afstand tot de gevel/rand (niet het centroïde) voor consistente
+    // nauwkeurigheid met de woning-afstandsberekening, zie lib/pdok/woning.js
+    const centroid = geom.type === 'Polygon'
       ? polygonCentroid(geom.coordinates)
-      : { lat: geom?.coordinates?.[1], lng: geom?.coordinates?.[0] };
+      : { lat: geom.coordinates?.[1], lng: geom.coordinates?.[0] };
     if (!centroid?.lat) return;
-    const afst = Math.round(haversineAfstand(lat, lng, centroid.lat, centroid.lng));
-    const coord = `${centroid.lat.toFixed(5)}°N · ${centroid.lng.toFixed(5)}°E`;
-    gevonden.push(`${BAG_TYPE_MAP[doel]} — ${afst}m · 📍 ${coord}`);
+    const afstandM = geom.type === 'Polygon'
+      ? afstandTotPolygonRand(lat, lng, geom.coordinates)
+      : haversineAfstand(lat, lng, centroid.lat, centroid.lng);
+    if (afstandM == null) return;
+    gevonden.push({ label: BAG_TYPE_MAP[doel], afstandM: Math.round(afstandM), lat: centroid.lat, lng: centroid.lng });
     gezienTypes.add(doel);
   });
 
@@ -74,26 +80,44 @@ async function zoekOsmKwetsbareLocaties(lat, lng) {
     const tags = el.tags || {};
     const type = tags.amenity || tags.leisure;
     if (!type || !OSM_TYPE_MAP[type] || gezienTypes.has(OSM_TYPE_MAP[type])) return;
-    const naam = tags.name ? ` — ${tags.name}` : '';
     const elLat = el.lat || el.center?.lat;
     const elLng = el.lon || el.center?.lon;
-    const afst = elLat && elLng ? ` — ${Math.round(haversineAfstand(lat, lng, elLat, elLng))}m` : '';
-    const coord = elLat && elLng ? ` · 📍 ${elLat.toFixed(5)}°N · ${elLng.toFixed(5)}°E` : '';
-    gevonden.push(`${OSM_TYPE_MAP[type]}${naam}${afst}${coord}`);
+    if (elLat == null || elLng == null) return;
+    gevonden.push({
+      label: OSM_TYPE_MAP[type],
+      naam: tags.name || null,
+      afstandM: Math.round(haversineAfstand(lat, lng, elLat, elLng)),
+      lat: elLat,
+      lng: elLng
+    });
     gezienTypes.add(OSM_TYPE_MAP[type]);
   });
 
   return gevonden;
 }
 
+// Formatteert één locatie-categorie (woning, speeltuin, school, ...) als
+// leesbare regel — gedeeld door alle categorieën zodat ze er identiek
+// uitzien en op afstandM gesorteerd kunnen worden vóór formattering.
+export function formatLocatieCategorie({ icoon, label, naam, afstandM, lat, lng }) {
+  const naamDeel = naam ? ` — ${naam}` : '';
+  const coord = lat != null && lng != null ? ` · 📍 ${lat.toFixed(5)}°N · ${lng.toFixed(5)}°E` : '';
+  return `${icoon ? `${icoon} ` : ''}${label}${naamDeel} — ${afstandM}m${coord}`;
+}
+
 // Komt overeen met het kwetsbare-locaties-deel van detecteerAfstandEnNatura2000()
 // uit docs/index.html — BAG-gebouwen (onderwijs/zorg/sport, 300m) + OSM
 // Overpass (speeltuinen/parken/scholen/zorg, 300m). Faalt een van de twee
 // bronnen, dan wordt alleen de andere meegenomen (zelfde gedrag als bron).
+// Geeft op afstand gesorteerde, geformatteerde regels terug zodat alle
+// categorieën — inclusief de elders toegevoegde woning-regel, zie
+// hooks/useNieuweMeldingForm.js — even duidelijk en consistent ogen.
 export async function zoekKwetsbareLocaties(lat, lng) {
   const [bag, osm] = await Promise.all([
     zoekBagKwetsbareGebouwen(lat, lng).catch(() => []),
     zoekOsmKwetsbareLocaties(lat, lng).catch(() => [])
   ]);
-  return [...bag, ...osm];
+  return [...bag, ...osm]
+    .sort((a, b) => a.afstandM - b.afstandM)
+    .map((item) => formatLocatieCategorie(item));
 }
