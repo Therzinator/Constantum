@@ -415,6 +415,7 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
       </div>
 
       <div className="mf-field mf-gezondheid-toestemming">
+        <label className="section-label">Gezondheidsklachten registratie</label>
         <label className="mf-checkbox-label">
           <input
             type="checkbox"
@@ -437,6 +438,7 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
       )}
 
       <div className="mf-field mf-buurt-opt-in">
+        <label className="section-label">Deel melding in je buurt</label>
         <label className="mf-checkbox-label">
           <input
             type="checkbox"
