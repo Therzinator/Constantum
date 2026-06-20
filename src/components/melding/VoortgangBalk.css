@@ -8,10 +8,17 @@
      breedte, los van de padding van de kaart waarin het formulier staat
      (zie de spacer-div in MeldingForm.jsx die de weggevallen ruimte in de
      normale flow teruggeeft). */
+  /* left/right:0 + max-width + margin:auto i.p.v. width:100% — anders
+     schaalt deze balk (position: fixed staat los van #root) op brede
+     schermen los van de rest van de app naar de volle vensterbreedte,
+     terwijl #root (index.css) zelf bij 640px gecentreerd blijft. */
   position: fixed;
   top: var(--header-hoogte);
   left: 0;
-  width: 100%;
+  right: 0;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
   z-index: 1900;
   /* Zelfde horizontale padding als .app-header (zie AppHeader.css) zodat
      de inhoud (balk/stappen) precies onder de logo/tekst van de header
