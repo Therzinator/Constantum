@@ -1,0 +1,61 @@
+.export-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.export-titel {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 2px;
+}
+
+.export-subtitel {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.export-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.export-card-icoon {
+  font-size: 1.5rem;
+}
+
+.export-card-titel {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.export-card-beschrijving {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.export-info-rij {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.export-info-waarde-accent { color: var(--accent); }
+.export-info-waarde-info { color: var(--info); }
+
+.export-gevaarzone {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.export-opschonen {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.export-hidden-input { display: none; }

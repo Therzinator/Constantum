@@ -133,3 +133,33 @@ export async function idbClearAll() {
     });
   } catch { return false; }
 }
+
+// Verwijder alleen IDB-bijlagen die NIET horen bij een bestaande melding —
+// komt overeen met het cursor-/filterdeel van opslagOpschonen() uit
+// docs/index.html. Geeft het aantal verwijderde bijlagen terug.
+export async function idbVerwijderVerweesdeBijlagen(geldigeIds) {
+  try {
+    const db = await openIDB();
+    const alle = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const items = [];
+      tx.objectStore(IDB_STORE).openCursor().onsuccess = (e) => {
+        const c = e.target.result;
+        if (c) { items.push(c.value); c.continue(); } else resolve(items);
+      };
+      tx.onerror = (e) => reject(e.target.error);
+    });
+
+    const verouderd = alle.filter((b) => !geldigeIds.has(b.meldingId));
+    if (!verouderd.length) return 0;
+
+    const tx2 = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx2.objectStore(IDB_STORE);
+    verouderd.forEach((b) => store.delete(b.id));
+    await new Promise((resolve) => { tx2.oncomplete = resolve; });
+
+    return verouderd.length;
+  } catch {
+    return 0;
+  }
+}

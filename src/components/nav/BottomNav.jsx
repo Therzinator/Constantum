@@ -3,12 +3,13 @@ import './BottomNav.css';
 const TABS = [
   ['dashboard', '📊', 'Dashboard'],
   ['melding', '📝', 'Melding'],
-  ['tijdlijn', '🕐', 'Tijdlijn']
+  ['tijdlijn', '🕐', 'Tijdlijn'],
+  ['export', '💾', 'Export']
 ];
 
 // Komt overeen met de bottom-tab-navigatie uit docs/index.html
-// (showPage/tab-dashboard/tab-melding/tab-tijdlijn). Export en Instellingen
-// volgen als eigen tabs in een latere fase.
+// (showPage/tab-dashboard/tab-melding/tab-tijdlijn/tab-export). Instellingen
+// volgt als eigen tab in een latere fase.
 export function BottomNav({ pagina, onPaginaChange }) {
   return (
     <nav className="bottom-nav">

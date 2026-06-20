@@ -8,6 +8,7 @@ import { SyncStatusBar } from './components/sync/SyncStatusBar.jsx'
 import { MeldingForm } from './components/melding/MeldingForm.jsx'
 import { DashboardPage } from './components/dashboard/DashboardPage.jsx'
 import { TijdlijnPage } from './components/meldingen/TijdlijnPage.jsx'
+import { ExportPage } from './components/export/ExportPage.jsx'
 import { BottomNav } from './components/nav/BottomNav.jsx'
 import './App.css'
 
@@ -48,6 +49,10 @@ function App() {
           user={auth.user}
           gebruikerRol={auth.gebruikerRol}
         />
+      )}
+
+      {pagina === 'export' && (
+        <ExportPage meldingenApi={meldingenApi} thuislocatie={thuislocatieApi.thuislocatie} />
       )}
 
       <BottomNav pagina={pagina} onPaginaChange={setPagina} />

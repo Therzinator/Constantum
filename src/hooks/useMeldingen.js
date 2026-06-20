@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { getMeldingen, saveMeldingen, safeSetLocalStorage } from '../lib/storage/localStorage.js';
-import { idbDeleteBijlagen } from '../lib/storage/indexedDB.js';
+import { idbDeleteBijlagen, idbClearAll } from '../lib/storage/indexedDB.js';
 
 // ── OFFLINE QUEUE ─────────────────────────────────────────────
 // Voorheen module-level _offlineQueue/_deleteQueue globals — nu React state.
@@ -85,6 +85,31 @@ export function useMeldingen() {
     voegToeAanDeleteQueue(id);
   }, [persistMeldingen, verwijderUitQueue, voegToeAanDeleteQueue]);
 
+  // Komt overeen met de merge-by-id-logica in importJSON() — bestaande
+  // meldingen blijven behouden, alleen niet-bestaande ID's worden toegevoegd.
+  // Geeft het aantal nieuw toegevoegde meldingen terug.
+  const importeerMeldingen = useCallback((nieuweMeldingen) => {
+    const bestaand = getMeldingen();
+    const bestaandeIds = new Set(bestaand.map((m) => m.id));
+    const nieuw = nieuweMeldingen.filter((m) => !bestaandeIds.has(m.id));
+    if (nieuw.length) {
+      const samen = [...nieuw, ...bestaand].sort(
+        (a, b) => new Date(b.timestamp_local) - new Date(a.timestamp_local)
+      );
+      persistMeldingen(samen);
+    }
+    return nieuw.length;
+  }, [persistMeldingen]);
+
+  // Komt overeen met het lokale deel van clearAllData() — leegt localStorage
+  // (incl. de oude driftlog_meldingen-sleutel) en IndexedDB.
+  const verwijderAlleMeldingenLokaal = useCallback(async () => {
+    localStorage.removeItem('spuitlog_meldingen');
+    localStorage.removeItem('driftlog_meldingen');
+    await idbClearAll();
+    setMeldingenState([]);
+  }, []);
+
   return {
     meldingen,
     offlineQueue: queues.offlineQueue,
@@ -93,6 +118,8 @@ export function useMeldingen() {
     persistMeldingen,
     voegMeldingToe,
     verwijderMeldingLokaal,
+    importeerMeldingen,
+    verwijderAlleMeldingenLokaal,
     voegToeAanQueue,
     voegToeAanDeleteQueue,
     verwijderUitQueue
