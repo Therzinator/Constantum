@@ -45,12 +45,11 @@ export function beschrijfWeerbericht(weer) {
   if (weer.windKmu != null) {
     delen.push(`💨 Wind ${Math.round(weer.windKmu)} km/u ${windRichtingTekst(weer.windRichtingGraden)}`);
   }
+  if (weer.neerslagNuMm != null) {
+    delen.push(`🌧️ Nu ${weer.neerslagNuMm.toFixed(1)} mm/u op je locatie`);
+  }
   if (weer.neerslagKomendeUrenMm != null) {
-    delen.push(
-      weer.neerslagKomendeUrenMm > 0
-        ? `🌧️ ${weer.neerslagKomendeUrenMm.toFixed(1)} mm verwacht komende ${FORECAST_UREN} uur`
-        : `☀️ Droog komende ${FORECAST_UREN} uur`
-    );
+    delen.push(`📊 ${weer.neerslagKomendeUrenMm.toFixed(1)} mm verwacht komende ${FORECAST_UREN} uur`);
   }
   if (weer.luchtdrukHpa != null) delen.push(`🔽 ${Math.round(weer.luchtdrukHpa)} hPa`);
   if (weer.zonneschijnKomendeUrenMin != null) delen.push(`🌤️ ${weer.zonneschijnKomendeUrenMin} min zon komende ${FORECAST_UREN} uur`);

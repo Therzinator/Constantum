@@ -2,12 +2,36 @@
   position: relative;
 }
 
+.dashboard-kaart-kaart-houder {
+  position: relative;
+}
+
 .dashboard-kaart {
   height: 280px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
 }
+
+.dashboard-kaart-gps-knop {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-bright);
+  background: var(--bg-card);
+  color: var(--accent);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.dashboard-kaart-gps-knop:active { transform: scale(0.93); }
 
 .dashboard-kaart-balk {
   display: flex;

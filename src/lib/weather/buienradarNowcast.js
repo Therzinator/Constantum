@@ -65,7 +65,7 @@ export function beschrijfRegenverwachting(reeks) {
 
   const eersteRegen = reeks.find((r) => r.mmPerUur > 0);
   if (!eersteRegen) {
-    return `☀️ Droog in de komende ${horizonMinuten} minuten (verder dan dat geeft deze gratis databron geen betrouwbare voorspelling).`;
+    return `☀️ Droog (0 mm/u) in de komende ${horizonMinuten} minuten.`;
   }
-  return `🌧️ Neerslag verwacht vanaf ${formatTijd(eersteRegen.tijd)}, hevigst rond ${formatTijd(piek.tijd)} (~${piek.mmPerUur} mm/u).`;
+  return `🌧️ Nu droog — neerslag verwacht vanaf ${formatTijd(eersteRegen.tijd)}, hevigst rond ${formatTijd(piek.tijd)} (~${piek.mmPerUur} mm/u).`;
 }

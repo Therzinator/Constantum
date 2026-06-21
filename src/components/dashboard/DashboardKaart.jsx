@@ -10,6 +10,7 @@ import Cluster from 'ol/source/Cluster.js';
 import LayerGroup from 'ol/layer/Group.js';
 import Overlay from 'ol/Overlay.js';
 import { unByKey } from 'ol/Observable.js';
+import { defaults as defaultControls } from 'ol/control/defaults.js';
 import { fromLonLat, toLonLat, transformExtent } from 'ol/proj.js';
 import Style from 'ol/style/Style.js';
 import CircleStyle from 'ol/style/Circle.js';
@@ -220,6 +221,11 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
 
     const map = new Map({
       target: containerRef.current,
+      // attribution-control uit: rechtsonder komt i.p.v. daarvan de "Mijn
+      // locatie"-knop (zie .dashboard-kaart-gps-knop) — de attributietekst
+      // voegde verder geen waarde toe op een GIS-app die toch al alleen
+      // OSM/PDOK-bronnen gebruikt (vermeld in de export-/PDF-bijlage).
+      controls: defaultControls({ attribution: false }),
       layers: [osmLaag, luchtLaag, radarLaag, natura2000Laag, driftGroep, heatmapLaag, homeLaag, gebruikerLaag, clusterLaag],
       overlays: [overlay],
       view: new View({ center: fromLonLat([lng, lat]), zoom: 13 })
@@ -565,12 +571,14 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
         <button type="button" className={`dashboard-kaart-toggle ${radarAan ? 'actief-radar' : ''}`} onClick={wisselRadar}>
           🌧️ Neerslagradar{radarAan ? ' aan' : ''}
         </button>
-        <button type="button" className="dashboard-kaart-toggle" onClick={navigeerNaarGps} title="Navigeer naar mijn huidige GPS-positie">
-          📍 Mijn locatie
-        </button>
       </div>
 
-      <div ref={containerRef} className="dashboard-kaart" />
+      <div className="dashboard-kaart-kaart-houder">
+        <div ref={containerRef} className="dashboard-kaart" />
+        <button type="button" className="dashboard-kaart-gps-knop" onClick={navigeerNaarGps} title="Navigeer naar mijn huidige GPS-positie">
+          📍
+        </button>
+      </div>
 
       {gpsFout && <div className="dashboard-kaart-status dashboard-kaart-status-fout">📍 {gpsFout}</div>}
 
