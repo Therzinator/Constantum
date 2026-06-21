@@ -4,6 +4,7 @@ import { magVerwijderen } from '../../lib/rollen.js';
 import { SUPABASE_ENABLED } from '../../lib/supabase/client.js';
 import { haversineAfstand } from '../../lib/geo/haversine.js';
 import { MeldingMiniKaart } from './MeldingMiniKaart.jsx';
+import './MeldingCard.css';
 
 const TYPE_LABEL = {
   spuitactiviteit: '🚜 Spuitactiviteit',
@@ -70,31 +71,60 @@ export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSele
               <span className="melding-card-date">{dateStr} {timeStr}</span>
             </div>
 
-            <div className="melding-card-desc">{omschrijving}</div>
-
-            <div className="melding-card-meta">
-              {melding.weather?.wind_speed != null && (
-                <span style={{ color: 'var(--info)', fontSize: '0.65rem' }}>
-                  💨 {melding.weather.wind_speed} km/h {degToCompass(melding.weather.wind_dir)}
-                </span>
-              )}
-              {melding.gezondheidsklachten?.length > 0 && (
-                <span style={{ color: 'var(--danger)', fontSize: '0.65rem' }}>
-                  🏥 {melding.gezondheidsklachten.length} klacht(en)
-                </span>
-              )}
-              {melding.bestanden?.length > 0 && (
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
-                  📎 {melding.bestanden.length} bestand(en)
-                </span>
-              )}
-              {melding.melder_email && (
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>
-                  {melderCode(melding.melder_email)}
-                </span>
-              )}
-              <span className="melding-id">{melding.id}</span>
-            </div>
+            {compact ? (
+              // Compacte variant ("Recente meldingen"): rij 1 is hierboven
+              // (badges + datum, .melding-card-top), rij 2 combineert
+              // omschrijving en meta-iconen op één regel — bewust precies
+              // twee rijen data, geen losse derde rij.
+              <div className="melding-card-compact-rij2">
+                <div className="melding-card-desc">{omschrijving}</div>
+                <div className="melding-card-meta">
+                  {melding.weather?.wind_speed != null && (
+                    <span style={{ color: 'var(--info)', fontSize: '0.65rem' }}>
+                      💨 {melding.weather.wind_speed} km/h {degToCompass(melding.weather.wind_dir)}
+                    </span>
+                  )}
+                  {melding.gezondheidsklachten?.length > 0 && (
+                    <span style={{ color: 'var(--danger)', fontSize: '0.65rem' }}>
+                      🏥 {melding.gezondheidsklachten.length} klacht(en)
+                    </span>
+                  )}
+                  {melding.bestanden?.length > 0 && (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
+                      📎 {melding.bestanden.length} bestand(en)
+                    </span>
+                  )}
+                  <span className="melding-id">{melding.id}</span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="melding-card-desc">{omschrijving}</div>
+                <div className="melding-card-meta">
+                  {melding.weather?.wind_speed != null && (
+                    <span style={{ color: 'var(--info)', fontSize: '0.65rem' }}>
+                      💨 {melding.weather.wind_speed} km/h {degToCompass(melding.weather.wind_dir)}
+                    </span>
+                  )}
+                  {melding.gezondheidsklachten?.length > 0 && (
+                    <span style={{ color: 'var(--danger)', fontSize: '0.65rem' }}>
+                      🏥 {melding.gezondheidsklachten.length} klacht(en)
+                    </span>
+                  )}
+                  {melding.bestanden?.length > 0 && (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
+                      📎 {melding.bestanden.length} bestand(en)
+                    </span>
+                  )}
+                  {melding.melder_email && (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>
+                      {melderCode(melding.melder_email)}
+                    </span>
+                  )}
+                  <span className="melding-id">{melding.id}</span>
+                </div>
+              </>
+            )}
 
             {!compact && (
               <>

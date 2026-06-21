@@ -1,0 +1,135 @@
+.melding-card {
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.melding-card-body {
+  padding: 12px;
+}
+
+.melding-card-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.melding-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Kaartje rechts van de tekst, los van of het compact/normaal is — flex-row
+   met thumb-col als laatste kind plaatst hem altijd aan de rechterzijde. */
+.melding-card-thumb-col {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.melding-card-afstand {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  max-width: 224px;
+  text-align: center;
+  white-space: normal;
+}
+
+.melding-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.melding-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.melding-card-date {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.melding-card-desc {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.melding-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+}
+
+.melding-card-meta .melding-id {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.melding-card-rfc3161 {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  margin-top: 6px;
+}
+.melding-card-rfc3161.ok { color: var(--accent); }
+.melding-card-rfc3161.geen { color: var(--text-muted); }
+
+.melding-card-footer {
+  border-top: 1px solid var(--border);
+  padding: 6px 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.melding-card-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger);
+  opacity: 0.6;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.melding-card-delete:hover { opacity: 1; }
+
+/* Compacte variant ("Recente meldingen" op het Dashboard) — data in exact
+   twee rijen i.p.v. drie (top-rij + losse omschrijving-rij + losse
+   meta-rij): rij 1 = badges + datum (hergebruikt .melding-card-top), rij 2
+   = omschrijving en meta-iconen samen op één regel. */
+.melding-card-compact-rij2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.melding-card-compact-rij2 .melding-card-desc {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.melding-card-compact-rij2 .melding-card-meta {
+  flex-shrink: 0;
+}
