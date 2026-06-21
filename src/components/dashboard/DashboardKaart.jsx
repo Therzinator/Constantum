@@ -24,14 +24,7 @@ import { maakNatura2000Laag, vulNatura2000Laag } from '../../lib/pdok/natura2000
 import { maakPerceelgrenzenLaag, vulPerceelgrenzenLaag } from '../../lib/pdok/perceelLaag.js';
 import { laadGpsVoorkeur } from '../../lib/dashboard/gpsVoorkeur.js';
 import { laadGpsCache, slaGpsCacheOp } from '../../lib/geo/gpsCache.js';
-import {
-  maakRadarLaag,
-  vulRadarLaag,
-  haalRadarAnimatieFrames,
-  RADAR_WEERGAVE_ZOOM
-} from '../../lib/weather/radarLaag.js';
-import { haalWeerbericht, beschrijfWeerbericht } from '../../lib/weather/weerbericht.js';
-import { bepaalSpuitvensterIndicatie } from '../../lib/weather/spuitvenster.js';
+import { isCoordinatorOfAdmin } from '../../lib/rollen.js';
 import { gebruikerKleur, melderCode } from '../../utils/format.js';
 import './DashboardKaart.css';
 
@@ -59,6 +52,12 @@ const MAAND_OPTIES = [
 ];
 
 const DAG_OPTIES = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+
+// Hard begrensd om de kaart bij een drukke buurt/groot tijdvak niet te laten
+// vastlopen op duizenden features — zie MELDINGEN_KAART_LIMIET-melding
+// hieronder in de JSX, die de gebruiker hier expliciet op wijst (voorheen
+// werd dit stilzwijgend afgekapt, zonder dat zichtbaar te maken).
+const MELDINGEN_KAART_LIMIET = 100;
 
 function clusterStijl(feature) {
   const onderliggend = feature.get('features');
@@ -113,6 +112,23 @@ function natura2000PopupHtml(props) {
   </div>`;
 }
 
+// Zelfde veldnamen als zoekPerceelPDOK() in lib/pdok/perceel.js — PDOK
+// levert de kadastrale gemeentecode wisselend onder AKRKadastraleGemeenteCode
+// of kadastralegemeentecode, vandaar de fallback-keten.
+function perceelPopupHtml(props) {
+  const gemeente = props.AKRKadastraleGemeenteCode || props.kadastralegemeentecode || props.kadastraleGemeentenaam || '';
+  const sectie = props.sectie || '';
+  const nummer = props.perceelnummer || '';
+  const perceelId = `${gemeente}${sectie}-${nummer}`.toUpperCase().replace(/^-|-$/g, '');
+  const grootte = props.kadastraleGrootteWaarde ?? props.grootte;
+
+  return `<div class="dashboard-kaart-perceel-popup">
+    <div class="dashboard-kaart-perceel-popup-titel">📐 Kadastraal perceel</div>
+    ${perceelId ? `<div class="dashboard-kaart-perceel-popup-rij">${perceelId}</div>` : ''}
+    ${grootte != null ? `<div class="dashboard-kaart-perceel-popup-rij">Oppervlakte: ${grootte} m²</div>` : ''}
+  </div>`;
+}
+
 // Komt overeen met initDashMap()/updateDashboard() (kaartgedeelte) uit
 // docs/index.html: meldingmarkers + driftzones op een kaart met
 // luchtfoto/driftlaag-toggle en maand/jaar-filter.
@@ -120,7 +136,8 @@ function natura2000PopupHtml(props) {
 // Gemigreerd van Leaflet naar OpenLayers 10 — meldingen worden nu via
 // ol/source/Cluster gegroepeerd (i.p.v. losse markers), met een vectorlaag
 // voor Natura2000-gebieden als extra toggle.
-export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren }) {
+export function DashboardKaart({ meldingen, thuislocatie, gebruikerRol, onMeldingSelecteren }) {
+  const magHotspotsZien = isCoordinatorOfAdmin(gebruikerRol);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const meldingenSourceRef = useRef(null);
@@ -137,22 +154,12 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
   const overlayRef = useRef(null);
   const clusterLaagRef = useRef(null);
   const heatmapLaagRef = useRef(null);
-  const radarLaagRef = useRef(null);
-  const radarIntervalRef = useRef(null);
-  const radarVorigeZoomRef = useRef(null);
-  const radarFramesRef = useRef([]);
-  const radarAnimIndexRef = useRef(0);
-  const radarAnimIntervalRef = useRef(null);
   const zoomListenerKeyRef = useRef(null);
   const [luchtAan, setLuchtAan] = useState(false);
   const [driftAan, setDriftAan] = useState(false);
   const [natura2000Aan, setNatura2000Aan] = useState(false);
   const [perceelAan, setPerceelAan] = useState(false);
   const [heatmapAan, setHeatmapAan] = useState(false);
-  const [radarAan, setRadarAan] = useState(false);
-  const [radarVoorspelling, setRadarVoorspelling] = useState(null); // { status: 'laden'|'klaar'|'fout', regenTekst, weerItems, regenreeks }
-  const [radarFrameTijd, setRadarFrameTijd] = useState(null);
-  const [radarGepauzeerd, setRadarGepauzeerd] = useState(false);
   const [huidigeZoom, setHuidigeZoom] = useState(13);
   const [maandFilter, setMaandFilter] = useState('huidig');
   const [jaarFilter, setJaarFilter] = useState('');
@@ -214,9 +221,6 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
     const heatmapLaag = new HeatmapLayer({ source: meldingenSource, blur: 20, radius: 14, zIndex: 9, visible: false });
     heatmapLaagRef.current = heatmapLaag;
 
-    const radarLaag = maakRadarLaag();
-    radarLaagRef.current = radarLaag;
-
     const driftGroep = new LayerGroup({ layers: [], visible: false });
     driftGroepRef.current = driftGroep;
 
@@ -243,7 +247,7 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
       // DashboardKaart.css) zodat hij niet overlapt met de "Mijn
       // locatie"-knop rechtsonder (.dashboard-kaart-gps-knop).
       controls: defaultControls(),
-      layers: [osmLaag, luchtLaag, radarLaag, natura2000Laag, perceelLaag, driftGroep, heatmapLaag, homeLaag, gebruikerLaag, clusterLaag],
+      layers: [osmLaag, luchtLaag, natura2000Laag, perceelLaag, driftGroep, heatmapLaag, homeLaag, gebruikerLaag, clusterLaag],
       overlays: [overlay],
       view: new View({ center: fromLonLat([lng, lat]), zoom: 13 })
     });
@@ -284,6 +288,17 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
         if (n2000Feature) {
           overlayEl.innerHTML = natura2000PopupHtml(n2000Feature.getProperties());
           overlay.setPosition(evt.coordinate);
+          return;
+        }
+      }
+
+      // Perceelgrenzen alleen aanklikbaar zolang de laag zichtbaar is — net
+      // als bij Natura2000 hierboven.
+      if (perceelLaag.getVisible()) {
+        const perceelFeature = map.forEachFeatureAtPixel(evt.pixel, (f) => f, { layerFilter: (l) => l === perceelLaag });
+        if (perceelFeature) {
+          overlayEl.innerHTML = perceelPopupHtml(perceelFeature.getProperties());
+          overlay.setPosition(evt.coordinate);
         }
       }
     });
@@ -300,14 +315,6 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
       if (perceelMoveendKeyRef.current) {
         unByKey(perceelMoveendKeyRef.current);
         perceelMoveendKeyRef.current = null;
-      }
-      if (radarIntervalRef.current) {
-        clearInterval(radarIntervalRef.current);
-        radarIntervalRef.current = null;
-      }
-      if (radarAnimIntervalRef.current) {
-        clearInterval(radarAnimIntervalRef.current);
-        radarAnimIntervalRef.current = null;
       }
       if (zoomListenerKeyRef.current) {
         unByKey(zoomListenerKeyRef.current);
@@ -326,7 +333,6 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
       overlayRef.current = null;
       clusterLaagRef.current = null;
       heatmapLaagRef.current = null;
-      radarLaagRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -340,7 +346,7 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
     meldingenSource.clear();
     driftGroep.getLayers().clear();
 
-    gefiltered.slice(0, 100).forEach((m) => {
+    gefiltered.slice(0, MELDINGEN_KAART_LIMIET).forEach((m) => {
       if (!m.gps?.lat || !m.gps?.lng) return;
       if (Math.abs(m.gps.lat) < 0.01 && Math.abs(m.gps.lng) < 0.01) return;
 
@@ -528,125 +534,6 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
     clusterLaagRef.current?.setVisible(!volgende);
   };
 
-  // Locatie voor de neerslagvoorspelling: live/gecachete GPS-pin (actuele
-  // positie van de gebruiker) > thuislocatie > huidig kaartmidden.
-  const haalVoorspellingsLocatie = () => {
-    if (gebruikerMarkerRef.current) {
-      const [voorspellingLng, voorspellingLat] = toLonLat(gebruikerMarkerRef.current.getGeometry().getCoordinates());
-      return { lat: voorspellingLat, lng: voorspellingLng };
-    }
-    if (thuislocatie?.lat && thuislocatie?.lng) return { lat: thuislocatie.lat, lng: thuislocatie.lng };
-    const center = mapRef.current?.getView().getCenter();
-    if (!center) return null;
-    const [centerLng, centerLat] = toLonLat(center);
-    return { lat: centerLat, lng: centerLng };
-  };
-
-  const verversRadarVoorspelling = () => {
-    const locatie = haalVoorspellingsLocatie();
-    if (!locatie) {
-      setRadarVoorspelling({ status: 'fout', regenTekst: 'Geen locatie beschikbaar voor neerslagverwachting.', weerItems: null });
-      return;
-    }
-    haalWeerbericht(locatie.lat, locatie.lng)
-      .then((weer) => {
-        const { regenTekst, weerItems } = beschrijfWeerbericht(weer);
-        const klaar = Boolean(regenTekst || weerItems?.length);
-        setRadarVoorspelling({
-          status: klaar ? 'klaar' : 'fout',
-          regenTekst: regenTekst || (klaar ? null : 'Geen weerdata beschikbaar voor deze locatie.'),
-          weerItems,
-          regenreeks: weer?.regenreeks || null,
-          spuitvenster: bepaalSpuitvensterIndicatie(weer?.station, weer?.regenreeks)
-        });
-      })
-      .catch((err) => setRadarVoorspelling({ status: 'fout', regenTekst: `Kon weerdata niet ophalen: ${err.message}`, weerItems: null, regenreeks: null, spuitvenster: null }));
-  };
-
-  // Haalt de laatste 2 uur RainViewer-frames op (10 min per stap) voor de
-  // "wolken in beweging"-animatie hieronder. Geen nowcast/toekomst
-  // beschikbaar (zie radarLaag.js) — dit toont dus de werkelijke beweging
-  // van de afgelopen 2 uur, niet een voorspelling.
-  const verversRadarAnimatieFrames = () => {
-    haalRadarAnimatieFrames()
-      .then((frames) => { if (frames.length) radarFramesRef.current = frames; })
-      .catch((err) => console.warn('[DashboardKaart] Radar-animatie niet beschikbaar:', err.message));
-  };
-
-  const speelRadarFrameAf = () => {
-    const frames = radarFramesRef.current;
-    if (!frames.length || !radarLaagRef.current) return;
-    radarAnimIndexRef.current = (radarAnimIndexRef.current + 1) % frames.length;
-    const frame = frames[radarAnimIndexRef.current];
-    vulRadarLaag(radarLaagRef.current, frame);
-    setRadarFrameTijd(frame.tijd);
-  };
-
-  // Live neerslagradar (RainViewer) — zoomt uit naar RADAR_WEERGAVE_ZOOM
-  // (provincieniveau + een beetje extra), zonder de positie van de
-  // gebruiker te wijzigen, en speelt de laatste 2 uur aan radartegels af
-  // als doorlopende animatie (net als de Buienradar-app) zodat zichtbaar
-  // is hoe de neerslag beweegt — bij uitzetten weer terug naar het
-  // zoomniveau van vóór het aanzetten. Toont daarnaast een voorspellings-
-  // popup en verversen elke 5 minuten zolang de toggle aan staat.
-  const wisselRadar = () => {
-    const volgende = !radarAan;
-    setRadarAan(volgende);
-    radarLaagRef.current?.setVisible(volgende);
-    const view = mapRef.current?.getView();
-
-    if (volgende) {
-      if (view) {
-        radarVorigeZoomRef.current = view.getZoom();
-        if (view.getZoom() > RADAR_WEERGAVE_ZOOM) view.animate({ zoom: RADAR_WEERGAVE_ZOOM, duration: 400 });
-      }
-      setRadarVoorspelling({ status: 'laden', regenTekst: 'Neerslagverwachting laden...', weerItems: null, regenreeks: null });
-      setRadarGepauzeerd(false);
-      radarAnimIndexRef.current = 0;
-      verversRadarAnimatieFrames();
-      verversRadarVoorspelling();
-      if (!radarAnimIntervalRef.current) {
-        radarAnimIntervalRef.current = setInterval(speelRadarFrameAf, 700);
-      }
-      if (!radarIntervalRef.current) {
-        radarIntervalRef.current = setInterval(() => {
-          verversRadarAnimatieFrames();
-          verversRadarVoorspelling();
-        }, 5 * 60 * 1000);
-      }
-    } else {
-      if (view && radarVorigeZoomRef.current != null) {
-        view.animate({ zoom: radarVorigeZoomRef.current, duration: 400 });
-      }
-      radarVorigeZoomRef.current = null;
-      if (radarAnimIntervalRef.current) {
-        clearInterval(radarAnimIntervalRef.current);
-        radarAnimIntervalRef.current = null;
-      }
-      radarFramesRef.current = [];
-      setRadarFrameTijd(null);
-      setRadarVoorspelling(null);
-      if (radarIntervalRef.current) {
-        clearInterval(radarIntervalRef.current);
-        radarIntervalRef.current = null;
-      }
-    }
-  };
-
-  // Pauzeert/hervat alleen de afspeel-animatie (radarAnimIntervalRef) — de
-  // 5-minuts dataverversing (radarIntervalRef) blijft los daarvan doorlopen
-  // zodat de tegels niet verouderen terwijl er gepauzeerd is.
-  const wisselRadarPauze = () => {
-    if (radarAnimIntervalRef.current) {
-      clearInterval(radarAnimIntervalRef.current);
-      radarAnimIntervalRef.current = null;
-      setRadarGepauzeerd(true);
-    } else {
-      radarAnimIntervalRef.current = setInterval(speelRadarFrameAf, 700);
-      setRadarGepauzeerd(false);
-    }
-  };
-
   const melders = useMemo(
     () => [...new Set(gefiltered.map((m) => m.melder_email).filter(Boolean))],
     [gefiltered]
@@ -667,27 +554,16 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
         <button type="button" className={`dashboard-kaart-toggle ${perceelAan ? 'actief-perceel' : ''}`} onClick={wisselPerceel}>
           🗺️ Percelen{perceelAan ? ' aan' : ''}
         </button>
-        <button type="button" className={`dashboard-kaart-toggle ${heatmapAan ? 'actief-heatmap' : ''}`} onClick={wisselHeatmap}>
-          🔥 Heatmap{heatmapAan ? ' aan' : ''}
-        </button>
-        <button
-          type="button"
-          className={`dashboard-kaart-toggle ${radarAan ? 'actief-radar' : ''}`}
-          onClick={wisselRadar}
-          title="Toont de afgelopen 2 uur aan radarbeelden (terugkijkend) + een neerslagverwachting voor de komende 2 uur (vooruitkijkend)"
-        >
-          🌧️ Neerslagradar{radarAan ? ' aan' : ''}
-        </button>
+        {magHotspotsZien && (
+          <button type="button" className={`dashboard-kaart-toggle ${heatmapAan ? 'actief-heatmap' : ''}`} onClick={wisselHeatmap}>
+            🔥 Heatmap{heatmapAan ? ' aan' : ''}
+          </button>
+        )}
       </div>
 
       <div className="dashboard-kaart-kaart-houder">
         <div ref={containerRef} className="dashboard-kaart" />
         <span className="dashboard-kaart-zoom-badge">🔍 Zoom {huidigeZoom}</span>
-        {radarAan && radarFrameTijd != null && (
-          <span className="dashboard-kaart-radar-tijd-badge" title="Radarbeeld uit het verleden — geen voorspelling">
-            ⏪ {new Date(radarFrameTijd * 1000).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        )}
         <button type="button" className="dashboard-kaart-gps-knop" onClick={navigeerNaarGps} title="Navigeer naar mijn huidige GPS-positie">
           📍
         </button>
@@ -707,71 +583,13 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
         </select>
       </div>
 
-      {gpsFout && <div className="dashboard-kaart-status dashboard-kaart-status-fout">📍 {gpsFout}</div>}
-
-      {radarAan && radarVoorspelling && (
-        <div className="dashboard-kaart-radar-popup">
-          <button
-            type="button"
-            className="dashboard-kaart-radar-popup-close"
-            onClick={() => setRadarVoorspelling(null)}
-            title="Sluiten"
-          >
-            ×
-          </button>
-          {radarVoorspelling.regenTekst && (
-            <div className="dashboard-kaart-radar-popup-regen">
-              {radarVoorspelling.status === 'laden' ? '⏳ ' : ''}{radarVoorspelling.regenTekst}
-            </div>
-          )}
-          {radarVoorspelling.regenreeks?.length > 0 && (
-            <div className="dashboard-kaart-regen-tijdlijn" title="Neerslagintensiteit per 5 minuten, komende 2 uur">
-              {radarFrameTijd != null && (
-                <div className="dashboard-kaart-radar-anim-balk">
-                  <button
-                    type="button"
-                    className="dashboard-kaart-radar-pauze-knop"
-                    onClick={wisselRadarPauze}
-                    title={radarGepauzeerd ? 'Hervat radaranimatie' : 'Pauzeer radaranimatie'}
-                  >
-                    {radarGepauzeerd ? '▶️' : '⏸️'}
-                  </button>
-                  <span>📡 Radarbeeld (verleden): {new Date(radarFrameTijd * 1000).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              )}
-              <div className="dashboard-kaart-regen-tijdlijn-titel">🔮 Verwachting komende 2 uur</div>
-              <div className="dashboard-kaart-regen-tijdlijn-balken">
-                {radarVoorspelling.regenreeks.map((r, i) => (
-                  <span
-                    key={i}
-                    className="dashboard-kaart-regen-tijdlijn-balk"
-                    style={{ height: `${Math.max(6, Math.min(100, (r.mmPerUur / 4) * 100))}%` }}
-                  />
-                ))}
-              </div>
-              <div className="dashboard-kaart-regen-tijdlijn-labels">
-                <span>nu</span>
-                <span>{new Date(radarVoorspelling.regenreeks[radarVoorspelling.regenreeks.length - 1].tijd).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            </div>
-          )}
-          {radarVoorspelling.weerItems?.length > 0 && (
-            <div className="dashboard-kaart-weer-grid">
-              {radarVoorspelling.weerItems.map((item, i) => (
-                <div className="dashboard-kaart-weer-rij" key={i}>
-                  <span className="dashboard-kaart-weer-icoon">{item.icoon}</span>
-                  <span>{item.tekst}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {radarVoorspelling.spuitvenster && (
-            <div className="dashboard-kaart-spuitvenster" title="Indicatief, gebaseerd op vuistregels — nog niet gevalideerd aan eigen meldingen">
-              🚜 Spuitvenster-indicatie: {radarVoorspelling.spuitvenster.tekst}
-            </div>
-          )}
+      {gefiltered.length > MELDINGEN_KAART_LIMIET && (
+        <div className="dashboard-kaart-status" title="Verfijn het jaar/maand/dag-filter hierboven om meer specifieke meldingen te zien">
+          ℹ️ {MELDINGEN_KAART_LIMIET} van {gefiltered.length} meldingen getoond op de kaart — verfijn je filter voor de rest.
         </div>
       )}
+
+      {gpsFout && <div className="dashboard-kaart-status dashboard-kaart-status-fout">📍 {gpsFout}</div>}
 
       {melders.length > 0 && (
         <div className="dashboard-kaart-legenda">

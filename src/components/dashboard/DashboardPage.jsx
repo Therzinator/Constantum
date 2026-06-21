@@ -1,13 +1,16 @@
-import { useMemo, useState } from 'react';
-import { DashboardKaart } from './DashboardKaart.jsx';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { MaandGrafiek } from './MaandGrafiek.jsx';
 import { MeldingCard } from '../meldingen/MeldingCard.jsx';
-import { MeldingDetailModal } from '../melding/MeldingDetailModal.jsx';
 import { dashboardStatistieken } from '../../lib/meldingen/statistieken.js';
 import { laadGpsCache } from '../../lib/geo/gpsCache.js';
 import { laadNotificatieInstellingen } from '../../lib/notificaties/buurtMelding.js';
 import { haversineAfstand } from '../../lib/geo/haversine.js';
 import './DashboardPage.css';
+
+// Lazy geladen — beide trekken OpenLayers (~300-400KB) mee, dat hoeft niet
+// in de hoofdbundel te zitten voor gebruikers die deze pagina niet openen.
+const DashboardKaart = lazy(() => import('./DashboardKaart.jsx').then((m) => ({ default: m.DashboardKaart })));
+const MeldingDetailModal = lazy(() => import('../melding/MeldingDetailModal.jsx').then((m) => ({ default: m.MeldingDetailModal })));
 
 // Komt overeen met de pagina 'dashboard' (updateDashboard/renderCharts) uit
 // docs/index.html: statistieken, kaart met driftlagen, maandgrafiek en de
@@ -61,7 +64,9 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
       </div>
 
       <div className="dashboard-section">
-        <DashboardKaart meldingen={meldingenInBereik} thuislocatie={thuislocatie} onMeldingSelecteren={setGeselecteerdId} />
+        <Suspense fallback={<div className="dashboard-leeg">Kaart laden...</div>}>
+          <DashboardKaart meldingen={meldingenInBereik} thuislocatie={thuislocatie} gebruikerRol={gebruikerRol} onMeldingSelecteren={setGeselecteerdId} />
+        </Suspense>
       </div>
 
       <div className="card p-3 dashboard-section">
@@ -90,7 +95,9 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
       </div>
 
       {geselecteerd && (
-        <MeldingDetailModal melding={geselecteerd} alleMeldingen={meldingenInBereik} onClose={() => setGeselecteerdId(null)} />
+        <Suspense fallback={null}>
+          <MeldingDetailModal melding={geselecteerd} alleMeldingen={meldingenInBereik} onClose={() => setGeselecteerdId(null)} />
+        </Suspense>
       )}
     </div>
   );

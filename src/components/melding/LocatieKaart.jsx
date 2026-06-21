@@ -163,7 +163,12 @@ export function LocatieKaart({ lat, lng, kaartCentrum, homeLocatie, weather, onL
       gebruikerCirkelRef.current = cirkel;
     }
 
+    // Anders dan op het dashboard (waar dit een optionele toggle is) is de
+    // perceelgrenzenlaag hier altijd zichtbaar — maakPerceelgrenzenLaag()
+    // levert hem standaard met visible:false op, dus dat moet hier expliciet
+    // aangezet worden, anders blijft de laag onzichtbaar ondanks gevulde data.
     const perceelLaag = maakPerceelgrenzenLaag();
+    perceelLaag.setVisible(true);
     perceelLaagRef.current = perceelLaag;
 
     const meetSource = new VectorSource();

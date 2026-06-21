@@ -47,20 +47,6 @@
   border: 1px solid var(--border);
 }
 
-.dashboard-kaart-radar-tijd-badge {
-  position: absolute;
-  left: 8px;
-  top: 32px;
-  z-index: 10;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  padding: 3px 7px;
-  border-radius: 10px;
-  background: rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.4);
-}
-
 /* OL's attributiewidget staat standaard rechtsonder — verplaatst naar
    linksonder zodat hij niet overlapt met dashboard-kaart-gps-knop. */
 .dashboard-kaart-kaart-houder .ol-attribution {
@@ -141,12 +127,6 @@
   color: #f87171;
 }
 
-.dashboard-kaart-toggle.actief-radar {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-}
-
 .dashboard-kaart-status {
   margin-top: 8px;
   font-family: var(--mono);
@@ -159,114 +139,6 @@
   border: 1px solid rgba(239, 68, 68, 0.4);
   background: rgba(239, 68, 68, 0.1);
   color: var(--danger);
-}
-
-.dashboard-kaart-radar-popup {
-  position: relative;
-  margin-top: 8px;
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  padding: 8px 28px 8px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
-  line-height: 1.5;
-}
-
-.dashboard-kaart-radar-popup-regen {
-  margin-bottom: 6px;
-}
-
-.dashboard-kaart-regen-tijdlijn {
-  margin-bottom: 6px;
-}
-
-.dashboard-kaart-regen-tijdlijn-titel {
-  font-size: 0.6rem;
-  color: var(--text-muted);
-  margin-bottom: 3px;
-}
-
-.dashboard-kaart-radar-anim-balk {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-  font-size: 0.62rem;
-  color: #93c5fd;
-}
-
-.dashboard-kaart-radar-pauze-knop {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.75rem;
-  padding: 0;
-  line-height: 1;
-}
-
-.dashboard-kaart-regen-tijdlijn-balken {
-  display: flex;
-  align-items: flex-end;
-  gap: 1px;
-  height: 28px;
-  background: rgba(59, 130, 246, 0.08);
-  border-radius: 4px;
-  padding: 2px;
-}
-
-.dashboard-kaart-regen-tijdlijn-balk {
-  flex: 1;
-  min-width: 2px;
-  background: #60a5fa;
-  border-radius: 1px;
-}
-
-.dashboard-kaart-regen-tijdlijn-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.55rem;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-.dashboard-kaart-weer-grid {
-  display: grid;
-  gap: 3px 0;
-  padding-top: 6px;
-  border-top: 1px solid rgba(59, 130, 246, 0.25);
-}
-
-.dashboard-kaart-weer-rij {
-  display: grid;
-  grid-template-columns: 1.4em 1fr;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.dashboard-kaart-weer-icoon {
-  text-align: center;
-}
-
-.dashboard-kaart-spuitvenster {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(59, 130, 246, 0.25);
-  font-size: 0.65rem;
-}
-
-.dashboard-kaart-radar-popup-close {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  background: none;
-  border: none;
-  color: #60a5fa;
-  font-size: 0.9rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 2px 4px;
 }
 
 .dashboard-kaart-popup {
@@ -303,6 +175,23 @@
 }
 
 .dashboard-kaart-natura-popup-rij {
+  padding: 2px 0;
+  color: #475569;
+  line-height: 1.3;
+}
+
+.dashboard-kaart-perceel-popup {
+  padding: 8px 10px;
+  max-width: 220px;
+}
+
+.dashboard-kaart-perceel-popup-titel {
+  font-weight: 700;
+  color: #0d9488;
+  margin-bottom: 4px;
+}
+
+.dashboard-kaart-perceel-popup-rij {
   padding: 2px 0;
   color: #475569;
   line-height: 1.3;

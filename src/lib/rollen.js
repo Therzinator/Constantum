@@ -7,6 +7,10 @@ export function isAdmin(gebruikerRol) {
   return gebruikerRol === 'admin';
 }
 
+export function isCoordinatorOfAdmin(gebruikerRol) {
+  return gebruikerRol === 'admin' || gebruikerRol === 'coordinator';
+}
+
 export function magVerwijderen(gebruikerRol, user, melderEmail, userId) {
   if (isAdmin(gebruikerRol)) return true;
   if (!user) return false;
