@@ -1,7 +1,6 @@
 import { idbGetBijlagen } from '../storage/indexedDB.js';
 import { melderCode } from '../../utils/format.js';
 import { APP_VERSION_CLIENT } from '../version.js';
-import { genereerMeldingKaartAfbeelding } from './meldingKaartAfbeelding.js';
 
 // Genereert een printbare HTML-pagina van het volledige dossier — opent in
 // een nieuw venster waar de gebruiker zelf "Afdrukken als PDF" kiest (geen
@@ -24,10 +23,24 @@ const TYPE_LABEL = {
 
 async function meldingNaarHTML(m) {
   const idbBijlagen = await idbGetBijlagen(m.id);
+  // Voorheen werd hier f.thumbnail (extra gecomprimeerd, max 800px) als
+  // EERSTE optie getoond — de volledige, alleen EXIF/GPS-gestripte versie
+  // uit IndexedDB (idbSaveBijlage, zie useNieuweMeldingForm.js) bestond al,
+  // maar kwam nooit in het dossier terecht zolang er een thumbnail was.
+  // Nu krijgt die volledige versie voorrang; thumbnail/f.dataUrl zijn alleen
+  // nog een fallback (bv. oudere meldingen, of IDB-data die niet meer
+  // beschikbaar is).
   const fotos = (m.bestanden || [])
     .filter((f) => !f.type?.startsWith('video/'))
-    .map((f) => f.thumbnail || idbBijlagen.find((b) => b.hash === f.hash || b.name === f.name)?.dataUrl)
-    .filter(Boolean);
+    .map((f) => ({
+      src: idbBijlagen.find((b) => b.hash === f.hash || b.name === f.name)?.dataUrl || f.dataUrl || f.thumbnail,
+      hash: f.hash
+    }))
+    .filter((f) => f.src);
+  // Dynamic import i.p.v. een top-level import — meldingKaartAfbeelding.js
+  // trekt OpenLayers mee (alleen voor het "bevriezen" van een kaart-PNG),
+  // dat hoort niet in de hoofdbundel voor wie nooit een dossier exporteert.
+  const { genereerMeldingKaartAfbeelding } = await import('./meldingKaartAfbeelding.js');
   const kaartAfbeelding = await genereerMeldingKaartAfbeelding(m).catch(() => null);
   const toontWoningPin = m.afstand_woning_lat != null && m.afstand_woning_lng != null;
 
@@ -73,13 +86,14 @@ async function meldingNaarHTML(m) {
 
       <h4>Integriteitsverificatie</h4>
       <table class="meta-table">
-        <tr><td>SHA-256 hash</td><td class="mono">${escapeHTML(m.hash)}</td></tr>
+        <tr><td>SHA-256 hash (meldinggegevens)</td><td class="mono">${escapeHTML(m.hash)}</td></tr>
         <tr><td>RFC 3161 tijdstempel</td><td>${m.rfc3161
           ? `✓ ${escapeHTML(new Date(m.rfc3161.timestamp).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }))} — TSA: ${escapeHTML(m.rfc3161.tsa)}`
           : '⚠ Geen tijdstempel beschikbaar'}</td></tr>
       </table>
+      <p class="hash-toelichting">De hash hierboven verifieert de meldinggegevens (tijd, locatie, omschrijving), niet de foto's — zie per foto de eigen hash van het ORIGINEEL geüploade bestand, vóór de verwijdering van EXIF/GPS-metadata.</p>
 
-      ${fotos.length ? `<h4>Foto's (${fotos.length})</h4><div class="foto-grid">${fotos.map((src) => `<img src="${src}" />`).join('')}</div>` : ''}
+      ${fotos.length ? `<h4>Foto's (${fotos.length})</h4><div class="foto-grid">${fotos.map((f) => `<figure class="foto-item"><img src="${f.src}" />${f.hash ? `<figcaption class="mono">SHA-256 origineel: ${escapeHTML(f.hash)}</figcaption>` : ''}</figure>`).join('')}</div>` : ''}
     </section>`;
 }
 
@@ -103,8 +117,11 @@ export async function genereerDossierHTML(meldingen, locatieLabel) {
   .mono { font-family: 'Courier New', monospace; font-size: 10px; word-break: break-all; }
   .melding-kaart { width: 100%; max-width: 680px; border: 1px solid #ccc; display: block; }
   .kaart-legenda { font-size: 10px; color: #666; margin: 4px 0 12px; }
-  .foto-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-  .foto-grid img { width: 140px; height: 140px; object-fit: cover; border: 1px solid #ccc; }
+  .foto-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .foto-item { margin: 0; width: 140px; }
+  .foto-item img { width: 140px; height: 140px; object-fit: cover; border: 1px solid #ccc; display: block; }
+  .foto-item figcaption { font-size: 7px; word-break: break-all; color: #888; margin-top: 2px; }
+  .hash-toelichting { font-size: 10px; color: #666; margin: 0 0 8px; }
   .melding { page-break-inside: avoid; }
   .print-knop { margin: 16px 0; padding: 8px 16px; cursor: pointer; }
   @media print { .print-knop { display: none; } }

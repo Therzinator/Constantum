@@ -5,6 +5,7 @@ import Fill from 'ol/style/Fill.js';
 import Stroke from 'ol/style/Stroke.js';
 import Style from 'ol/style/Style.js';
 import { registreerRDNew } from '../ol/projecties.js';
+import { bouwBboxParam, haalWfsText } from './wfsClient.js';
 
 const PERCEEL_STIJL = new Style({
   stroke: new Stroke({ color: '#00d4aa', width: 1.5, lineDash: [6, 4] }),
@@ -17,14 +18,11 @@ const PERCEEL_STIJL = new Style({
 // we reprojecteren clientside naar de kaartprojectie (EPSG:3857).
 export async function haalPerceelgrenzen(lat, lng, deltaGraden = 0.001) {
   registreerRDNew();
-  const delta = deltaGraden;
-  const bbox = `${lat - delta},${lng - delta},${lat + delta},${lng + delta},EPSG:4326`;
+  const bbox = bouwBboxParam(lat, lng, deltaGraden);
   const url = `https://service.pdok.nl/kadaster/kadastralekaart/wfs/v5_0?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=kadastralekaart:Perceel&outputFormat=application/json&srsName=EPSG:28992&BBOX=${bbox}`;
 
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const text = await res.text();
-  if (!text.trim().startsWith('{')) return null;
+  const text = await haalWfsText(url);
+  if (!text) return null;
 
   const format = new GeoJSON();
   const features = format.readFeatures(text, {

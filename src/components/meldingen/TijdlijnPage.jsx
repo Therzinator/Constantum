@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { MeldingCard } from './MeldingCard.jsx';
 import { ClusterCard } from './ClusterCard.jsx';
 import { clusterMeldingen } from '../../lib/meldingen/clustering.js';
-import { MeldingDetailModal } from '../melding/MeldingDetailModal.jsx';
 import './TijdlijnPage.css';
+
+// Lazy — trekt via DriftZoneModal/DriftZoneKaart OpenLayers mee, alleen
+// nodig zodra een gebruiker daadwerkelijk een melding aanklikt.
+const MeldingDetailModal = lazy(() => import('../melding/MeldingDetailModal.jsx').then((m) => ({ default: m.MeldingDetailModal })));
 
 const TYPE_OPTIES = [
   ['', 'Alle typen'],
@@ -146,7 +149,9 @@ export function TijdlijnPage({ meldingenApi, user, gebruikerRol }) {
       )}
 
       {geselecteerd && (
-        <MeldingDetailModal melding={geselecteerd} alleMeldingen={meldingen} onClose={() => setGeselecteerdId(null)} />
+        <Suspense fallback={null}>
+          <MeldingDetailModal melding={geselecteerd} alleMeldingen={meldingen} onClose={() => setGeselecteerdId(null)} />
+        </Suspense>
       )}
     </div>
   );

@@ -1,13 +1,16 @@
-import { useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { useNieuweMeldingForm } from '../../hooks/useNieuweMeldingForm.js';
 import { spuitWindOordeel, degToCompass } from '../../lib/drift/oordeel.js';
 import { berekenPasquillKlasse } from '../../lib/weather/pasquill.js';
 import { bedrijfSuggesties } from '../../lib/meldingen/bedrijf.js';
-import { LocatieKaart } from './LocatieKaart.jsx';
 import { CheckboxDropdown } from './CheckboxDropdown.jsx';
 import { VoortgangBalk } from './VoortgangBalk.jsx';
 import { Toast } from '../ui/Toast.jsx';
 import './MeldingForm.css';
+
+// Lazy — trekt OpenLayers (~300-400KB) mee, niet nodig voor wie deze pagina
+// niet opent (Tijdlijn/Export/Instellingen/Coördinatie).
+const LocatieKaart = lazy(() => import('./LocatieKaart.jsx').then((m) => ({ default: m.LocatieKaart })));
 
 const WEER_STATUS_LABEL = {
   geen_locatie: 'Plaats eerst de pin op de kaart',
@@ -191,14 +194,16 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
 
       <div className="mf-field" ref={kaartRef}>
         <label className="section-label">Locatie {!veld.lat && <span style={{ color: 'var(--danger)' }}>— plaats de pin op de kaart *</span>}</label>
-        <LocatieKaart
-          lat={veld.lat}
-          lng={veld.lng}
-          kaartCentrum={veld.kaartCentrum}
-          homeLocatie={thuislocatie}
-          weather={veld.weather}
-          onLocatieGewijzigd={form.zetLocatie}
-        />
+        <Suspense fallback={<div className="locatie-kaart-status">Kaart laden...</div>}>
+          <LocatieKaart
+            lat={veld.lat}
+            lng={veld.lng}
+            kaartCentrum={veld.kaartCentrum}
+            homeLocatie={thuislocatie}
+            weather={veld.weather}
+            onLocatieGewijzigd={form.zetLocatie}
+          />
+        </Suspense>
         <label className="section-label" htmlFor="mf-perceelnummer">Kadastraal perceelnummer</label>
         <div className="locatie-kaart-perceel-row">
           <input

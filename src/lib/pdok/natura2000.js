@@ -1,19 +1,14 @@
 import { polygonCentroid } from '../geo/polygonCentroid.js';
+import { bouwBboxParam, haalWfsJson } from './wfsClient.js';
 
 // Komt overeen met het Natura2000-deel van detecteerAfstandEnNatura2000()
 // uit docs/index.html — checkt op Natura 2000-gebieden binnen 500m.
 export async function zoekNatura2000InDeBuurt(lat, lng) {
-  const delta = 0.005;
-  const bbox = `${lat - delta},${lng - delta},${lat + delta},${lng + delta},EPSG:4326`;
+  const bbox = bouwBboxParam(lat, lng, 0.005);
   const url = `https://service.pdok.nl/rvo/natura2000/wfs/v1_0?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=natura2000:natura2000&outputFormat=application/json&srsName=EPSG:4326&BBOX=${bbox}&count=1`;
 
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const text = await res.text();
-  if (!text.trim().startsWith('{')) return null;
-
-  const data = JSON.parse(text);
-  if (!data.features?.length) return null;
+  const data = await haalWfsJson(url);
+  if (!data?.features?.length) return null;
 
   const feat = data.features[0];
   const naam = feat.properties?.naam || feat.properties?.NAAM || 'Natura 2000-gebied';

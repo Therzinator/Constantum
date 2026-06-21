@@ -129,23 +129,40 @@ export function useSupabaseSync(user, meldingenApi, onNieuweEntry) {
     if (!sb || !user || !SUPABASE_ENABLED) return;
     if (realtimeChannelRef.current) return; // al actief
 
+    const planHerlaad = () => {
+      // Gedebounced i.p.v. een setTimeout per event — bij een burst van
+      // wijzigingen (bv. de admin-postcode-backfill die tientallen rijen
+      // achter elkaar update) joeg elk event een eigen volledige reload
+      // van alle meldingen (incl. N+1 bijlagen-queries) los, wat de app
+      // tijdens/na zo'n actie onbruikbaar traag maakte.
+      clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = setTimeout(() => { laadVanCloud(); }, 800);
+    };
+
+    // Twee gefilterde listeners i.p.v. één ongefilterde op de hele tabel —
+    // zonder filter kreeg ELKE client bij ELKE wijziging van ELKE gebruiker
+    // een broadcast (Supabase Realtime past geen RLS toe op postgres_changes-
+    // payloads), wat bij veel gelijktijdige gebruikers onnodig schaalt met
+    // (aantal wijzigingen × aantal verbonden clients):
+    // - eigen rijen (incl. wijzigingen door een admin/coordinator op je
+    //   eigen melding, bv. zetVisibilityAdmin) → reload triggeren;
+    // - nieuwe, gedeelde buurtmeldingen van ANDEREN → notificatie tonen.
     realtimeChannelRef.current = sb
       .channel('entries-live')
       .on('postgres_changes', {
-        event: '*',           // INSERT, UPDATE, DELETE
+        event: '*',
         schema: 'public',
         table: 'entries',
+        filter: `user_id=eq.${user.id}`
+      }, () => planHerlaad())
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'entries',
+        filter: 'opt_in_buurt=eq.true'
       }, payload => {
-        if (payload.eventType === 'INSERT' && onNieuweEntry) {
-          onNieuweEntry(payload.new);
-        }
-        // Gedebounced i.p.v. een setTimeout per event — bij een burst van
-        // wijzigingen (bv. de admin-postcode-backfill die tientallen rijen
-        // achter elkaar update) joeg elk event een eigen volledige reload
-        // van alle meldingen (incl. N+1 bijlagen-queries) los, wat de app
-        // tijdens/na zo'n actie onbruikbaar traag maakte.
-        clearTimeout(reloadTimerRef.current);
-        reloadTimerRef.current = setTimeout(() => { laadVanCloud(); }, 800);
+        if (onNieuweEntry) onNieuweEntry(payload.new);
+        planHerlaad();
       })
       .subscribe(status => {
         console.log('[Realtime] Status:', status);
@@ -166,6 +183,18 @@ export function useSupabaseSync(user, meldingenApi, onNieuweEntry) {
     else stopRealtime();
     return () => stopRealtime();
   }, [user, startRealtime, stopRealtime]);
+
+  // Synchroniseert automatisch zodra de verbinding terugkomt — zonder dit
+  // bleef de offline-queue staan tot de gebruiker zelf terugkwam in de app
+  // of handmatig syncNu() aanriep (zie SyncStatusBar.jsx), wat in een
+  // buitengebied met wisselende dekking een melding "verloren" kan laten
+  // voelen terwijl hij gewoon lokaal klaarstaat.
+  useEffect(() => {
+    if (!user) return;
+    const handleOnline = () => { syncNu(); };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [user, syncNu]);
 
   return {
     syncBezig,

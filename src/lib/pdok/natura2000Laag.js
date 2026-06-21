@@ -4,6 +4,7 @@ import VectorLayer from 'ol/layer/Vector.js';
 import Fill from 'ol/style/Fill.js';
 import Stroke from 'ol/style/Stroke.js';
 import Style from 'ol/style/Style.js';
+import { bouwBboxParamVanExtent, haalWfsText } from './wfsClient.js';
 
 const NATURA2000_STIJL = new Style({
   stroke: new Stroke({ color: '#22c55e', width: 1.5 }),
@@ -15,14 +16,11 @@ const NATURA2000_STIJL = new Style({
 // i.p.v. één centroid. PDOK levert dit endpoint direct in EPSG:4326, dus
 // (anders dan de kadastrale kaart) is geen RD New-reprojectie nodig.
 export async function haalNatura2000Gebieden(extentLonLat) {
-  const [minLng, minLat, maxLng, maxLat] = extentLonLat;
-  const bbox = `${minLat},${minLng},${maxLat},${maxLng},EPSG:4326`;
+  const bbox = bouwBboxParamVanExtent(extentLonLat);
   const url = `https://service.pdok.nl/rvo/natura2000/wfs/v1_0?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=natura2000:natura2000&outputFormat=application/json&srsName=EPSG:4326&BBOX=${bbox}`;
 
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const text = await res.text();
-  if (!text.trim().startsWith('{')) return null;
+  const text = await haalWfsText(url);
+  if (!text) return null;
 
   const format = new GeoJSON();
   return format.readFeatures(text, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
