@@ -84,10 +84,10 @@ Laatst bijgewerkt: 2026-06-21.
   ~136KB, `DashboardKaart-*.js` ~113KB, etc.) i.p.v. in de hoofdbundel.
   `MeldingenLijst.jsx` is dead code (nergens geïmporteerd) — niet
   meegenomen in de lazy-load-ronde, niet verwijderd (buiten scope).
-- **Realtime-subscriptie gefilterd**: `useSupabaseSync.js` had één
-  ongefilterde listener op de volledige `entries`-tabel; nu twee gefilterde
-  listeners (`user_id=eq.<eigen-id>` voor reload-triggers,
-  `opt_in_buurt=eq.true`+`INSERT` voor buurt-notificaties van anderen).
+- **Realtime-subscriptie weer ongefilterd** (`useSupabaseSync.js`): een
+  poging om dit te filteren (user_id/opt_in_buurt) veroorzaakte bij de
+  eerste echte login een oneindige reconnect-lus en bevroor de app —
+  **teruggedraaid op 2026-06-21**, zie NEXT_STEPS.md.
 - **Reconnect-sync**: `window.addEventListener('online', syncNu)`
   toegevoegd — de offline-queue wordt nu automatisch verwerkt zodra de
   verbinding teruggekomt, niet pas bij de volgende handmatige actie.

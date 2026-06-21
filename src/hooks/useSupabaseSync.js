@@ -129,40 +129,35 @@ export function useSupabaseSync(user, meldingenApi, onNieuweEntry) {
     if (!sb || !user || !SUPABASE_ENABLED) return;
     if (realtimeChannelRef.current) return; // al actief
 
-    const planHerlaad = () => {
-      // Gedebounced i.p.v. een setTimeout per event — bij een burst van
-      // wijzigingen (bv. de admin-postcode-backfill die tientallen rijen
-      // achter elkaar update) joeg elk event een eigen volledige reload
-      // van alle meldingen (incl. N+1 bijlagen-queries) los, wat de app
-      // tijdens/na zo'n actie onbruikbaar traag maakte.
-      clearTimeout(reloadTimerRef.current);
-      reloadTimerRef.current = setTimeout(() => { laadVanCloud(); }, 800);
-    };
-
-    // Twee gefilterde listeners i.p.v. één ongefilterde op de hele tabel —
-    // zonder filter kreeg ELKE client bij ELKE wijziging van ELKE gebruiker
-    // een broadcast (Supabase Realtime past geen RLS toe op postgres_changes-
-    // payloads), wat bij veel gelijktijdige gebruikers onnodig schaalt met
-    // (aantal wijzigingen × aantal verbonden clients):
-    // - eigen rijen (incl. wijzigingen door een admin/coordinator op je
-    //   eigen melding, bv. zetVisibilityAdmin) → reload triggeren;
-    // - nieuwe, gedeelde buurtmeldingen van ANDEREN → notificatie tonen.
+    // TERUGGEDRAAID (2026-06-21): de eerdere versie hier gebruikte twee
+    // postgres_changes-listeners MET een `filter`-optie (user_id/
+    // opt_in_buurt) om minder Realtime-verkeer te krijgen. Dat is nooit
+    // tegen een echte Supabase-backend getest (lokaal staat
+    // SUPABASE_ENABLED altijd uit, zie lib/supabase/client.js) en bleek
+    // bij de eerste echte login een oneindige reconnect-lus te
+    // veroorzaken ("[Realtime] Status: CLOSED" continu herhaald, hele app
+    // bevroren) — vermoedelijk een door de server afgewezen filter die de
+    // client steeds opnieuw laat verbinden. Terug naar de eenvoudige,
+    // ongefilterde listener; de schaal-optimalisatie (minder verkeer bij
+    // veel gelijktijdige gebruikers) moet eerst apart, tegen een echte
+    // Supabase-omgeving, opnieuw uitgewerkt worden.
     realtimeChannelRef.current = sb
       .channel('entries-live')
       .on('postgres_changes', {
-        event: '*',
+        event: '*',           // INSERT, UPDATE, DELETE
         schema: 'public',
         table: 'entries',
-        filter: `user_id=eq.${user.id}`
-      }, () => planHerlaad())
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'entries',
-        filter: 'opt_in_buurt=eq.true'
       }, payload => {
-        if (onNieuweEntry) onNieuweEntry(payload.new);
-        planHerlaad();
+        if (payload.eventType === 'INSERT' && onNieuweEntry) {
+          onNieuweEntry(payload.new);
+        }
+        // Gedebounced i.p.v. een setTimeout per event — bij een burst van
+        // wijzigingen (bv. de admin-postcode-backfill die tientallen rijen
+        // achter elkaar update) joeg elk event een eigen volledige reload
+        // van alle meldingen (incl. N+1 bijlagen-queries) los, wat de app
+        // tijdens/na zo'n actie onbruikbaar traag maakte.
+        clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = setTimeout(() => { laadVanCloud(); }, 800);
       })
       .subscribe(status => {
         console.log('[Realtime] Status:', status);
