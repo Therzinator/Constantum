@@ -5,7 +5,21 @@
   gap: 16px;
 }
 
-.mf-field { display: flex; flex-direction: column; gap: 6px; }
+.mf-field { display: flex; flex-direction: column; gap: 6px; border-radius: 8px; }
+
+/* Navigatie vanuit de voortgangsbalk (VoortgangBalk.jsx) — licht het
+   vak waar je naartoe springt kort op met de accentkleur. Outline i.p.v.
+   border, zodat er geen layout-shift optreedt op vakken die normaal geen
+   rand hebben (kaart/foto's/teler). */
+.mf-nav-highlight {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  animation: mf-nav-highlight-fade 1.5s ease-out forwards;
+}
+@keyframes mf-nav-highlight-fade {
+  0% { outline-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-glow); }
+  100% { outline-color: rgba(0, 212, 170, 0); box-shadow: 0 0 0 0 rgba(0, 212, 170, 0); }
+}
 
 .mf-checkbox-label {
   display: flex;

@@ -117,6 +117,7 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
   const descRef = useRef(null);
   const telerRef = useRef(null);
   const fotosRef = useRef(null);
+  const stapHighlightRef = useRef(null);
   const [telerOpen, setTelerOpen] = useState(true);
   const [bedrijfSuggestiesZichtbaar, setBedrijfSuggestiesZichtbaar] = useState(false);
   // Baymard: valideer zodra een gebruiker een veld verlaat, niet pas bij
@@ -125,10 +126,20 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
   const [aangeraakt, setAangeraakt] = useState({ type: false, omschrijving: false });
   const suggesties = bedrijfSuggesties(veld.bedrijfsnaam, meldingenApi.meldingen);
 
-  // Komt overeen met scrollNaarEersteFout() — springt naar het eerste ongeldige veld
+  // Komt overeen met scrollNaarEersteFout() — springt naar het eerste ongeldige veld.
+  // Licht daarnaast het hele vak op met de accentkleur: native :focus-styling
+  // werkt alleen op de omschrijving-textarea, niet op de kaart-/foto's-/teler-
+  // vakken (plain divs) of de type-dropdown (knop zonder focusstijl) — vandaar
+  // een class-gebaseerde highlight die voor élk vaktype hetzelfde werkt.
   const scrollNaarFout = (el) => {
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el?.focus();
+    if (!el) return;
+    if (stapHighlightRef.current) clearTimeout(stapHighlightRef.current);
+    el.classList.remove('mf-nav-highlight');
+    void el.offsetWidth; // forceer reflow, zodat de highlight ook herstart bij herhaald klikken op hetzelfde vak
+    el.classList.add('mf-nav-highlight');
+    stapHighlightRef.current = setTimeout(() => el.classList.remove('mf-nav-highlight'), 1500);
   };
 
   // Navigatie vanuit de voortgangsbalk-stappen (VoortgangBalk.jsx) naar het
