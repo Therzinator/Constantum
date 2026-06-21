@@ -33,6 +33,34 @@
 }
 .dashboard-kaart-gps-knop:active { transform: scale(0.93); }
 
+.dashboard-kaart-zoom-badge {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 10;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  padding: 3px 7px;
+  border-radius: 10px;
+  background: rgba(13, 18, 28, 0.75);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.dashboard-kaart-radar-tijd-badge {
+  position: absolute;
+  left: 8px;
+  top: 32px;
+  z-index: 10;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  padding: 3px 7px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
 /* OL's attributiewidget staat standaard rechtsonder — verplaatst naar
    linksonder zodat hij niet overlapt met dashboard-kaart-gps-knop. */
 .dashboard-kaart-kaart-houder .ol-attribution {
@@ -148,6 +176,35 @@
 
 .dashboard-kaart-radar-popup-regen {
   margin-bottom: 6px;
+}
+
+.dashboard-kaart-regen-tijdlijn {
+  margin-bottom: 6px;
+}
+
+.dashboard-kaart-regen-tijdlijn-balken {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 28px;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.dashboard-kaart-regen-tijdlijn-balk {
+  flex: 1;
+  min-width: 2px;
+  background: #60a5fa;
+  border-radius: 1px;
+}
+
+.dashboard-kaart-regen-tijdlijn-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .dashboard-kaart-weer-grid {
