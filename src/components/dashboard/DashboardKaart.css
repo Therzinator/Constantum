@@ -182,6 +182,24 @@
   margin-bottom: 6px;
 }
 
+.dashboard-kaart-radar-anim-balk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 0.62rem;
+  color: #93c5fd;
+}
+
+.dashboard-kaart-radar-pauze-knop {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0;
+  line-height: 1;
+}
+
 .dashboard-kaart-regen-tijdlijn-balken {
   display: flex;
   align-items: flex-end;

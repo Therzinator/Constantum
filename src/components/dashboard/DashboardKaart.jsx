@@ -151,6 +151,7 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
   const [radarAan, setRadarAan] = useState(false);
   const [radarVoorspelling, setRadarVoorspelling] = useState(null); // { status: 'laden'|'klaar'|'fout', regenTekst, weerItems, regenreeks }
   const [radarFrameTijd, setRadarFrameTijd] = useState(null);
+  const [radarGepauzeerd, setRadarGepauzeerd] = useState(false);
   const [huidigeZoom, setHuidigeZoom] = useState(13);
   const [maandFilter, setMaandFilter] = useState('huidig');
   const [jaarFilter, setJaarFilter] = useState('');
@@ -598,6 +599,7 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
         if (view.getZoom() > RADAR_WEERGAVE_ZOOM) view.animate({ zoom: RADAR_WEERGAVE_ZOOM, duration: 400 });
       }
       setRadarVoorspelling({ status: 'laden', regenTekst: 'Neerslagverwachting laden...', weerItems: null, regenreeks: null });
+      setRadarGepauzeerd(false);
       radarAnimIndexRef.current = 0;
       verversRadarAnimatieFrames();
       verversRadarVoorspelling();
@@ -626,6 +628,20 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
         clearInterval(radarIntervalRef.current);
         radarIntervalRef.current = null;
       }
+    }
+  };
+
+  // Pauzeert/hervat alleen de afspeel-animatie (radarAnimIntervalRef) — de
+  // 5-minuts dataverversing (radarIntervalRef) blijft los daarvan doorlopen
+  // zodat de tegels niet verouderen terwijl er gepauzeerd is.
+  const wisselRadarPauze = () => {
+    if (radarAnimIntervalRef.current) {
+      clearInterval(radarAnimIntervalRef.current);
+      radarAnimIntervalRef.current = null;
+      setRadarGepauzeerd(true);
+    } else {
+      radarAnimIntervalRef.current = setInterval(speelRadarFrameAf, 700);
+      setRadarGepauzeerd(false);
     }
   };
 
@@ -703,6 +719,19 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
           )}
           {radarVoorspelling.regenreeks?.length > 0 && (
             <div className="dashboard-kaart-regen-tijdlijn" title="Neerslagintensiteit per 5 minuten, komende 2 uur">
+              {radarFrameTijd != null && (
+                <div className="dashboard-kaart-radar-anim-balk">
+                  <button
+                    type="button"
+                    className="dashboard-kaart-radar-pauze-knop"
+                    onClick={wisselRadarPauze}
+                    title={radarGepauzeerd ? 'Hervat radaranimatie' : 'Pauzeer radaranimatie'}
+                  >
+                    {radarGepauzeerd ? '▶️' : '⏸️'}
+                  </button>
+                  <span>📡 Radarbeeld: {new Date(radarFrameTijd * 1000).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              )}
               <div className="dashboard-kaart-regen-tijdlijn-balken">
                 {radarVoorspelling.regenreeks.map((r, i) => (
                   <span
