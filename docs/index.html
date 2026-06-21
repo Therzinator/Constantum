@@ -177,6 +177,21 @@
       }
     }
 
+    /* Geanimeerde windvector-laag (OpenLayers) boven de Leaflet form-map —
+       pointer-events:none zodat klikken/slepen op de Leaflet-kaart eronder
+       blijft werken; z-index 450 zit boven de tile-pane (200) maar onder de
+       marker-/popup-panes (600/700) van Leaflet. */
+    .form-map-wind-ol {
+      position: absolute;
+      inset: 0;
+      z-index: 450;
+      pointer-events: none;
+    }
+    .form-map-wind-ol .ol-viewport,
+    .form-map-wind-ol canvas {
+      background: transparent !important;
+    }
+
     /* Compass */
     .compass-ring { cursor: pointer; transition: opacity 0.2s; }
     .compass-ring:hover { opacity: 0.85; }
@@ -4894,10 +4909,161 @@ function setCompassDegrees(deg) {
   updateFormMarkerWindPopup();
 }
 
+// ============================================================
+// GEANIMEERDE WINDVECTOR-LAAG (OpenLayers 10, los boven Leaflet form-map)
+// ============================================================
+// OL wordt pas via CDN geladen zodra de windpijl-popup voor het eerst nodig
+// is — laadt deze niet, dan blijft de bestaande statische Leaflet-popup
+// gewoon werken (fallback, geen harde dependency).
+let _olLaadPromise = null;
+function laadOpenLayers() {
+  if (window.ol) return Promise.resolve(window.ol);
+  if (_olLaadPromise) return _olLaadPromise;
+  _olLaadPromise = new Promise((resolve, reject) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdn.jsdelivr.net/npm/ol@10/dist/ol.css';
+    document.head.appendChild(css);
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/ol@10/dist/ol.js';
+    script.onload = () => (window.ol ? resolve(window.ol) : reject(new Error('ol niet beschikbaar na laden')));
+    script.onerror = () => reject(new Error('OpenLayers CDN-script kon niet laden'));
+    document.head.appendChild(script);
+  });
+  return _olLaadPromise;
+}
+
+let windOlMap = null;
+let windOlSource = null;
+let windAnimRafId = null;
+let windAnimLaatsteTijd = null;
+let windAnimDeg = 0;
+let windAnimSpeed = 0;
+let windAnimCenter = null; // [x, y] in EPSG:3857
+const WIND_DEELTJES_AANTAL = 6;
+const WIND_RADIUS_M = 200;
+
+function initWindOlMap(ol) {
+  if (windOlMap) return;
+  const host = document.getElementById('form-map');
+  if (!host) return;
+  const container = document.createElement('div');
+  container.className = 'form-map-wind-ol';
+  host.appendChild(container);
+
+  windOlSource = new ol.source.Vector();
+  const windLaag = new ol.layer.Vector({ source: windOlSource });
+
+  windOlMap = new ol.Map({
+    target: container,
+    controls: [],
+    interactions: [],
+    layers: [windLaag],
+    view: new ol.View({ center: [0, 0], zoom: 16 })
+  });
+}
+
+function maakWindPijlStijl(ol, deg) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+    <polygon points="14,2 19,18 14,14 9,18" fill="#00d4aa" opacity="0.9"/>
+  </svg>`;
+  return new ol.style.Style({
+    image: new ol.style.Icon({
+      src: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+      rotation: (deg * Math.PI) / 180,
+      rotateWithView: false
+    })
+  });
+}
+
+function plaatsWindDeeltjes(ol) {
+  if (!windOlSource || !windAnimCenter) return;
+  windOlSource.clear();
+  const stijl = maakWindPijlStijl(ol, windAnimDeg);
+  for (let i = 0; i < WIND_DEELTJES_AANTAL; i++) {
+    const hoek = Math.random() * Math.PI * 2;
+    const straal = Math.random() * WIND_RADIUS_M;
+    const feature = new ol.Feature({
+      geometry: new ol.geom.Point([
+        windAnimCenter[0] + Math.cos(hoek) * straal,
+        windAnimCenter[1] + Math.sin(hoek) * straal
+      ])
+    });
+    feature.set('afstand', 0);
+    feature.setStyle(stijl);
+    windOlSource.addFeature(feature);
+  }
+}
+
+// Verplaatst elk deeltje in de windrichting; snelheid schaalt met windAnimSpeed
+// (km/h). Deeltjes die buiten de 200m-cirkel rond de pin komen, herstarten
+// random dichtbij het midden — zo blijft de stroom continu zichtbaar.
+function animeerWindFrame(tijd) {
+  if (!windOlMap || !windOlSource || !windAnimCenter) { windAnimRafId = null; return; }
+  if (windAnimLaatsteTijd == null) windAnimLaatsteTijd = tijd;
+  const deltaS = Math.min((tijd - windAnimLaatsteTijd) / 1000, 0.1);
+  windAnimLaatsteTijd = tijd;
+
+  const radHoek = (windAnimDeg * Math.PI) / 180;
+  const richtingX = Math.sin(radHoek); // 0° = noord, x-as = oost
+  const richtingY = Math.cos(radHoek); // y-as = noord
+  const snelheidMs = (windAnimSpeed || 0) / 3.6;
+  const verplaatsing = Math.max(snelheidMs, 1) * 8 * deltaS; // x8 voor zichtbare snelheid op kaartschaal
+
+  windOlSource.getFeatures().forEach((feature) => {
+    const geom = feature.getGeometry();
+    const [x, y] = geom.getCoordinates();
+    const afstand = (feature.get('afstand') || 0) + verplaatsing;
+    if (afstand > WIND_RADIUS_M) {
+      const hoek = Math.random() * Math.PI * 2;
+      const straal = Math.random() * WIND_RADIUS_M * 0.3;
+      geom.setCoordinates([
+        windAnimCenter[0] + Math.cos(hoek) * straal,
+        windAnimCenter[1] + Math.sin(hoek) * straal
+      ]);
+      feature.set('afstand', 0);
+    } else {
+      geom.setCoordinates([x + richtingX * verplaatsing, y + richtingY * verplaatsing]);
+      feature.set('afstand', afstand);
+    }
+  });
+  windOlMap.render();
+  windAnimRafId = requestAnimationFrame(animeerWindFrame);
+}
+
+function startWindAnimatie(lat, lng, windDeg, windSpeed) {
+  if (!window._pinManuallyPlaced) return;
+  laadOpenLayers()
+    .then((ol) => {
+      if (!window._pinManuallyPlaced) return; // pin kan tijdens laden zijn teruggezet
+      initWindOlMap(ol);
+      windAnimDeg = windDeg ?? 0;
+      windAnimSpeed = windSpeed ?? 0;
+      windAnimCenter = ol.proj.fromLonLat([lng, lat]);
+      windOlMap.getView().setCenter(windAnimCenter);
+      plaatsWindDeeltjes(ol);
+      if (!windAnimRafId) windAnimRafId = requestAnimationFrame(animeerWindFrame);
+    })
+    .catch((err) => {
+      // Fallback: OpenLayers niet beschikbaar — de statische Leaflet-popup blijft werken
+      console.warn('[wind-animatie] OpenLayers niet beschikbaar, val terug op statische popup:', err.message);
+    });
+}
+
+function stopWindAnimatie() {
+  if (windAnimRafId) {
+    cancelAnimationFrame(windAnimRafId);
+    windAnimRafId = null;
+  }
+  windAnimLaatsteTijd = null;
+  if (windOlSource) windOlSource.clear();
+}
+
 // Windpijl-popup op de meldingpin — toont actuele windrichting en -snelheid
 // Alleen zichtbaar nadat de bewoner handmatig een pin heeft geplaatst
 function sluitWindPopup() {
   if (formMarker) formMarker.closePopup();
+  stopWindAnimatie();
 }
 
 function updateFormMarkerWindPopup() {
@@ -4922,6 +5088,9 @@ function updateFormMarkerWindPopup() {
     <div style="color:#4a5568;font-size:9px;margin-top:2px;">windrichting nu</div>
   </div>`;
   formMarker.bindPopup(L.popup({ closeButton: false, offset: [0, -8] }).setContent(html)).openPopup();
+
+  const pinPos = formMarker.getLatLng();
+  startWindAnimatie(pinPos.lat, pinPos.lng, deg, currentWeather.wind_speed);
 }
 
 // ============================================================
@@ -5653,6 +5822,7 @@ function initDashMap() {
   window.addEventListener('resize', () => {
     if (dashMap) setTimeout(() => dashMap.invalidateSize(), 100);
     if (formMap) setTimeout(() => formMap.invalidateSize(), 100);
+    if (windOlMap) setTimeout(() => windOlMap.updateSize(), 100);
   });
 }
 
