@@ -67,7 +67,6 @@ const GEZONDHEID_OPTIES = [
 ];
 
 const GEUR_OPTIES = [
-  ['', 'Maak een keuze'],
   [0, '👃 Geen — geen geurdetectie'],
   [1, '🌱 Licht — geur alleen dichtbij waarneembaar'],
   [2, '🌿 Matig — geur constant waarneembaar'],
@@ -333,7 +332,14 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
             className="mf-select"
             value={veld.geurIntensiteit ?? ''}
             onChange={(e) => form.zetVeld('geurIntensiteit', e.target.value === '' ? null : parseInt(e.target.value, 10))}
+            style={{ color: veld.geurIntensiteit == null ? 'var(--text-muted)' : 'var(--text-primary)' }}
           >
+            {/* disabled+hidden i.p.v. een gewone optie — staat wel als
+                startwaarde getoond ("Maak een keuze"), maar verschijnt
+                niet als keuzemogelijkheid in de open lijst, net als het
+                placeholder-gedrag van de Drift-dropdown (CheckboxDropdown
+                toont zijn placeholder ook alleen op de gesloten knop). */}
+            <option value="" disabled hidden style={{ display: 'none' }}>Maak een keuze</option>
             {GEUR_OPTIES.map(([waarde, label]) => (
               <option key={waarde} value={waarde}>{label}</option>
             ))}

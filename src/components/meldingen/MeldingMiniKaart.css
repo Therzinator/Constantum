@@ -1,11 +1,18 @@
 .melding-mini-kaart {
   position: relative;
-  width: 224px;
-  height: 224px;
+  /* Moet gelijk blijven aan KAARTJE_GROOTTE in MeldingMiniKaart.jsx. */
+  width: 157px;
+  height: 157px;
   border-radius: 10px;
   overflow: hidden;
   flex-shrink: 0;
   background-color: var(--bg-secondary);
+  /* Zonder dit herhaalt de 256x256-tegel zich (CSS-default voor
+     background-repeat is 'repeat') zodra de background-position-offset
+     de tegel verschuift — dat gaf precies het "twee los geknipte
+     stukken"-effect: de onderkant van de eerste tegelkopie en de bovenkant
+     van de herhaalde volgende kopie, met een zichtbare naad ertussen. */
+  background-repeat: no-repeat;
   border: 1px solid var(--border);
 }
 
@@ -18,8 +25,10 @@
    terug zodat het emoji-icoon zelf rechtop blijft staan. */
 .melding-mini-kaart-pin {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  /* top/left worden inline per instantie gezet (MeldingMiniKaart.jsx) —
+     niet altijd 50%/50%: als de tegelpositie geclampt is om een lege rand
+     te voorkomen, staat de pin niet meer in het midden van de box, maar
+     op de plek waar het punt na het clampen daadwerkelijk terechtkomt. */
   width: 26px;
   height: 26px;
   margin: -26px 0 0 -13px;
