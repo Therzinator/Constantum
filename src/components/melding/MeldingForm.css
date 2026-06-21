@@ -125,6 +125,12 @@
 
 .mf-foto-input { display: none; }
 
+.mf-foto-privacy-tekst {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .mf-foto-buttons {
   display: flex;
   gap: 10px;

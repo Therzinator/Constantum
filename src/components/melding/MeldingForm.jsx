@@ -480,6 +480,7 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
 
       <div className="mf-field" ref={fotosRef}>
         <label className="section-label">Foto's / video's (bewijsmateriaal)</label>
+        <p className="mf-foto-privacy-tekst">📍 GPS-locatiegegevens worden automatisch uit je foto's verwijderd vóór opslag, ter bescherming van je privacy.</p>
         <div className="mf-foto-buttons">
           <label className="btn-outline px-3 py-2" style={{ cursor: 'pointer', textAlign: 'center', flex: 1 }}>
             📁 Kiezen
