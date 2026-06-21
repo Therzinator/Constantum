@@ -4,7 +4,7 @@ import './JuridischModal.css';
 // Gedeelde chrome voor PrivacyVerklaringModal en AlgemeneVoorwaardenModal —
 // beide zijn een scrollbare, louter informatieve juridische tekst zonder
 // verplichte acceptatie, met identieke overlay/sluitknop/footer-opmaak.
-export function JuridischModal({ titel, versie, laatstGewijzigd, kinderen, onSluiten }) {
+export function JuridischModal({ titel, versie, laatstGewijzigd, children, onSluiten }) {
   useEffect(() => {
     const handleEscape = (e) => { if (e.key === 'Escape') onSluiten(); };
     document.addEventListener('keydown', handleEscape);
@@ -25,7 +25,7 @@ export function JuridischModal({ titel, versie, laatstGewijzigd, kinderen, onSlu
           <button type="button" className="juridisch-modal-close" onClick={onSluiten} aria-label="Sluiten">×</button>
         </div>
 
-        <div className="juridisch-modal-body">{kinderen}</div>
+        <div className="juridisch-modal-body">{children}</div>
 
         <div className="juridisch-modal-footer">
           <span>Versie {versie}</span>
