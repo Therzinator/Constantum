@@ -31,6 +31,7 @@ import {
   RADAR_WEERGAVE_ZOOM
 } from '../../lib/weather/radarLaag.js';
 import { haalWeerbericht, beschrijfWeerbericht } from '../../lib/weather/weerbericht.js';
+import { bepaalSpuitvensterIndicatie } from '../../lib/weather/spuitvenster.js';
 import { gebruikerKleur, melderCode } from '../../utils/format.js';
 import './DashboardKaart.css';
 
@@ -555,10 +556,11 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
           status: klaar ? 'klaar' : 'fout',
           regenTekst: regenTekst || (klaar ? null : 'Geen weerdata beschikbaar voor deze locatie.'),
           weerItems,
-          regenreeks: weer?.regenreeks || null
+          regenreeks: weer?.regenreeks || null,
+          spuitvenster: bepaalSpuitvensterIndicatie(weer?.station, weer?.regenreeks)
         });
       })
-      .catch((err) => setRadarVoorspelling({ status: 'fout', regenTekst: `Kon weerdata niet ophalen: ${err.message}`, weerItems: null, regenreeks: null }));
+      .catch((err) => setRadarVoorspelling({ status: 'fout', regenTekst: `Kon weerdata niet ophalen: ${err.message}`, weerItems: null, regenreeks: null, spuitvenster: null }));
   };
 
   // Haalt de laatste 2 uur RainViewer-frames op (10 min per stap) voor de
@@ -755,6 +757,11 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
                   <span>{item.tekst}</span>
                 </div>
               ))}
+            </div>
+          )}
+          {radarVoorspelling.spuitvenster && (
+            <div className="dashboard-kaart-spuitvenster" title="Indicatief, gebaseerd op vuistregels — nog niet gevalideerd aan eigen meldingen">
+              🚜 Spuitvenster-indicatie: {radarVoorspelling.spuitvenster.tekst}
             </div>
           )}
         </div>

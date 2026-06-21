@@ -243,6 +243,13 @@
   text-align: center;
 }
 
+.dashboard-kaart-spuitvenster {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(59, 130, 246, 0.25);
+  font-size: 0.65rem;
+}
+
 .dashboard-kaart-radar-popup-close {
   position: absolute;
   top: 4px;
