@@ -2,6 +2,8 @@ import { degToCompass } from '../../lib/drift/oordeel.js';
 import { melderCode } from '../../utils/format.js';
 import { magVerwijderen } from '../../lib/rollen.js';
 import { SUPABASE_ENABLED } from '../../lib/supabase/client.js';
+import { haversineAfstand, formatAfstand } from '../../lib/geo/haversine.js';
+import { MeldingMiniKaart } from './MeldingMiniKaart.jsx';
 
 const TYPE_LABEL = {
   spuitactiviteit: '🚜 Spuitactiviteit',
@@ -31,7 +33,7 @@ const SYNC_BADGE = {
 // Komt overeen met renderMeldingCard (niet-compacte variant) uit docs/index.html.
 // `user`/`gebruikerRol` komen uit hooks/useAuth.js. Klikken op de kaart opent
 // de detail-modal via onSelecteren (showMeldingDetail-equivalent).
-export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSelecteren, compact = false }) {
+export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSelecteren, compact = false, toonLocatieKaartje = false, gpsLocatie = null }) {
   const d = new Date(melding.timestamp_local);
   const dateStr = d.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeStr = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
@@ -43,60 +45,76 @@ export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSele
     ? `${melding.description.substring(0, maxLengte)}...`
     : melding.description;
 
+  const heeftLocatie = toonLocatieKaartje && melding.gps?.lat != null && melding.gps?.lng != null;
+  const afstandTekst = heeftLocatie && gpsLocatie
+    ? formatAfstand(haversineAfstand(gpsLocatie.lat, gpsLocatie.lng, melding.gps.lat, melding.gps.lng))
+    : null;
+
   return (
     <div className="card melding-card">
       <div className="melding-card-body" onClick={() => onSelecteren(melding.id)} style={{ cursor: 'pointer' }}>
-        <div className="melding-card-top">
-          <div className="melding-card-badges">
-            <span className={`badge ${TYPE_BADGE[melding.type] || 'badge-muted'}`}>
-              {TYPE_LABEL[melding.type] || melding.type}
-            </span>
-            {SUPABASE_ENABLED && (
-              <span className={`sync-badge ${syncCls}`}>
-                <span className="sync-dot" />
-                {syncLabel}
-              </span>
+        <div className="melding-card-row">
+          <div className="melding-card-main">
+            <div className="melding-card-top">
+              <div className="melding-card-badges">
+                <span className={`badge ${TYPE_BADGE[melding.type] || 'badge-muted'}`}>
+                  {TYPE_LABEL[melding.type] || melding.type}
+                </span>
+                {SUPABASE_ENABLED && (
+                  <span className={`sync-badge ${syncCls}`}>
+                    <span className="sync-dot" />
+                    {syncLabel}
+                  </span>
+                )}
+              </div>
+              <span className="melding-card-date">{dateStr} {timeStr}</span>
+            </div>
+
+            <div className="melding-card-desc">{omschrijving}</div>
+
+            <div className="melding-card-meta">
+              {melding.weather?.wind_speed != null && (
+                <span style={{ color: 'var(--info)', fontSize: '0.65rem' }}>
+                  💨 {melding.weather.wind_speed} km/h {degToCompass(melding.weather.wind_dir)}
+                </span>
+              )}
+              {melding.gezondheidsklachten?.length > 0 && (
+                <span style={{ color: 'var(--danger)', fontSize: '0.65rem' }}>
+                  🏥 {melding.gezondheidsklachten.length} klacht(en)
+                </span>
+              )}
+              {melding.bestanden?.length > 0 && (
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
+                  📎 {melding.bestanden.length} bestand(en)
+                </span>
+              )}
+              {melding.melder_email && (
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>
+                  {melderCode(melding.melder_email)}
+                </span>
+              )}
+              <span className="melding-id">{melding.id}</span>
+            </div>
+
+            {!compact && (
+              <>
+                <div className="hash-display" style={{ marginTop: 8 }}>{melding.hash}</div>
+                <div className={`melding-card-rfc3161 ${melding.rfc3161 ? 'ok' : 'geen'}`}>
+                  {melding.rfc3161
+                    ? `✓ RFC 3161 · ${new Date(melding.rfc3161.timestamp).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' })}`
+                    : '⚠️ Geen RFC 3161 tijdstempel'}
+                </div>
+              </>
             )}
           </div>
-          <span className="melding-card-date">{dateStr} {timeStr}</span>
-        </div>
 
-        <div className="melding-card-desc">{omschrijving}</div>
-
-        <div className="melding-card-meta">
-          {melding.weather?.wind_speed != null && (
-            <span style={{ color: 'var(--info)', fontSize: '0.65rem' }}>
-              💨 {melding.weather.wind_speed} km/h {degToCompass(melding.weather.wind_dir)}
-            </span>
-          )}
-          {melding.gezondheidsklachten?.length > 0 && (
-            <span style={{ color: 'var(--danger)', fontSize: '0.65rem' }}>
-              🏥 {melding.gezondheidsklachten.length} klacht(en)
-            </span>
-          )}
-          {melding.bestanden?.length > 0 && (
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
-              📎 {melding.bestanden.length} bestand(en)
-            </span>
-          )}
-          {melding.melder_email && (
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>
-              {melderCode(melding.melder_email)}
-            </span>
-          )}
-          <span className="melding-id">{melding.id}</span>
-        </div>
-
-        {!compact && (
-          <>
-            <div className="hash-display" style={{ marginTop: 8 }}>{melding.hash}</div>
-            <div className={`melding-card-rfc3161 ${melding.rfc3161 ? 'ok' : 'geen'}`}>
-              {melding.rfc3161
-                ? `✓ RFC 3161 · ${new Date(melding.rfc3161.timestamp).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' })}`
-                : '⚠️ Geen RFC 3161 tijdstempel'}
+          {heeftLocatie && (
+            <div className="melding-card-thumb-col">
+              <MeldingMiniKaart lat={melding.gps.lat} lng={melding.gps.lng} />
+              {afstandTekst && <span className="melding-card-afstand">📏 {afstandTekst}</span>}
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       {!compact && magVerwijderenDeze && (

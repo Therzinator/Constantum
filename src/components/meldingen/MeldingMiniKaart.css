@@ -1,0 +1,24 @@
+.melding-mini-kaart {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+}
+
+.melding-mini-kaart-pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -6px 0 0 -5px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: #f59e0b;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}

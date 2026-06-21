@@ -4,6 +4,7 @@ import { MaandGrafiek } from './MaandGrafiek.jsx';
 import { MeldingCard } from '../meldingen/MeldingCard.jsx';
 import { MeldingDetailModal } from '../melding/MeldingDetailModal.jsx';
 import { dashboardStatistieken } from '../../lib/meldingen/statistieken.js';
+import { laadGpsCache } from '../../lib/geo/gpsCache.js';
 import './DashboardPage.css';
 
 // Komt overeen met de pagina 'dashboard' (updateDashboard/renderCharts) uit
@@ -18,6 +19,10 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
     .sort((a, b) => new Date(b.timestamp_local) - new Date(a.timestamp_local))
     .slice(0, 5);
   const geselecteerd = geselecteerdId ? meldingen.find((m) => m.id === geselecteerdId) : null;
+  // Gecachete laatst bekende GPS-fix (lib/geo/gpsCache.js, gevuld door de
+  // dashboardkaart) — geen eigen watchPosition hier nodig voor alleen de
+  // afstandsindicatie op de "Recente meldingen"-kaartjes.
+  const gpsLocatie = laadGpsCache();
 
   return (
     <div className="p-4">
@@ -62,6 +67,8 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
               gebruikerRol={gebruikerRol}
               onSelecteren={setGeselecteerdId}
               compact
+              toonLocatieKaartje
+              gpsLocatie={gpsLocatie}
             />
           ))
         )}

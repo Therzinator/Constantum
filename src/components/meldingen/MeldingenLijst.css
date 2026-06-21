@@ -23,6 +23,31 @@
   padding: 12px;
 }
 
+.melding-card-row {
+  display: flex;
+  gap: 10px;
+}
+
+.melding-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.melding-card-thumb-col {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.melding-card-afstand {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .melding-card-top {
   display: flex;
   align-items: flex-start;
