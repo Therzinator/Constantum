@@ -22,6 +22,7 @@ import { maakDriftZoneLayer } from '../../lib/drift/driftzone.js';
 import { maakOsmLaag, maakLuchtfotoLaag } from '../../lib/ol/lagen.js';
 import { maakNatura2000Laag, vulNatura2000Laag } from '../../lib/pdok/natura2000Laag.js';
 import { maakPerceelgrenzenLaag, vulPerceelgrenzenLaag } from '../../lib/pdok/perceelLaag.js';
+import { haalBestemming } from '../../lib/pdok/bestemming.js';
 import { laadGpsVoorkeur } from '../../lib/dashboard/gpsVoorkeur.js';
 import { laadGpsCache, slaGpsCacheOp } from '../../lib/geo/gpsCache.js';
 import { isCoordinatorOfAdmin } from '../../lib/rollen.js';
@@ -115,7 +116,12 @@ function natura2000PopupHtml(props) {
 // Zelfde veldnamen als zoekPerceelPDOK() in lib/pdok/perceel.js — PDOK
 // levert de kadastrale gemeentecode wisselend onder AKRKadastraleGemeenteCode
 // of kadastralegemeentecode, vandaar de fallback-keten.
-function perceelPopupHtml(props) {
+//
+// bestemming komt los van de kadastrale-percelen-WFS binnen (zie
+// lib/pdok/bestemming.js, een apart PDOK-WMS-dataset) — undefined zolang
+// die aanvraag nog loopt (toont "laden..."), null als er geen bestemming
+// gevonden is (rij wordt dan weggelaten).
+function perceelPopupHtml(props, bestemming) {
   const gemeente = props.AKRKadastraleGemeenteCode || props.kadastralegemeentecode || props.kadastraleGemeentenaam || '';
   const sectie = props.sectie || '';
   const nummer = props.perceelnummer || '';
@@ -126,6 +132,8 @@ function perceelPopupHtml(props) {
     <div class="dashboard-kaart-perceel-popup-titel">📐 Kadastraal perceel</div>
     ${perceelId ? `<div class="dashboard-kaart-perceel-popup-rij">${perceelId}</div>` : ''}
     ${grootte != null ? `<div class="dashboard-kaart-perceel-popup-rij">Oppervlakte: ${grootte} m²</div>` : ''}
+    ${bestemming === undefined ? '<div class="dashboard-kaart-perceel-popup-rij">⏳ Bestemming laden...</div>' : ''}
+    ${bestemming?.naam ? `<div class="dashboard-kaart-perceel-popup-rij">Bestemming: ${bestemming.naam}</div>` : ''}
   </div>`;
 }
 
@@ -152,6 +160,7 @@ export function DashboardKaart({ meldingen, thuislocatie, gebruikerRol, onMeldin
   const gebruikerCirkelRef = useRef(null);
   const gpsGecentreerdRef = useRef(false);
   const overlayRef = useRef(null);
+  const bestemmingAanvraagRef = useRef(0);
   const clusterLaagRef = useRef(null);
   const heatmapLaagRef = useRef(null);
   const zoomListenerKeyRef = useRef(null);
@@ -297,8 +306,19 @@ export function DashboardKaart({ meldingen, thuislocatie, gebruikerRol, onMeldin
       if (perceelLaag.getVisible()) {
         const perceelFeature = map.forEachFeatureAtPixel(evt.pixel, (f) => f, { layerFilter: (l) => l === perceelLaag });
         if (perceelFeature) {
-          overlayEl.innerHTML = perceelPopupHtml(perceelFeature.getProperties());
+          const props = perceelFeature.getProperties();
+          overlayEl.innerHTML = perceelPopupHtml(props, undefined);
           overlay.setPosition(evt.coordinate);
+
+          // Bestemming is een apart, traag PDOK-WMS-verzoek (geen WFS) —
+          // popup toont eerst "laden...", daarna bijgewerkt. Token voorkomt
+          // dat een trage, oudere aanvraag een latere klik overschrijft.
+          const aanvraagToken = ++bestemmingAanvraagRef.current;
+          const [klikLng, klikLat] = toLonLat(evt.coordinate);
+          haalBestemming(klikLat, klikLng).then((bestemming) => {
+            if (aanvraagToken !== bestemmingAanvraagRef.current) return;
+            overlayEl.innerHTML = perceelPopupHtml(props, bestemming);
+          });
         }
       }
     });

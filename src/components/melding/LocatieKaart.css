@@ -37,43 +37,10 @@
   color: var(--danger) !important;
 }
 
-.locatie-kaart-laag-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 400;
-  background: var(--bg-card);
-  border: 1px solid var(--border-bright);
-  color: var(--text-secondary);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  cursor: pointer;
-}
-.locatie-kaart-laag-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-.locatie-kaart-gps-btn {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 400;
-  background: var(--bg-card);
-  border: 1px solid var(--border-bright);
-  color: var(--text-secondary);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  cursor: pointer;
-}
-.locatie-kaart-gps-btn:hover:not(:disabled) { border-color: #3b82f6; color: #3b82f6; }
-.locatie-kaart-gps-btn:disabled { opacity: 0.4; cursor: default; }
-
 .locatie-kaart-meet-btn {
   position: absolute;
-  top: 42px;
-  left: 8px;
+  top: 32px;
+  right: 8px;
   z-index: 400;
   background: var(--bg-card);
   border: 1px solid var(--border-bright);
@@ -87,30 +54,6 @@
 .locatie-kaart-meet-btn:hover:not(:disabled) { border-color: #00d4aa; color: #00d4aa; }
 .locatie-kaart-meet-btn.actief { border-color: #00d4aa; color: #00d4aa; background: rgba(0,212,170,0.1); }
 .locatie-kaart-meet-btn:disabled { opacity: 0.4; cursor: default; }
-
-.locatie-kaart-zoom {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  z-index: 400;
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border-bright);
-}
-.locatie-kaart-zoom button {
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  border: none;
-  width: 30px;
-  height: 28px;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-.locatie-kaart-zoom button:first-child { border-bottom: 1px solid var(--border-bright); }
-.locatie-kaart-zoom button:hover { background: var(--bg-secondary); color: var(--accent); }
 
 .locatie-kaart-status {
   font-family: var(--mono);
