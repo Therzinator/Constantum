@@ -1,7 +1,7 @@
 .bottom-nav {
   position: sticky;
   bottom: 0;
-  /* Zelfde reden als .app-header — anders schuift de Leaflet-kaart
+  /* Zelfde reden als .app-header — anders schuift de OpenLayers-kaart
      (interne z-index tot 1000+) tijdens scrollen over de navigatie heen. */
   z-index: 2000;
   display: flex;

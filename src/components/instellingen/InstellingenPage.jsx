@@ -4,6 +4,7 @@ import { Toast } from '../ui/Toast.jsx';
 import { PrullenbakCard } from '../export/PrullenbakCard.jsx';
 import { NotificatieInstellingen } from '../notificaties/NotificatieInstellingen.jsx';
 import { DeelVoorkeurInstelling } from '../notificaties/DeelVoorkeurInstelling.jsx';
+import { DashboardGpsInstelling } from './DashboardGpsInstelling.jsx';
 import { DeeltokenGenerator } from '../notificaties/DeeltokenGenerator.jsx';
 import { KNMIInstellingen } from '../export/KNMIInstellingen.jsx';
 import { TrustIndicator } from '../export/TrustIndicator.jsx';
@@ -54,6 +55,8 @@ export function InstellingenPage({ meldingenApi, gebruikerRol, user, laadVanClou
       <NotificatieInstellingen notificatieApi={notificatieApi} />
 
       <DeelVoorkeurInstelling />
+
+      <DashboardGpsInstelling />
 
       <DeeltokenGenerator user={user} thuislocatie={thuislocatie} />
 

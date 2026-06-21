@@ -11,6 +11,7 @@ import {
 import { zoekPostcodePDOK } from '../../lib/pdok/postcode.js';
 import { perceelStatistieken } from '../../lib/meldingen/statistieken.js';
 import { BuurtrapportGenerator } from './BuurtrapportGenerator.jsx';
+import { BuurtgebiedTekenaar } from './BuurtgebiedTekenaar.jsx';
 import {
   meldersPerPostcode,
   trustScoreVerdeling,
@@ -23,7 +24,7 @@ import './CoordinatiePage.css';
 // de "Coördinatie"-tab die enkel zichtbaar is voor role='admin' (zie
 // BottomNav.jsx/App.jsx) — de echte afscherming gebeurt via de admin-RLS-
 // bypass uit migratie 0004, niet hier.
-export function CoordinatiePage({ user }) {
+export function CoordinatiePage({ user, thuislocatie }) {
   const [entries, setEntries] = useState(null);
   const [profielen, setProfielen] = useState(null);
   const [fout, setFout] = useState(null);
@@ -181,6 +182,8 @@ export function CoordinatiePage({ user }) {
           </div>
         ))}
       </div>
+
+      <BuurtgebiedTekenaar thuislocatie={thuislocatie} />
 
       <BuurtrapportGenerator user={user} />
 

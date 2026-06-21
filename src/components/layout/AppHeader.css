@@ -1,9 +1,9 @@
 .app-header {
   position: sticky;
   top: 0;
-  /* Leaflet's eigen panes/zoom-controls gebruiken intern al z-index tot
-     1000+ (zie .leaflet-top/.leaflet-pane) — ruim daarboven nodig, anders
-     schuift de kaart tijdens scrollen over de header heen. */
+  /* OpenLayers' eigen overlays/controls gebruiken intern al z-index tot
+     1000+ (zie .ol-control/.ol-overlaycontainer-stopevent) — ruim daarboven
+     nodig, anders schuift de kaart tijdens scrollen over de header heen. */
   z-index: 2000;
   display: flex;
   align-items: center;
