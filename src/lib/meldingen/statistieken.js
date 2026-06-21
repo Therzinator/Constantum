@@ -70,3 +70,47 @@ export function perceelStatistieken(meldingen) {
 
   return stats;
 }
+
+// Windrichting-frequentie per perceel — bv. "bij 80% van de meldingen op
+// perceel X waaide de wind uit het zuidwesten". Toont of meldingen op een
+// perceel een toevallige spreiding hebben, of structureel samenvallen met
+// één overheersende windrichting (dat laatste is sterker bewijs van een
+// patroon dan losse, onafhankelijke waarnemingen). MIN_MELDINGEN voorkomt
+// dat één of twee meldingen al als "100% uit het westen" gepresenteerd
+// worden — te weinig data om een patroon te claimen.
+const WINDROOS_MIN_MELDINGEN = 3;
+
+export function windrichtingPerPerceel(meldingen) {
+  const perPerceel = {};
+
+  meldingen.forEach((m) => {
+    const p = m.perceelnummer;
+    const dir = m.weather?.wind_dir;
+    if (!p || dir == null) return;
+    if (!perPerceel[p]) perPerceel[p] = {};
+    const compass = degToCompass(dir);
+    perPerceel[p][compass] = (perPerceel[p][compass] || 0) + 1;
+  });
+
+  const resultaat = {};
+  Object.entries(perPerceel).forEach(([perceel, freq]) => {
+    const totaal = Object.values(freq).reduce((s, n) => s + n, 0);
+    if (totaal < WINDROOS_MIN_MELDINGEN) return;
+
+    const gesorteerd = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    const [dominanteRichting, dominantAantal] = gesorteerd[0];
+
+    resultaat[perceel] = {
+      totaal,
+      dominanteRichting,
+      dominantPct: Math.round((dominantAantal / totaal) * 100),
+      verdeling: gesorteerd.map(([richting, aantal]) => ({
+        richting,
+        aantal,
+        pct: Math.round((aantal / totaal) * 100)
+      }))
+    };
+  });
+
+  return resultaat;
+}

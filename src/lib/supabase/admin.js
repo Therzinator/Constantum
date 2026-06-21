@@ -11,7 +11,7 @@ export async function haalAlleEntriesAdmin() {
 
   const { data, error } = await sb
     .from('entries')
-    .select('id, user_id, melder_email, timestamp_local, type, description, postcode, perceelnummer, opt_in_buurt, visibility, gps_lat, gps_lng')
+    .select('id, user_id, melder_email, timestamp_local, type, description, postcode, perceelnummer, opt_in_buurt, visibility, gps_lat, gps_lng, weather')
     .eq('deleted', false)
     .order('timestamp_local', { ascending: false });
 

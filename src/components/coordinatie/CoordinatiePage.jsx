@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { melderCode } from '../../utils/format.js';
 import {
   haalAlleEntriesAdmin,
@@ -9,9 +9,8 @@ import {
   zetPostcodeAdmin
 } from '../../lib/supabase/admin.js';
 import { zoekPostcodePDOK } from '../../lib/pdok/postcode.js';
-import { perceelStatistieken } from '../../lib/meldingen/statistieken.js';
+import { perceelStatistieken, windrichtingPerPerceel } from '../../lib/meldingen/statistieken.js';
 import { BuurtrapportGenerator } from './BuurtrapportGenerator.jsx';
-import { BuurtgebiedTekenaar } from './BuurtgebiedTekenaar.jsx';
 import {
   meldersPerPostcode,
   trustScoreVerdeling,
@@ -20,10 +19,18 @@ import {
 } from '../../lib/meldingen/coordinatieStatistieken.js';
 import './CoordinatiePage.css';
 
-// Coordinatie & Admin systeem, Fase 4 — admin-panel. Alleen bereikbaar via
-// de "Coördinatie"-tab die enkel zichtbaar is voor role='admin' (zie
-// BottomNav.jsx/App.jsx) — de echte afscherming gebeurt via de admin-RLS-
-// bypass uit migratie 0004, niet hier.
+// Lazy — trekt OpenLayers mee, alleen nodig zolang dit specifieke onderdeel
+// van CoördinatiePage in beeld is.
+const BuurtgebiedTekenaar = lazy(() => import('./BuurtgebiedTekenaar.jsx').then((m) => ({ default: m.BuurtgebiedTekenaar })));
+
+// Coordinatie & Admin systeem, Fase 4 — admin-panel. Bereikbaar via de
+// "Coördinatie"-tab, zichtbaar voor role='admin' én role='coordinator'
+// (een moderator-achtige rol, zie BottomNav.jsx/App.jsx/lib/rollen.js) —
+// de echte afscherming gebeurt via de admin/coordinator-RLS-bypass uit
+// migraties 0004/0011, niet hier. Alle acties hieronder (modereren,
+// trust-score, postcode-backfill, buurtrapport) zijn voor coordinators
+// toegestaan; alleen account-verwijdering (migratie 0008) en de
+// Prullenbak (InstellingenPage) blijven admin-only.
 export function CoordinatiePage({ user, thuislocatie }) {
   const [entries, setEntries] = useState(null);
   const [profielen, setProfielen] = useState(null);
@@ -61,6 +68,7 @@ export function CoordinatiePage({ user, thuislocatie }) {
   const perPostcode = meldersPerPostcode(entries);
   const verdeling = trustScoreVerdeling(profielen);
   const perceelStats = perceelStatistieken(entries);
+  const windroosPerPerceel = windrichtingPerPerceel(entries);
   const melders = meldersOverzicht(entries, profielen);
   const onderReview = meldingenOnderReview(entries);
 
@@ -114,7 +122,7 @@ export function CoordinatiePage({ user, thuislocatie }) {
   return (
     <div className="p-4 coordinatie-page">
       <div className="export-titel">Coördinatie</div>
-      <div className="export-subtitel">Admin-overzicht — niet zichtbaar voor gewone gebruikers</div>
+      <div className="export-subtitel">Admin/coordinator-overzicht — niet zichtbaar voor gewone gebruikers</div>
 
       <div className="card p-4">
         <div className="section-label mb-3">📮 Opt-in-melders per postcode</div>
@@ -157,6 +165,27 @@ export function CoordinatiePage({ user, thuislocatie }) {
       </div>
 
       <div className="card p-4">
+        <div className="section-label mb-3">🧭 Windroos per perceel</div>
+        {Object.keys(windroosPerPerceel).length === 0 && (
+          <div className="export-card-beschrijving">Nog geen perceel met genoeg meldingen + winddata voor een windroos (minimaal 3).</div>
+        )}
+        {Object.entries(windroosPerPerceel).map(([perceel, w]) => (
+          <div key={perceel} className="export-info-rij">
+            <span>{perceel}</span>
+            <span>
+              {w.dominantPct}% uit het {w.dominanteRichting} ({w.totaal} meldingen met windrichting)
+            </span>
+          </div>
+        ))}
+        <div className="export-card-beschrijving mt-2">
+          Een hoog percentage uit één richting is sterker bewijs van een
+          patroon dan losse, onafhankelijke waarnemingen — toevallige
+          spreiding zou rond een paar windrichtingen schommelen, niet
+          structureel naar één kant overhellen.
+        </div>
+      </div>
+
+      <div className="card p-4">
         <div className="section-label mb-3">👥 Melder-overzicht</div>
         {melders.map((m) => (
           <div key={m.userId} className="coordinatie-melder-rij">
@@ -183,7 +212,9 @@ export function CoordinatiePage({ user, thuislocatie }) {
         ))}
       </div>
 
-      <BuurtgebiedTekenaar thuislocatie={thuislocatie} />
+      <Suspense fallback={<div className="card p-4">Kaart laden...</div>}>
+        <BuurtgebiedTekenaar thuislocatie={thuislocatie} />
+      </Suspense>
 
       <BuurtrapportGenerator user={user} />
 

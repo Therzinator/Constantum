@@ -1,4 +1,4 @@
-import { isAdmin } from '../../lib/rollen.js';
+import { isCoordinatorOfAdmin } from '../../lib/rollen.js';
 import './BottomNav.css';
 
 const TABS = [
@@ -11,10 +11,11 @@ const TABS = [
 
 // Komt overeen met de bottom-tab-navigatie uit docs/index.html
 // (showPage/tab-dashboard/tab-melding/tab-tijdlijn/tab-export/
-// tab-instellingen, Fase G). "Coördinatie" (Fase 4) is alleen zichtbaar
-// voor admins — de echte afscherming gebeurt via RLS, dit is puur UI.
+// tab-instellingen, Fase G). "Coördinatie" (Fase 4) is zichtbaar voor
+// admins én coordinators (moderator-achtige rol, sinds migratie 0011) —
+// de echte afscherming gebeurt via RLS, dit is puur UI.
 export function BottomNav({ pagina, onPaginaChange, gebruikerRol }) {
-  const tabs = isAdmin(gebruikerRol) ? [...TABS, ['coordinatie', '🛡️', 'Coördinatie']] : TABS;
+  const tabs = isCoordinatorOfAdmin(gebruikerRol) ? [...TABS, ['coordinatie', '🛡️', 'Coördinatie']] : TABS;
   return (
     <nav className="bottom-nav">
       {tabs.map(([naam, icoon, label]) => (

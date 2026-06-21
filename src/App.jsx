@@ -20,7 +20,7 @@ import { ExportPage } from './components/export/ExportPage.jsx'
 import { InstellingenPage } from './components/instellingen/InstellingenPage.jsx'
 import { CoordinatiePage } from './components/coordinatie/CoordinatiePage.jsx'
 import { BottomNav } from './components/nav/BottomNav.jsx'
-import { isAdmin } from './lib/rollen.js'
+import { isCoordinatorOfAdmin } from './lib/rollen.js'
 
 function App() {
   const [pagina, setPagina] = useState('dashboard')
@@ -97,7 +97,7 @@ function App() {
         />
       )}
 
-      {pagina === 'coordinatie' && isAdmin(auth.gebruikerRol) && (
+      {pagina === 'coordinatie' && isCoordinatorOfAdmin(auth.gebruikerRol) && (
         <CoordinatiePage user={auth.user} thuislocatie={thuislocatieApi.thuislocatie} />
       )}
 
