@@ -98,6 +98,13 @@ Laatst bijgewerkt: 2026-06-21.
   zelf (zou de hoofdbundel weer vergroten via `perceel.js`/`natura2000.js`,
   die niet lazy-geladen zijn).
 
+## Database-migraties
+
+Alle migraties **0001 t/m 0011 zijn uitgevoerd** (bevestigd door de
+gebruiker op 2026-06-21, geen foutmeldingen) — inclusief de 5km-
+privacygrens (0009) en de coordinator-RLS (0011). Nieuwe migraties na
+0011 toevoegen op nummer 0012.
+
 ## Dossier/bewijskracht (sinds 2026-06-21)
 
 - **PDF-dossier toont nu de volledige EXIF/GPS-gestripte foto** i.p.v. de
@@ -118,11 +125,6 @@ Laatst bijgewerkt: 2026-06-21.
   Prullenbak-herstel (InstellingenPage/PrullenbakCard, blijft
   `isAdmin()`-only). Dit is per ontwerp, niet per ongeluk — zie
   DECISIONS.md voor de afgebakende scope.
-- **`coordinator`-migratie (0011) moet nog handmatig uitgevoerd worden**
-  door de gebruiker in de Supabase SQL-editor — tot die tijd ziet een
-  coordinator de "Coördinatie"-tab wel (UI-gate aangepast), maar krijgt
-  via RLS alleen zijn/haar eigen rijen terug uit entries/user_profiles
-  (lijkt dan kapot/leeg, is gewoon: migratie nog niet uitgevoerd).
 - **Geen db-enum/CHECK-constraint op `user_roles.role`**: een typo in de
   database (bv. `'Admin'` met hoofdletter) faalt stil terug naar
   `'gebruiker'`-gedrag, zonder foutmelding.

@@ -6,16 +6,11 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
-- **Migratie `0011_coordinator_rol.sql` handmatig uitvoeren in de Supabase
-  SQL-editor.** Reden: de code (CoördinatiePage-tab, App.jsx) staat al
-  open voor `role==='coordinator'`, maar zonder deze migratie blokkeert
-  RLS coordinators nog op database-niveau — de pagina zou dan leeg/kapot
-  lijken voor een coordinator-account. Afhankelijkheden: geen — kan los
-  van verdere codewijzigingen.
 - **Een gebruiker een `coordinator`-rol toekennen om te testen.** Reden:
-  er is nog geen account met deze rol; `user_roles.role = 'coordinator'`
-  moet handmatig gezet worden (geen UI hiervoor) om de nieuwe
-  CoördinatiePage-toegang te kunnen verifiëren.
+  migraties 0008-0011 zijn op 2026-06-21 uitgevoerd (bevestigd, geen
+  foutmeldingen), maar er is nog geen account met de rol `coordinator`;
+  `user_roles.role = 'coordinator'` moet handmatig gezet worden (geen UI
+  hiervoor) om de CoördinatiePage-toegang/Heatmap-toggle te verifiëren.
 
 ## Middel
 
