@@ -1,6 +1,6 @@
 /* Design tokens overgenomen uit docs/index.html (:root, .btn-primary, .form-input) */
 :root {
-  --bg-primary: #0a0e17;
+  --bg-primary: #010510; /* zelfde donkere tint als .app-header (AppHeader.css) */
   --bg-secondary: #0f1523;
   --bg-card: #131927;
   --bg-card-hover: #1a2133;

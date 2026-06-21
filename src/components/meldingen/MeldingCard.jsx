@@ -50,6 +50,7 @@ export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSele
   const afstandTekst = heeftLocatie && gpsLocatie
     ? `Melding ${Math.round(haversineAfstand(gpsLocatie.lat, gpsLocatie.lng, melding.gps.lat, melding.gps.lng))} meter vanaf jouw positie gedaan.`
     : null;
+  const typeIcoon = (TYPE_LABEL[melding.type] || '📍 ').split(' ')[0];
 
   return (
     <div className="card melding-card">
@@ -126,6 +127,8 @@ export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSele
               </>
             )}
 
+            {afstandTekst && <div className="melding-card-afstand">📏 {afstandTekst}</div>}
+
             {!compact && (
               <>
                 <div className="hash-display" style={{ marginTop: 8 }}>{melding.hash}</div>
@@ -140,8 +143,7 @@ export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSele
 
           {heeftLocatie && (
             <div className="melding-card-thumb-col">
-              <MeldingMiniKaart lat={melding.gps.lat} lng={melding.gps.lng} />
-              {afstandTekst && <span className="melding-card-afstand">📏 {afstandTekst}</span>}
+              <MeldingMiniKaart lat={melding.gps.lat} lng={melding.gps.lng} icoon={typeIcoon} />
             </div>
           )}
         </div>

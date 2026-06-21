@@ -18,7 +18,10 @@ function osmSubdomein(x, y) {
   return 'abc'[(x + y) % 3];
 }
 
-export function MeldingMiniKaart({ lat, lng }) {
+// `icoon` is de emoji van het waarneming-type (zie TYPE_LABEL in
+// MeldingCard.jsx) — vervangt de eerdere generieke oranje pin-druppel,
+// zodat je het type meldingen al op het kaartje zelf herkent.
+export function MeldingMiniKaart({ lat, lng, icoon = '📍' }) {
   if (lat == null || lng == null) return null;
 
   const { x, y, px, py } = lonLatNaarTileEnPixel(lng, lat, ZOOM);
@@ -32,7 +35,7 @@ export function MeldingMiniKaart({ lat, lng }) {
       style={{ backgroundImage: `url(${tileUrl})`, backgroundSize: `${TILE_GROOTTE}px ${TILE_GROOTTE}px`, backgroundPosition: `${positieX}px ${positieY}px` }}
       title="Locatie van deze melding"
     >
-      <span className="melding-mini-kaart-pin" />
+      <span className="melding-mini-kaart-pin">{icoon}</span>
     </div>
   );
 }

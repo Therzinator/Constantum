@@ -1,22 +1,33 @@
 .melding-card {
   margin-bottom: 12px;
-  overflow: hidden;
   transition: border-color 0.2s;
 }
 
 .melding-card-body {
   padding: 12px;
+  /* overflow:hidden stond hier eerder — bij weinig beschikbare breedte
+     (smal scherm + 224px-mini-kaart) werd daardoor de rechterkant van het
+     kaartje afgesneden i.p.v. dat de rij netjes terugviel op een tweede
+     regel. */
+  overflow: visible;
 }
 
 .melding-card-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: flex-start;
 }
 
 .melding-card-main {
   flex: 1;
-  min-width: 0;
+  /* min-width:0 liet deze kolom tot bijna 0px krimpen i.p.v. dat
+     .melding-card-row (flex-wrap: wrap) het kaartje naar een nieuwe regel
+     liet vallen — flexbox wrapt pas zodra een item zijn min-width raakt,
+     en met min-width:0 raakte hij die nooit. Met een echte minimumbreedte
+     wrapt de rij nu wél op smalle schermen i.p.v. tekst+kaartje samen te
+     persen. */
+  min-width: 180px;
 }
 
 /* Kaartje rechts van de tekst, los van of het compact/normaal is — flex-row
@@ -33,10 +44,7 @@
   font-family: var(--mono);
   font-size: 0.6rem;
   color: var(--text-muted);
-  white-space: nowrap;
-  max-width: 224px;
-  text-align: center;
-  white-space: normal;
+  margin-top: 4px;
 }
 
 .melding-card-top {

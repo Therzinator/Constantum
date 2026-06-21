@@ -9,16 +9,23 @@
   border: 1px solid var(--border);
 }
 
+/* Ronde badge met het emoji-icoon van het waarneming-type i.p.v. de
+   eerdere lege, oranje pin-druppel (rotate(-45deg) + teardrop-vorm paste
+   niet bij een emoji-teken — een gewone cirkel wel). */
 .melding-mini-kaart-pin {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 40px;
-  height: 40px;
-  margin: -24px 0 0 -20px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
   background: #f59e0b;
-  border: 6px solid #fff;
+  border: 4px solid #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
 }
