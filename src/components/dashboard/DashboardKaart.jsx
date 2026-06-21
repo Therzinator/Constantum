@@ -1,13 +1,45 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import Map from 'ol/Map.js';
+import View from 'ol/View.js';
+import Feature from 'ol/Feature.js';
+import { Circle as CircleGeom, Point } from 'ol/geom.js';
+import VectorLayer from 'ol/layer/Vector.js';
+import HeatmapLayer from 'ol/layer/Heatmap.js';
+import VectorSource from 'ol/source/Vector.js';
+import Cluster from 'ol/source/Cluster.js';
+import LayerGroup from 'ol/layer/Group.js';
+import Overlay from 'ol/Overlay.js';
+import { unByKey } from 'ol/Observable.js';
+import { fromLonLat, toLonLat, transformExtent } from 'ol/proj.js';
+import Style from 'ol/style/Style.js';
+import CircleStyle from 'ol/style/Circle.js';
+import Fill from 'ol/style/Fill.js';
+import Stroke from 'ol/style/Stroke.js';
+import Text from 'ol/style/Text.js';
+import 'ol/ol.css';
 import { maakDriftZoneLayer } from '../../lib/drift/driftzone.js';
+import { maakOsmLaag, maakLuchtfotoLaag } from '../../lib/ol/lagen.js';
+import { maakNatura2000Laag, vulNatura2000Laag } from '../../lib/pdok/natura2000Laag.js';
+import { laadGpsVoorkeur } from '../../lib/dashboard/gpsVoorkeur.js';
+import { laadGpsCache, slaGpsCacheOp } from '../../lib/geo/gpsCache.js';
+import {
+  maakRadarLaag,
+  vulRadarLaag,
+  haalLaatsteRadarFrame,
+  leesNeerslagTijdlijn,
+  beschrijfNeerslagTijdlijn,
+  RADAR_ZOOM
+} from '../../lib/weather/radarLaag.js';
 import { gebruikerKleur, melderCode } from '../../utils/format.js';
 import './DashboardKaart.css';
 
-const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const LUCHTFOTO_URL =
-  'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=Actueel_ortho25&STYLE=default&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png';
+const GEBRUIKER_STIJL = new Style({
+  image: new CircleStyle({ radius: 7, fill: new Fill({ color: '#3b82f6' }), stroke: new Stroke({ color: '#fff', width: 3 }) })
+});
+const GEBRUIKER_CIRKEL_STIJL = new Style({
+  stroke: new Stroke({ color: '#3b82f6', width: 1 }),
+  fill: new Fill({ color: 'rgba(59,130,246,0.08)' })
+});
 
 const TYPE_KLEUREN = {
   spuitactiviteit: '#f59e0b',
@@ -24,20 +56,96 @@ const MAAND_OPTIES = [
   ['09', 'September'], ['10', 'Oktober'], ['11', 'November'], ['12', 'December']
 ];
 
+function clusterStijl(feature) {
+  const onderliggend = feature.get('features');
+  const aantal = onderliggend.length;
+  if (aantal === 1) {
+    const m = onderliggend[0].get('melding');
+    const typeKleur = TYPE_KLEUREN[m.type] || '#6b7280';
+    const randKleur = gebruikerKleur(m.melder_email);
+    const d = new Date(m.timestamp_local);
+    const dateLabel = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return new Style({
+      image: new CircleStyle({ radius: 5, fill: new Fill({ color: typeKleur }), stroke: new Stroke({ color: randKleur, width: 2 }) }),
+      text: new Text({
+        text: dateLabel,
+        offsetY: 12,
+        font: '9px monospace',
+        fill: new Fill({ color: '#fff' }),
+        stroke: new Stroke({ color: 'rgba(0,0,0,0.8)', width: 2 })
+      })
+    });
+  }
+  return new Style({
+    image: new CircleStyle({
+      radius: 12,
+      fill: new Fill({ color: 'rgba(0,212,170,0.85)' }),
+      stroke: new Stroke({ color: '#fff', width: 2 })
+    }),
+    text: new Text({ text: String(aantal), font: 'bold 11px monospace', fill: new Fill({ color: '#0d1520' }) })
+  });
+}
+
+// PDOK-WFS levert beschermingstype als 'HR' (Habitatrichtlijn), 'VR'
+// (Vogelrichtlijn) of beide gecombineerd via afzonderlijke sitecodes —
+// sitecodeV/sitecodeH zijn ' ' (spatie) i.p.v. leeg/null als niet van
+// toepassing, dus expliciet trimmen vóór de leegte-check.
+function natura2000PopupHtml(props) {
+  const naam = props.naamN2K || props.naam || 'Natura 2000-gebied';
+  const heeftHabitat = Boolean(props.sitecodeH?.trim());
+  const heeftVogel = Boolean(props.sitecodeV?.trim());
+  const type =
+    heeftHabitat && heeftVogel ? 'Habitat- & Vogelrichtlijngebied'
+      : heeftHabitat ? 'Habitatrichtlijngebied'
+      : heeftVogel ? 'Vogelrichtlijngebied'
+      : 'Natura 2000-gebied';
+  const sitecodes = [props.sitecodeH, props.sitecodeV].filter((c) => c?.trim()).join(' · ');
+
+  return `<div class="dashboard-kaart-natura-popup">
+    <div class="dashboard-kaart-natura-popup-titel">🌳 ${naam}</div>
+    <div class="dashboard-kaart-natura-popup-rij">${type}</div>
+    ${sitecodes ? `<div class="dashboard-kaart-natura-popup-rij">Sitecode: ${sitecodes}</div>` : ''}
+    ${props.status ? `<div class="dashboard-kaart-natura-popup-rij">${props.status}</div>` : ''}
+  </div>`;
+}
+
 // Komt overeen met initDashMap()/updateDashboard() (kaartgedeelte) uit
 // docs/index.html: meldingmarkers + driftzones op een kaart met
 // luchtfoto/driftlaag-toggle en maand/jaar-filter.
+//
+// Gemigreerd van Leaflet naar OpenLayers 10 — meldingen worden nu via
+// ol/source/Cluster gegroepeerd (i.p.v. losse markers), met een vectorlaag
+// voor Natura2000-gebieden als extra toggle.
 export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
-  const markersLaagRef = useRef(null);
-  const driftLaagRef = useRef(null);
-  const osmLaagRef = useRef(null);
+  const meldingenSourceRef = useRef(null);
+  const driftGroepRef = useRef(null);
   const luchtLaagRef = useRef(null);
+  const natura2000LaagRef = useRef(null);
+  const natura2000MoveendKeyRef = useRef(null);
+  const gebruikerSourceRef = useRef(null);
+  const gebruikerMarkerRef = useRef(null);
+  const gebruikerCirkelRef = useRef(null);
+  const gpsGecentreerdRef = useRef(false);
+  const overlayRef = useRef(null);
+  const clusterLaagRef = useRef(null);
+  const heatmapLaagRef = useRef(null);
+  const radarLaagRef = useRef(null);
+  const radarIntervalRef = useRef(null);
+  const radarVorigeZoomRef = useRef(null);
   const [luchtAan, setLuchtAan] = useState(false);
   const [driftAan, setDriftAan] = useState(false);
+  const [natura2000Aan, setNatura2000Aan] = useState(false);
+  const [heatmapAan, setHeatmapAan] = useState(false);
+  const [radarAan, setRadarAan] = useState(false);
+  const [radarVoorspelling, setRadarVoorspelling] = useState(null); // { status: 'laden'|'klaar'|'fout', tekst }
   const [maandFilter, setMaandFilter] = useState('huidig');
   const [jaarFilter, setJaarFilter] = useState('');
+  const [gpsAan] = useState(() => laadGpsVoorkeur());
+  const [gpsFout, setGpsFout] = useState(() =>
+    laadGpsVoorkeur() && !navigator.geolocation ? 'Geolocatie wordt niet ondersteund door deze browser' : null
+  );
 
   const jaren = useMemo(
     () => [...new Set(meldingen.map((m) => new Date(m.timestamp_local).getFullYear()))].sort((a, b) => b - a),
@@ -60,98 +168,326 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const lat = thuislocatie?.lat ?? 52.3676;
-    const lng = thuislocatie?.lng ?? 5.2006;
+    // Zonder ingestelde thuislocatie (nieuwe gebruiker) eerst de gecachete
+    // laatst bekende GPS-positie proberen — sneller op positie dan het
+    // NL-centrum, ook als de live GPS-pin (Instellingen) uit staat.
+    const gpsCache = laadGpsCache();
+    const lat = thuislocatie?.lat ?? gpsCache?.lat ?? 52.3676;
+    const lng = thuislocatie?.lng ?? gpsCache?.lng ?? 5.2006;
 
-    const map = L.map(containerRef.current, { zoomControl: true }).setView([lat, lng], 13);
-    const osmLaag = L.tileLayer(OSM_URL, { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
-    const luchtLaag = L.tileLayer(LUCHTFOTO_URL, { attribution: '© PDOK Luchtfoto', maxZoom: 19, tileSize: 256 });
-    osmLaagRef.current = osmLaag;
+    const osmLaag = maakOsmLaag();
+    const luchtLaag = maakLuchtfotoLaag();
     luchtLaagRef.current = luchtLaag;
 
-    const homeIcon = L.divIcon({
-      html: '<div style="width:16px;height:16px;background:#00d4aa;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(0,212,170,0.5);"></div>',
-      iconSize: [16, 16], className: ''
-    });
-    L.marker([lat, lng], { icon: homeIcon }).addTo(map).bindPopup('🏠 ' + (thuislocatie?.label || 'Thuislocatie'));
+    const homeSource = new VectorSource();
+    const homeFeature = new Feature({ geometry: new Point(fromLonLat([lng, lat])) });
+    homeFeature.setStyle(
+      new Style({ image: new CircleStyle({ radius: 8, fill: new Fill({ color: '#00d4aa' }), stroke: new Stroke({ color: '#fff', width: 3 }) }) })
+    );
+    homeSource.addFeature(homeFeature);
+    const homeLaag = new VectorLayer({ source: homeSource, zIndex: 3 });
 
-    markersLaagRef.current = L.layerGroup().addTo(map);
-    driftLaagRef.current = L.layerGroup();
+    const meldingenSource = new VectorSource();
+    meldingenSourceRef.current = meldingenSource;
+    const clusterSource = new Cluster({ source: meldingenSource, distance: 32 });
+    const clusterLaag = new VectorLayer({ source: clusterSource, style: clusterStijl, zIndex: 10 });
+    clusterLaagRef.current = clusterLaag;
+
+    // Heatmap als alternatieve weergave van dezelfde meldingenSource — niet
+    // geclusterd, dus dichtheid blijft zichtbaar ook als je inzoomt.
+    const heatmapLaag = new HeatmapLayer({ source: meldingenSource, blur: 20, radius: 14, zIndex: 9, visible: false });
+    heatmapLaagRef.current = heatmapLaag;
+
+    const radarLaag = maakRadarLaag();
+    radarLaagRef.current = radarLaag;
+
+    const driftGroep = new LayerGroup({ layers: [], visible: false });
+    driftGroepRef.current = driftGroep;
+
+    const natura2000Laag = maakNatura2000Laag();
+    natura2000LaagRef.current = natura2000Laag;
+
+    const gebruikerSource = new VectorSource();
+    gebruikerSourceRef.current = gebruikerSource;
+    // zIndex boven Natura2000 (4) en thuislocatie (3) — anders kan de
+    // GPS-pin onder een Natura2000-polygoon "verdwijnen".
+    const gebruikerLaag = new VectorLayer({ source: gebruikerSource, zIndex: 5 });
+
+    const overlayEl = document.createElement('div');
+    overlayEl.className = 'dashboard-kaart-popup';
+    const overlay = new Overlay({ element: overlayEl, offset: [0, -12], positioning: 'bottom-center', stopEvent: true });
+    overlayRef.current = overlay;
+
+    const map = new Map({
+      target: containerRef.current,
+      layers: [osmLaag, luchtLaag, radarLaag, natura2000Laag, driftGroep, heatmapLaag, homeLaag, gebruikerLaag, clusterLaag],
+      overlays: [overlay],
+      view: new View({ center: fromLonLat([lng, lat]), zoom: 13 })
+    });
+
+    map.on('click', (evt) => {
+      overlay.setPosition(undefined);
+      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f, { layerFilter: (l) => l === clusterLaag });
+      if (feature) {
+        const onderliggend = feature.get('features');
+        if (onderliggend.length === 1) {
+          onMeldingSelecteren(onderliggend[0].get('melding').id);
+          return;
+        }
+        overlayEl.innerHTML = onderliggend
+          .slice(0, 12)
+          .map((f) => {
+            const m = f.get('melding');
+            const d = new Date(m.timestamp_local);
+            return `<div class="dashboard-kaart-popup-rij" data-id="${m.id}">${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} · ${m.type}</div>`;
+          })
+          .join('');
+        overlayEl.querySelectorAll('.dashboard-kaart-popup-rij').forEach((rij) => {
+          rij.onclick = () => { onMeldingSelecteren(rij.dataset.id); overlay.setPosition(undefined); };
+        });
+        overlay.setPosition(evt.coordinate);
+        return;
+      }
+
+      // Natura2000-gebied alleen aanklikbaar zolang de laag zichtbaar is —
+      // anders zou je per ongeluk op onzichtbare polygonen kunnen klikken.
+      if (natura2000Laag.getVisible()) {
+        const n2000Feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f, { layerFilter: (l) => l === natura2000Laag });
+        if (n2000Feature) {
+          overlayEl.innerHTML = natura2000PopupHtml(n2000Feature.getProperties());
+          overlay.setPosition(evt.coordinate);
+        }
+      }
+    });
 
     mapRef.current = map;
-    const invalidateTimer = setTimeout(() => map.invalidateSize(), 100);
+    const invalidateTimer = setTimeout(() => map.updateSize(), 100);
 
     return () => {
       clearTimeout(invalidateTimer);
-      map.remove();
+      if (natura2000MoveendKeyRef.current) {
+        unByKey(natura2000MoveendKeyRef.current);
+        natura2000MoveendKeyRef.current = null;
+      }
+      if (radarIntervalRef.current) {
+        clearInterval(radarIntervalRef.current);
+        radarIntervalRef.current = null;
+      }
+      map.setTarget(null);
       mapRef.current = null;
-      markersLaagRef.current = null;
-      driftLaagRef.current = null;
-      osmLaagRef.current = null;
+      meldingenSourceRef.current = null;
+      driftGroepRef.current = null;
       luchtLaagRef.current = null;
+      natura2000LaagRef.current = null;
+      gebruikerSourceRef.current = null;
+      gebruikerMarkerRef.current = null;
+      gebruikerCirkelRef.current = null;
+      overlayRef.current = null;
+      clusterLaagRef.current = null;
+      heatmapLaagRef.current = null;
+      radarLaagRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Markers + driftzones hertekenen bij gefilterde meldingen
   useEffect(() => {
-    const map = mapRef.current;
-    const markersLaag = markersLaagRef.current;
-    const driftLaag = driftLaagRef.current;
-    if (!map || !markersLaag || !driftLaag) return;
+    const meldingenSource = meldingenSourceRef.current;
+    const driftGroep = driftGroepRef.current;
+    if (!meldingenSource || !driftGroep) return;
 
-    markersLaag.clearLayers();
-    driftLaag.clearLayers();
-    if (map.hasLayer(driftLaag)) map.removeLayer(driftLaag);
+    meldingenSource.clear();
+    driftGroep.getLayers().clear();
 
     gefiltered.slice(0, 100).forEach((m) => {
       if (!m.gps?.lat || !m.gps?.lng) return;
       if (Math.abs(m.gps.lat) < 0.01 && Math.abs(m.gps.lng) < 0.01) return;
-      const typeKleur = TYPE_KLEUREN[m.type] || '#6b7280';
-      const randKleur = gebruikerKleur(m.melder_email);
-      const d = new Date(m.timestamp_local);
-      const dateLabel = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-      const icon = L.divIcon({
-        html: `<div style="position:relative;display:inline-block;">
-          <div style="width:10px;height:10px;background:${typeKleur};border-radius:50%;border:2px solid ${randKleur};opacity:0.9;box-shadow:0 0 3px ${randKleur}88;"></div>
-          <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:5px;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.9),0 0 4px rgba(0,0,0,0.7);">${dateLabel}</div>
-        </div>`,
-        iconSize: [10, 10], iconAnchor: [5, 5], className: ''
-      });
-      const marker = L.marker([m.gps.lat, m.gps.lng], { icon });
-      marker.on('click', () => onMeldingSelecteren(m.id));
-      markersLaag.addLayer(marker);
+
+      const feature = new Feature({ geometry: new Point(fromLonLat([m.gps.lng, m.gps.lat])) });
+      feature.set('melding', m);
+      meldingenSource.addFeature(feature);
 
       if (m.weather?.wind_dir != null && (m.type === 'spuitactiviteit' || m.type === 'drift')) {
         const laag = maakDriftZoneLayer(m);
-        if (laag) driftLaag.addLayer(laag);
+        if (laag) driftGroep.getLayers().push(laag);
       }
     });
+  }, [gefiltered]);
 
-    if (driftAan) driftLaag.addTo(map);
-  }, [gefiltered, driftAan, onMeldingSelecteren]);
+  // Live GPS-pin van de gebruiker — alleen actief als ingeschakeld via
+  // Instellingen (DashboardGpsInstelling), los van de meldingspin. Toont
+  // eerst de gecachete laatst bekende positie (sneller op positie dan
+  // wachten op een verse fix) en centreert de kaartweergave bij de EERSTE
+  // échte fix nog eens fijn op de actuele GPS-positie (zie gpsGecentreerdRef)
+  // — daarna mag de gebruiker zelf weer rondkijken zonder dat elke nieuwe
+  // GPS-update de kaart terugtrekt.
+  useEffect(() => {
+    if (!gpsAan || !navigator.geolocation) return;
+    gpsGecentreerdRef.current = false;
+
+    const cache = laadGpsCache();
+    if (cache && gebruikerSourceRef.current) {
+      const cacheCoord = fromLonLat([cache.lng, cache.lat]);
+      const marker = new Feature({ geometry: new Point(cacheCoord) });
+      marker.setStyle(GEBRUIKER_STIJL);
+      const cirkel = new Feature({ geometry: new CircleGeom(cacheCoord, cache.accuracy || 0) });
+      cirkel.setStyle(GEBRUIKER_CIRKEL_STIJL);
+      gebruikerSourceRef.current.addFeature(cirkel);
+      gebruikerSourceRef.current.addFeature(marker);
+      gebruikerMarkerRef.current = marker;
+      gebruikerCirkelRef.current = cirkel;
+      mapRef.current?.getView().animate({ center: cacheCoord, zoom: 15, duration: 400 });
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        const source = gebruikerSourceRef.current;
+        if (!source) return;
+        setGpsFout(null);
+        slaGpsCacheOp(latitude, longitude, accuracy);
+        const coord = fromLonLat([longitude, latitude]);
+        if (!gebruikerMarkerRef.current) {
+          const marker = new Feature({ geometry: new Point(coord) });
+          marker.setStyle(GEBRUIKER_STIJL);
+          const cirkel = new Feature({ geometry: new CircleGeom(coord, accuracy || 0) });
+          cirkel.setStyle(GEBRUIKER_CIRKEL_STIJL);
+          source.addFeature(cirkel);
+          source.addFeature(marker);
+          gebruikerMarkerRef.current = marker;
+          gebruikerCirkelRef.current = cirkel;
+        } else {
+          gebruikerMarkerRef.current.getGeometry().setCoordinates(coord);
+          gebruikerCirkelRef.current.getGeometry().setCenterAndRadius(coord, accuracy || 0);
+        }
+        if (!gpsGecentreerdRef.current && mapRef.current) {
+          gpsGecentreerdRef.current = true;
+          mapRef.current.getView().animate({ center: coord, zoom: 15, duration: 500 });
+        }
+      },
+      (err) => {
+        console.warn('[DashboardKaart] GPS niet beschikbaar:', err.message);
+        setGpsFout('Kon GPS-locatie niet ophalen — controleer locatietoestemming in de browser');
+      },
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [gpsAan]);
 
   const wisselLuchtfoto = () => {
-    const map = mapRef.current;
-    if (!map) return;
-    if (luchtAan) {
-      map.removeLayer(luchtLaagRef.current);
-      osmLaagRef.current.addTo(map);
-    } else {
-      map.removeLayer(osmLaagRef.current);
-      luchtLaagRef.current.addTo(map);
-    }
+    luchtLaagRef.current?.setVisible(!luchtAan);
     setLuchtAan(!luchtAan);
   };
 
   const wisselDriftLaag = () => {
-    const map = mapRef.current;
-    const driftLaag = driftLaagRef.current;
     const volgende = !driftAan;
     setDriftAan(volgende);
-    if (!map || !driftLaag) return;
-    if (volgende) map.addLayer(driftLaag);
-    else map.removeLayer(driftLaag);
+    driftGroepRef.current?.setVisible(volgende);
+  };
+
+  const verversNatura2000 = () => {
+    if (!mapRef.current || !natura2000LaagRef.current) return;
+    const extent3857 = mapRef.current.getView().calculateExtent(mapRef.current.getSize());
+    const extentLonLat = transformExtent(extent3857, 'EPSG:3857', 'EPSG:4326');
+    vulNatura2000Laag(natura2000LaagRef.current, extentLonLat);
+  };
+
+  // BUG FIX: de laag werd alleen gevuld op het moment van aanzetten — bij
+  // pannen/zoomen bleef de oude bbox staan. Nu een moveend-listener die
+  // (alleen zolang de toggle aan staat) de laag bij elke kaartbeweging
+  // opnieuw vult, en die weer opruimt bij uitzetten/unmounten.
+  const wisselNatura2000 = () => {
+    const volgende = !natura2000Aan;
+    setNatura2000Aan(volgende);
+    natura2000LaagRef.current?.setVisible(volgende);
+    if (volgende) {
+      verversNatura2000();
+      if (mapRef.current && !natura2000MoveendKeyRef.current) {
+        natura2000MoveendKeyRef.current = mapRef.current.on('moveend', verversNatura2000);
+      }
+    } else if (natura2000MoveendKeyRef.current) {
+      unByKey(natura2000MoveendKeyRef.current);
+      natura2000MoveendKeyRef.current = null;
+    }
+  };
+
+  // Heatmap en clustermarkers tonen dezelfde meldingenSource op twee
+  // manieren — alternatieven, dus bij aanzetten van de ene gaat de andere uit.
+  const wisselHeatmap = () => {
+    const volgende = !heatmapAan;
+    setHeatmapAan(volgende);
+    heatmapLaagRef.current?.setVisible(volgende);
+    clusterLaagRef.current?.setVisible(!volgende);
+  };
+
+  // Locatie voor de neerslagvoorspelling: live/gecachete GPS-pin (actuele
+  // positie van de gebruiker) > thuislocatie > huidig kaartmidden.
+  const haalVoorspellingsLocatie = () => {
+    if (gebruikerMarkerRef.current) {
+      const [voorspellingLng, voorspellingLat] = toLonLat(gebruikerMarkerRef.current.getGeometry().getCoordinates());
+      return { lat: voorspellingLat, lng: voorspellingLng };
+    }
+    if (thuislocatie?.lat && thuislocatie?.lng) return { lat: thuislocatie.lat, lng: thuislocatie.lng };
+    const center = mapRef.current?.getView().getCenter();
+    if (!center) return null;
+    const [centerLng, centerLat] = toLonLat(center);
+    return { lat: centerLat, lng: centerLng };
+  };
+
+  const verversRadarVoorspelling = () => {
+    const locatie = haalVoorspellingsLocatie();
+    if (!locatie) {
+      setRadarVoorspelling({ status: 'fout', tekst: 'Geen locatie beschikbaar voor neerslagverwachting.' });
+      return;
+    }
+    leesNeerslagTijdlijn(locatie.lat, locatie.lng)
+      .then((resultaten) => setRadarVoorspelling({ status: 'klaar', tekst: beschrijfNeerslagTijdlijn(resultaten) }))
+      .catch((err) => setRadarVoorspelling({ status: 'fout', tekst: `Kon neerslagverwachting niet ophalen: ${err.message}` }));
+  };
+
+  const verversRadarTegels = () => {
+    haalLaatsteRadarFrame()
+      .then((frame) => vulRadarLaag(radarLaagRef.current, frame))
+      .catch((err) => console.warn('[DashboardKaart] Radar niet beschikbaar:', err.message));
+  };
+
+  // Live neerslagradar (RainViewer) — zoomt uit naar het niveau waarop de
+  // radartegels daadwerkelijk neerslag laten zien (RADAR_ZOOM), zonder de
+  // positie van de gebruiker te wijzigen — alleen het zoomniveau verandert,
+  // bij uitzetten weer terug naar het zoomniveau van vóór het aanzetten.
+  // Toont daarnaast een voorspellingspopup en verversen elke 5 minuten
+  // zolang de toggle aan staat.
+  const wisselRadar = () => {
+    const volgende = !radarAan;
+    setRadarAan(volgende);
+    radarLaagRef.current?.setVisible(volgende);
+    const view = mapRef.current?.getView();
+
+    if (volgende) {
+      if (view) {
+        radarVorigeZoomRef.current = view.getZoom();
+        if (view.getZoom() > RADAR_ZOOM) view.animate({ zoom: RADAR_ZOOM, duration: 400 });
+      }
+      setRadarVoorspelling({ status: 'laden', tekst: 'Neerslagverwachting laden...' });
+      verversRadarTegels();
+      verversRadarVoorspelling();
+      if (!radarIntervalRef.current) {
+        radarIntervalRef.current = setInterval(() => {
+          verversRadarTegels();
+          verversRadarVoorspelling();
+        }, 5 * 60 * 1000);
+      }
+    } else {
+      if (view && radarVorigeZoomRef.current != null) {
+        view.animate({ zoom: radarVorigeZoomRef.current, duration: 400 });
+      }
+      radarVorigeZoomRef.current = null;
+      setRadarVoorspelling(null);
+      if (radarIntervalRef.current) {
+        clearInterval(radarIntervalRef.current);
+        radarIntervalRef.current = null;
+      }
+    }
   };
 
   const melders = useMemo(
@@ -175,9 +511,34 @@ export function DashboardKaart({ meldingen, thuislocatie, onMeldingSelecteren })
         <button type="button" className={`dashboard-kaart-toggle ${driftAan ? 'actief-drift' : ''}`} onClick={wisselDriftLaag}>
           🌬️ Driftzone{driftAan ? ' aan' : ''}
         </button>
+        <button type="button" className={`dashboard-kaart-toggle ${natura2000Aan ? 'actief-natura' : ''}`} onClick={wisselNatura2000}>
+          🌳 Natura2000{natura2000Aan ? ' aan' : ''}
+        </button>
+        <button type="button" className={`dashboard-kaart-toggle ${heatmapAan ? 'actief-heatmap' : ''}`} onClick={wisselHeatmap}>
+          🔥 Heatmap{heatmapAan ? ' aan' : ''}
+        </button>
+        <button type="button" className={`dashboard-kaart-toggle ${radarAan ? 'actief-radar' : ''}`} onClick={wisselRadar}>
+          🌧️ Neerslagradar{radarAan ? ' aan' : ''}
+        </button>
       </div>
 
       <div ref={containerRef} className="dashboard-kaart" />
+
+      {gpsAan && gpsFout && <div className="dashboard-kaart-status dashboard-kaart-status-fout">📍 {gpsFout}</div>}
+
+      {radarAan && radarVoorspelling && (
+        <div className="dashboard-kaart-radar-popup">
+          <button
+            type="button"
+            className="dashboard-kaart-radar-popup-close"
+            onClick={() => setRadarVoorspelling(null)}
+            title="Sluiten"
+          >
+            ×
+          </button>
+          {radarVoorspelling.status === 'laden' ? '⏳ ' : ''}{radarVoorspelling.tekst}
+        </div>
+      )}
 
       {melders.length > 0 && (
         <div className="dashboard-kaart-legenda">

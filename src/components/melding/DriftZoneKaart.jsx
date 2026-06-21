@@ -1,10 +1,23 @@
 import { useEffect, useRef } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import Map from 'ol/Map.js';
+import View from 'ol/View.js';
+import Feature from 'ol/Feature.js';
+import { Point } from 'ol/geom.js';
+import VectorLayer from 'ol/layer/Vector.js';
+import VectorSource from 'ol/source/Vector.js';
+import { fromLonLat } from 'ol/proj.js';
+import Style from 'ol/style/Style.js';
+import CircleStyle from 'ol/style/Circle.js';
+import Fill from 'ol/style/Fill.js';
+import Stroke from 'ol/style/Stroke.js';
+import 'ol/ol.css';
 import { maakDriftZoneLayer } from '../../lib/drift/driftzone.js';
+import { maakOsmLaag } from '../../lib/ol/lagen.js';
 
 // React-versie van de mini-kaart in showMeldingDetail() / toonDriftZoneModal()
 // uit docs/index.html. Toont alleen een locatiepin als er geen winddata is.
+//
+// Gemigreerd van Leaflet naar OpenLayers 10.
 export function DriftZoneKaart({ melding, hoogte = 200 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -12,24 +25,33 @@ export function DriftZoneKaart({ melding, hoogte = 200 }) {
   useEffect(() => {
     if (!containerRef.current || !melding.gps?.lat || !melding.gps?.lng) return;
 
-    const map = L.map(containerRef.current, { zoomControl: false, attributionControl: false })
-      .setView([melding.gps.lat, melding.gps.lng], 16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    const center = fromLonLat([melding.gps.lng, melding.gps.lat]);
+    const osmLaag = maakOsmLaag();
 
     const driftLaag = maakDriftZoneLayer(melding);
-    if (driftLaag) {
-      driftLaag.addTo(map);
-    } else {
-      L.circleMarker([melding.gps.lat, melding.gps.lng], {
-        radius: 7, color: '#fff', fillColor: '#f59e0b', fillOpacity: 1, weight: 2
-      }).addTo(map);
+    let fallbackLaag = null;
+    if (!driftLaag) {
+      const source = new VectorSource();
+      const feature = new Feature({ geometry: new Point(center) });
+      feature.setStyle(
+        new Style({ image: new CircleStyle({ radius: 7, fill: new Fill({ color: '#f59e0b' }), stroke: new Stroke({ color: '#fff', width: 2 }) }) })
+      );
+      source.addFeature(feature);
+      fallbackLaag = new VectorLayer({ source });
     }
 
+    const map = new Map({
+      target: containerRef.current,
+      controls: [],
+      layers: [osmLaag, driftLaag || fallbackLaag],
+      view: new View({ center, zoom: 16 })
+    });
+
     mapRef.current = map;
-    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => map.updateSize(), 100);
 
     return () => {
-      map.remove();
+      map.setTarget(null);
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -17,22 +17,22 @@
   }
 }
 
-.locatie-kaart .leaflet-container {
+.locatie-kaart .ol-viewport {
   background: #0d1520;
 }
-.locatie-kaart .leaflet-tile {
+.locatie-kaart .ol-layer-basis {
   filter: brightness(0.7) saturate(0.8);
 }
 
-.locatie-kaart .leaflet-popup-content-wrapper,
-.locatie-kaart .leaflet-popup-tip {
+.locatie-kaart-windpopup {
   background: #ffffff;
   color: #1a1a2e;
-}
-.locatie-kaart .leaflet-popup-content-wrapper {
   border: 1px solid var(--border-bright);
+  border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  padding: 8px 10px;
 }
+.locatie-kaart-windpopup:empty { display: none; }
 .locatie-kaart .wind-popup-close:hover {
   color: var(--danger) !important;
 }
@@ -69,6 +69,24 @@
 }
 .locatie-kaart-gps-btn:hover:not(:disabled) { border-color: #3b82f6; color: #3b82f6; }
 .locatie-kaart-gps-btn:disabled { opacity: 0.4; cursor: default; }
+
+.locatie-kaart-meet-btn {
+  position: absolute;
+  top: 42px;
+  left: 8px;
+  z-index: 400;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+.locatie-kaart-meet-btn:hover:not(:disabled) { border-color: #00d4aa; color: #00d4aa; }
+.locatie-kaart-meet-btn.actief { border-color: #00d4aa; color: #00d4aa; background: rgba(0,212,170,0.1); }
+.locatie-kaart-meet-btn:disabled { opacity: 0.4; cursor: default; }
 
 .locatie-kaart-zoom {
   position: absolute;

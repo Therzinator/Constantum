@@ -1,38 +1,57 @@
 import { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import Map from 'ol/Map.js';
+import View from 'ol/View.js';
+import Feature from 'ol/Feature.js';
+import Collection from 'ol/Collection.js';
+import { Point, LineString, Circle as CircleGeom } from 'ol/geom.js';
+import VectorLayer from 'ol/layer/Vector.js';
+import VectorSource from 'ol/source/Vector.js';
+import Translate from 'ol/interaction/Translate.js';
+import Overlay from 'ol/Overlay.js';
+import { fromLonLat, toLonLat } from 'ol/proj.js';
+import { getLength } from 'ol/sphere.js';
+import Style from 'ol/style/Style.js';
+import CircleStyle from 'ol/style/Circle.js';
+import Fill from 'ol/style/Fill.js';
+import Stroke from 'ol/style/Stroke.js';
+import Text from 'ol/style/Text.js';
+import 'ol/ol.css';
 import { degToCompass } from '../../lib/drift/oordeel.js';
+import { maakOsmLaag, maakLuchtfotoLaag } from '../../lib/ol/lagen.js';
+import { maakPerceelgrenzenLaag, vulPerceelgrenzenLaag } from '../../lib/pdok/perceelLaag.js';
+import { maakWindAnimatieLaag, vulWindAnimatieDeeltjes, startWindAnimatie } from '../../lib/drift/windAnimatieLaag.js';
+import { laadGpsCache, slaGpsCacheOp } from '../../lib/geo/gpsCache.js';
 import './LocatieKaart.css';
 
-const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const LUCHTFOTO_URL =
-  'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=Actueel_ortho25&STYLE=default&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png';
+function puntStijl(kleur, straal = 7, randBreedte = 3) {
+  return new Style({
+    image: new CircleStyle({ radius: straal, fill: new Fill({ color: kleur }), stroke: new Stroke({ color: '#fff', width: randBreedte }) })
+  });
+}
 
-const homeIcon = L.divIcon({
-  html: '<div style="width:14px;height:14px;background:#00d4aa;border-radius:50%;border:3px solid white;box-shadow:0 0 6px rgba(0,212,170,0.5);"></div>',
-  iconSize: [14, 14],
-  className: ''
+const HOME_STIJL = puntStijl('#00d4aa', 7);
+const MELD_STIJL = puntStijl('#f59e0b', 7);
+const GEBRUIKER_STIJL = puntStijl('#3b82f6', 7);
+const GEBRUIKER_CIRKEL_STIJL = new Style({
+  stroke: new Stroke({ color: '#3b82f6', width: 1 }),
+  fill: new Fill({ color: 'rgba(59,130,246,0.08)' })
 });
-
-const meldIcon = L.divIcon({
-  html: '<div style="width:14px;height:14px;background:#f59e0b;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(245,158,11,0.5);"></div>',
-  iconSize: [14, 14],
-  className: ''
-});
-
-// Eigen GPS-positie van de melder — los van de (verplaatsbare) meldingspin,
-// die immers kan staan op het waargenomen perceel terwijl de melder zelf
-// elders staat.
-const gebruikerIcon = L.divIcon({
-  html: '<div style="width:14px;height:14px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(59,130,246,0.6);"></div>',
-  iconSize: [14, 14],
-  className: ''
-});
+const MEET_LIJN_STIJL = (label) =>
+  new Style({
+    stroke: new Stroke({ color: '#00d4aa', width: 2, lineDash: [6, 4] }),
+    text: new Text({
+      text: label,
+      font: '11px monospace',
+      fill: new Fill({ color: '#fff' }),
+      backgroundFill: new Fill({ color: 'rgba(0,0,0,0.75)' }),
+      padding: [3, 6, 3, 6]
+    })
+  });
 
 // Komt overeen met updateFormMarkerWindPopup() — toont windrichting/-kracht
 // als popup direct bij de meldingspin, met een eigen sluit-kruisje (net als
-// sluitWindPopup() in docs/index.html — een eigen icoon i.p.v. Leaflets
-// standaard close-knop, die onbetrouwbaar samenwerkt met een draggable marker).
+// sluitWindPopup() in docs/index.html — een eigen icoon i.p.v. de standaard
+// close-knop, die onbetrouwbaar samenwerkt met een verplaatsbare marker).
 function windPopupHtml(weather) {
   const deg = weather.wind_dir ?? 0;
   const speed = weather.wind_speed ?? '?';
@@ -62,91 +81,170 @@ function windPopupHtml(weather) {
 // staat. `lat`/`lng` zijn de huidige meldingscoördinaten, `weather` (optioneel)
 // toont windrichting/-kracht als popup bij de meldingspin,
 // `onLocatieGewijzigd(lat, lng)` wordt aangeroepen bij klikken/verschuiven van die pin.
+//
+// Gemigreerd van Leaflet naar OpenLayers 10 — zelfde functionaliteit, plus
+// een perceelgrenzen-WFS-laag (PDOK, EPSG:28992) en een meetlint-tool
+// (afstand vanaf de eigen GPS-positie).
 export function LocatieKaart({ lat, lng, kaartCentrum, homeLocatie, weather, onLocatieGewijzigd }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
-  const markerRef = useRef(null);
-  const popupRef = useRef(null);
-  const osmLaagRef = useRef(null);
+  const meldFeatureRef = useRef(null);
+  const meldSourceRef = useRef(null);
+  const translateRef = useRef(null);
+  const overlayRef = useRef(null);
   const luchtLaagRef = useRef(null);
   const gebruikerMarkerRef = useRef(null);
   const gebruikerCirkelRef = useRef(null);
+  const gebruikerSourceRef = useRef(null);
+  const perceelLaagRef = useRef(null);
+  const meetSourceRef = useRef(null);
+  const meetModusRef = useRef(false);
+  const windLaagRef = useRef(null);
+  const windStopRef = useRef(null);
+  const gpsGecentreerdRef = useRef(false);
   const [kaartModus, setKaartModus] = useState('osm'); // 'osm' | 'lucht'
-  const [gpsBeschikbaar, setGpsBeschikbaar] = useState(false);
+  const [gpsBeschikbaar, setGpsBeschikbaar] = useState(() => laadGpsCache() != null);
+  const [meetModus, setMeetModus] = useState(false);
+  const [meetAfstand, setMeetAfstand] = useState(null);
+
+  // Sluit de windpopup (kruisje) én stopt/wist de windvector-animatie — beide
+  // horen bij elkaar, anders blijft de pijltjesstroom onzichtbaar doorlopen
+  // nadat de popup al gesloten is.
+  const sluitWindPopup = () => {
+    overlayRef.current?.setPosition(undefined);
+    windStopRef.current?.();
+    windStopRef.current = null;
+    windLaagRef.current?.setVisible(false);
+    windLaagRef.current?.getSource().clear();
+  };
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Zonder geplaatste pin start de kaart gecentreerd op de thuislocatie
-    // (of NL-centrum) — dat punt is alleen het kaartmidden, geen meldpunt.
-    const startLat = lat ?? kaartCentrum?.lat ?? 52.3676;
-    const startLng = lng ?? kaartCentrum?.lng ?? 5.2006;
-    const map = L.map(containerRef.current, { zoomControl: false }).setView([startLat, startLng], lat == null ? 13 : 15);
-    const osmLaag = L.tileLayer(OSM_URL, { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
-    const luchtLaag = L.tileLayer(LUCHTFOTO_URL, { attribution: '© PDOK Luchtfoto', maxZoom: 19, tileSize: 256 });
-    osmLaagRef.current = osmLaag;
+    // Zonder geplaatste pin start de kaart op de laatst bekende GPS-cache
+    // (sneller op positie dan wachten op een verse fix), anders de
+    // thuislocatie/NL-centrum — dat punt is alleen het kaartmidden, geen meldpunt.
+    const gpsCache = laadGpsCache();
+    const startLat = lat ?? gpsCache?.lat ?? kaartCentrum?.lat ?? 52.3676;
+    const startLng = lng ?? gpsCache?.lng ?? kaartCentrum?.lng ?? 5.2006;
+
+    const osmLaag = maakOsmLaag();
+    const luchtLaag = maakLuchtfotoLaag();
     luchtLaagRef.current = luchtLaag;
 
+    const homeSource = new VectorSource();
     if (homeLocatie?.lat && homeLocatie?.lng) {
-      L.marker([homeLocatie.lat, homeLocatie.lng], { icon: homeIcon })
-        .addTo(map)
-        .bindPopup('🏠 ' + (homeLocatie.label || 'Thuislocatie'));
+      const homeFeature = new Feature({ geometry: new Point(fromLonLat([homeLocatie.lng, homeLocatie.lat])) });
+      homeFeature.setStyle(HOME_STIJL);
+      homeSource.addFeature(homeFeature);
+    }
+    const homeLaag = new VectorLayer({ source: homeSource, zIndex: 3 });
+
+    const meldSource = new VectorSource();
+    meldSourceRef.current = meldSource;
+    const meldLaag = new VectorLayer({ source: meldSource, zIndex: 10 });
+
+    const gebruikerSource = new VectorSource();
+    gebruikerSourceRef.current = gebruikerSource;
+    const gebruikerLaag = new VectorLayer({ source: gebruikerSource, zIndex: 2 });
+
+    // Toon de gecachete GPS-positie meteen (blauwe stip), nog vóór de eerste
+    // live watchPosition-fix binnen is — wordt zodra die fix er is gewoon
+    // bijgewerkt i.p.v. opnieuw aangemaakt.
+    if (gpsCache) {
+      const cacheCoord = fromLonLat([gpsCache.lng, gpsCache.lat]);
+      const marker = new Feature({ geometry: new Point(cacheCoord) });
+      marker.setStyle(GEBRUIKER_STIJL);
+      const cirkel = new Feature({ geometry: new CircleGeom(cacheCoord, gpsCache.accuracy || 0) });
+      cirkel.setStyle(GEBRUIKER_CIRKEL_STIJL);
+      gebruikerSource.addFeature(cirkel);
+      gebruikerSource.addFeature(marker);
+      gebruikerMarkerRef.current = marker;
+      gebruikerCirkelRef.current = cirkel;
     }
 
-    const popup = L.popup({ closeButton: false, offset: [0, -8] });
+    const perceelLaag = maakPerceelgrenzenLaag();
+    perceelLaagRef.current = perceelLaag;
 
-    // Wiring van het eigen sluit-kruisje — popup-element kan na elke setContent
-    // hetzelfde blijven, dus we koppelen de click-handler opnieuw bij elke opening
-    const koppelPopupSluitKnop = (marker) => {
-      marker.on('popupopen', () => {
-        const el = popup.getElement();
-        const closeBtn = el?.querySelector('.wind-popup-close');
-        if (closeBtn) {
-          closeBtn.onclick = (ev) => {
-            ev.stopPropagation();
-            marker.closePopup();
-          };
-        }
-      });
-    };
+    const meetSource = new VectorSource();
+    meetSourceRef.current = meetSource;
+    const meetLaag = new VectorLayer({ source: meetSource, zIndex: 11 });
 
-    // De pin wordt alleen aangemaakt zodra de gebruiker zelf op de kaart
-    // klikt (geen automatische plaatsing op thuislocatie/GPS bij het laden).
+    const windLaag = maakWindAnimatieLaag();
+    windLaagRef.current = windLaag;
+
     if (lat != null && lng != null) {
-      const marker = L.marker([lat, lng], { icon: meldIcon, draggable: true }).addTo(map);
-      marker.bindPopup(popup);
-      koppelPopupSluitKnop(marker);
-      marker.on('dragend', (e) => {
-        const p = e.target.getLatLng();
-        onLocatieGewijzigd(p.lat, p.lng, { metWeer: true });
-      });
-      markerRef.current = marker;
-      if (weather) {
-        popup.setContent(windPopupHtml(weather));
-        marker.openPopup();
-      }
+      const meldFeature = new Feature({ geometry: new Point(fromLonLat([lng, lat])) });
+      meldFeature.setStyle(MELD_STIJL);
+      meldSource.addFeature(meldFeature);
+      meldFeatureRef.current = meldFeature;
     }
 
-    map.on('click', (e) => {
-      if (!markerRef.current) {
-        const marker = L.marker([e.latlng.lat, e.latlng.lng], { icon: meldIcon, draggable: true }).addTo(map);
-        marker.bindPopup(popup);
-        koppelPopupSluitKnop(marker);
-        marker.on('dragend', (ev) => {
-          const p = ev.target.getLatLng();
-          onLocatieGewijzigd(p.lat, p.lng, { metWeer: true });
-        });
-        markerRef.current = marker;
-      } else {
-        markerRef.current.setLatLng(e.latlng);
+    const map = new Map({
+      target: containerRef.current,
+      controls: [],
+      layers: [osmLaag, luchtLaag, perceelLaag, homeLaag, gebruikerLaag, windLaag, meldLaag, meetLaag],
+      view: new View({ center: fromLonLat([startLng, startLat]), zoom: lat == null ? 13 : 15 })
+    });
+
+    const overlayEl = document.createElement('div');
+    overlayEl.className = 'locatie-kaart-windpopup';
+    const overlay = new Overlay({ element: overlayEl, offset: [0, -16], positioning: 'bottom-center', stopEvent: true });
+    map.addOverlay(overlay);
+    overlayRef.current = overlay;
+
+    const toonWindPopup = (coord) => {
+      if (!weather) return;
+      overlayEl.innerHTML = windPopupHtml(weather);
+      overlay.setPosition(coord);
+      const closeBtn = overlayEl.querySelector('.wind-popup-close');
+      if (closeBtn) closeBtn.onclick = (ev) => { ev.stopPropagation(); sluitWindPopup(); };
+    };
+    if (meldFeatureRef.current && weather) {
+      toonWindPopup(meldFeatureRef.current.getGeometry().getCoordinates());
+    }
+
+    const translateFeatures = new Collection(meldFeatureRef.current ? [meldFeatureRef.current] : []);
+    const translate = new Translate({ features: translateFeatures });
+    translate.on('translateend', (evt) => {
+      const [nieuweLng, nieuweLat] = toLonLat(evt.coordinate);
+      overlay.setPosition(evt.coordinate);
+      onLocatieGewijzigd(nieuweLat, nieuweLng, { metWeer: true });
+    });
+    map.addInteraction(translate);
+    translateRef.current = translate;
+
+    map.on('click', (evt) => {
+      if (meetModusRef.current) {
+        const gebruikerFeature = gebruikerMarkerRef.current;
+        if (!gebruikerFeature) return;
+        const van = gebruikerFeature.getGeometry().getCoordinates();
+        const lijn = new LineString([van, evt.coordinate]);
+        const lengteM = Math.round(getLength(lijn, { projection: 'EPSG:3857' }));
+        meetSource.clear();
+        const lijnFeature = new Feature({ geometry: lijn });
+        lijnFeature.setStyle(MEET_LIJN_STIJL(`${lengteM} m`));
+        meetSource.addFeature(lijnFeature);
+        setMeetAfstand(lengteM);
+        return;
       }
-      onLocatieGewijzigd(e.latlng.lat, e.latlng.lng, { metWeer: true });
+
+      const [klikLng, klikLat] = toLonLat(evt.coordinate);
+      if (!meldFeatureRef.current) {
+        const meldFeature = new Feature({ geometry: new Point(evt.coordinate) });
+        meldFeature.setStyle(MELD_STIJL);
+        meldSource.addFeature(meldFeature);
+        meldFeatureRef.current = meldFeature;
+        translateFeatures.push(meldFeature);
+      } else {
+        meldFeatureRef.current.getGeometry().setCoordinates(evt.coordinate);
+      }
+      overlay.setPosition(undefined);
+      onLocatieGewijzigd(klikLat, klikLng, { metWeer: true });
     });
 
     mapRef.current = map;
-    popupRef.current = popup;
-
-    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => map.updateSize(), 100);
 
     // Eigen GPS-positie van de melder — los van de meldingspin, continu
     // bijgewerkt zolang het formulier open staat.
@@ -155,23 +253,30 @@ export function LocatieKaart({ lat, lng, kaartCentrum, homeLocatie, weather, onL
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude, longitude, accuracy } = pos.coords;
-          if (!mapRef.current) return;
+          if (!gebruikerSourceRef.current) return;
+          const coord = fromLonLat([longitude, latitude]);
           if (!gebruikerMarkerRef.current) {
-            gebruikerMarkerRef.current = L.marker([latitude, longitude], { icon: gebruikerIcon, zIndexOffset: -100 })
-              .addTo(mapRef.current)
-              .bindPopup('📍 Jouw GPS-locatie');
-            gebruikerCirkelRef.current = L.circle([latitude, longitude], {
-              radius: accuracy || 0,
-              color: '#3b82f6',
-              weight: 1,
-              fillColor: '#3b82f6',
-              fillOpacity: 0.08
-            }).addTo(mapRef.current);
+            const marker = new Feature({ geometry: new Point(coord) });
+            marker.setStyle(GEBRUIKER_STIJL);
+            const cirkel = new Feature({ geometry: new CircleGeom(coord, accuracy || 0) });
+            cirkel.setStyle(GEBRUIKER_CIRKEL_STIJL);
+            gebruikerSourceRef.current.addFeature(cirkel);
+            gebruikerSourceRef.current.addFeature(marker);
+            gebruikerMarkerRef.current = marker;
+            gebruikerCirkelRef.current = cirkel;
           } else {
-            gebruikerMarkerRef.current.setLatLng([latitude, longitude]);
-            gebruikerCirkelRef.current.setLatLng([latitude, longitude]).setRadius(accuracy || 0);
+            gebruikerMarkerRef.current.getGeometry().setCoordinates(coord);
+            gebruikerCirkelRef.current.getGeometry().setCenterAndRadius(coord, accuracy || 0);
           }
           setGpsBeschikbaar(true);
+          slaGpsCacheOp(latitude, longitude, accuracy);
+          // Bij het openen van het formulier (nog geen meldingspin geplaatst)
+          // automatisch naar de GPS-positie springen — eenmalig per mount, en
+          // niet als de melder zelf al een pin heeft staan (die blijft leidend).
+          if (!gpsGecentreerdRef.current && !meldFeatureRef.current && mapRef.current) {
+            gpsGecentreerdRef.current = true;
+            mapRef.current.getView().animate({ center: coord, zoom: 15, duration: 500 });
+          }
         },
         (err) => console.warn('[LocatieKaart] GPS van melder niet beschikbaar:', err.message),
         { enableHighAccuracy: true, maximumAge: 5000 }
@@ -180,30 +285,38 @@ export function LocatieKaart({ lat, lng, kaartCentrum, homeLocatie, weather, onL
 
     return () => {
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
-      map.remove();
+      windStopRef.current?.();
+      windStopRef.current = null;
+      map.setTarget(null);
       mapRef.current = null;
-      markerRef.current = null;
-      popupRef.current = null;
-      osmLaagRef.current = null;
+      meldFeatureRef.current = null;
+      meldSourceRef.current = null;
+      translateRef.current = null;
+      overlayRef.current = null;
       luchtLaagRef.current = null;
       gebruikerMarkerRef.current = null;
       gebruikerCirkelRef.current = null;
+      gebruikerSourceRef.current = null;
+      perceelLaagRef.current = null;
+      meetSourceRef.current = null;
+      windLaagRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Perceelgrenzen rond de huidige meldingspin ophalen — zelfde trigger als
+  // de oude "volgt externe lat/lng-wijzigingen"-effect, plus initieel.
+  useEffect(() => {
+    if (!perceelLaagRef.current || lat == null || lng == null) return;
+    vulPerceelgrenzenLaag(perceelLaagRef.current, lat, lng);
+  }, [lat, lng]);
+
   // Komt overeen met toggleFormKaartLaag() — wisselt tussen stratenkaart en PDOK-luchtfoto
   const wisselKaartLaag = () => {
-    if (!mapRef.current) return;
-    if (kaartModus === 'osm') {
-      mapRef.current.removeLayer(osmLaagRef.current);
-      luchtLaagRef.current.addTo(mapRef.current);
-      setKaartModus('lucht');
-    } else {
-      mapRef.current.removeLayer(luchtLaagRef.current);
-      osmLaagRef.current.addTo(mapRef.current);
-      setKaartModus('osm');
-    }
+    if (!luchtLaagRef.current) return;
+    const volgendeModus = kaartModus === 'osm' ? 'lucht' : 'osm';
+    luchtLaagRef.current.setVisible(volgendeModus === 'lucht');
+    setKaartModus(volgendeModus);
   };
 
   // Centreert de kaartweergave op de eigen GPS-positie van de melder (blauwe
@@ -211,19 +324,36 @@ export function LocatieKaart({ lat, lng, kaartCentrum, homeLocatie, weather, onL
   // gebruiker zelf zetten via klikken/slepen op de kaart.
   const centreerOpGPS = () => {
     if (!mapRef.current || !gebruikerMarkerRef.current) return;
-    mapRef.current.setView(gebruikerMarkerRef.current.getLatLng(), 16);
+    mapRef.current.getView().animate({ center: gebruikerMarkerRef.current.getGeometry().getCoordinates(), zoom: 16 });
   };
 
-  const zoomIn = () => mapRef.current?.zoomIn();
-  const zoomOut = () => mapRef.current?.zoomOut();
+  const zoomIn = () => {
+    const view = mapRef.current?.getView();
+    if (view) view.animate({ zoom: view.getZoom() + 1 });
+  };
+  const zoomOut = () => {
+    const view = mapRef.current?.getView();
+    if (view) view.animate({ zoom: view.getZoom() - 1 });
+  };
 
-  // Volgt externe lat/lng-wijzigingen (bv. na GPS-detectie) zonder dragend/click te triggeren
+  const wisselMeetModus = () => {
+    const volgende = !meetModus;
+    meetModusRef.current = volgende;
+    setMeetModus(volgende);
+    if (!volgende) {
+      meetSourceRef.current?.clear();
+      setMeetAfstand(null);
+    }
+  };
+
+  // Volgt externe lat/lng-wijzigingen (bv. na GPS-detectie) zonder click/drag te triggeren
   useEffect(() => {
-    if (!markerRef.current || lat == null || lng == null) return;
-    const huidige = markerRef.current.getLatLng();
-    if (Math.abs(huidige.lat - lat) > 1e-9 || Math.abs(huidige.lng - lng) > 1e-9) {
-      markerRef.current.setLatLng([lat, lng]);
-      mapRef.current?.setView([lat, lng], mapRef.current.getZoom());
+    if (!meldFeatureRef.current || lat == null || lng == null) return;
+    const huidige = toLonLat(meldFeatureRef.current.getGeometry().getCoordinates());
+    if (Math.abs(huidige[1] - lat) > 1e-9 || Math.abs(huidige[0] - lng) > 1e-9) {
+      const coord = fromLonLat([lng, lat]);
+      meldFeatureRef.current.getGeometry().setCoordinates(coord);
+      mapRef.current?.getView().animate({ center: coord });
     }
   }, [lat, lng]);
 
@@ -231,10 +361,38 @@ export function LocatieKaart({ lat, lng, kaartCentrum, homeLocatie, weather, onL
   // de popup opnieuw met de nieuwe waarden (de gebruiker kan die altijd weer
   // sluiten via het kruisje).
   useEffect(() => {
-    if (!markerRef.current || !popupRef.current || !weather) return;
-    popupRef.current.setContent(windPopupHtml(weather));
-    markerRef.current.openPopup();
+    if (!meldFeatureRef.current || !overlayRef.current || !weather) return;
+    const coord = meldFeatureRef.current.getGeometry().getCoordinates();
+    overlayRef.current.getElement().innerHTML = windPopupHtml(weather);
+    overlayRef.current.setPosition(coord);
+    const closeBtn = overlayRef.current.getElement().querySelector('.wind-popup-close');
+    if (closeBtn) closeBtn.onclick = (ev) => { ev.stopPropagation(); sluitWindPopup(); };
   }, [weather]);
+
+  // Geanimeerde windvector-laag bij de meldingspin — stroompje van pijltjes
+  // dat in de afdrift-richting beweegt, snelheid schaalt met wind_speed.
+  // Draait alleen zolang er weerdata + een geplaatste pin is; stopt en wist
+  // zichzelf zodra een van beide wegvalt (bv. pin nog niet geplaatst).
+  useEffect(() => {
+    if (!windLaagRef.current || !mapRef.current) return;
+    windStopRef.current?.();
+    windStopRef.current = null;
+
+    if (weather?.wind_dir == null || lat == null || lng == null) {
+      windLaagRef.current.setVisible(false);
+      windLaagRef.current.getSource().clear();
+      return;
+    }
+
+    vulWindAnimatieDeeltjes(windLaagRef.current, [{ lat, lng, windDir: weather.wind_dir, windSpeed: weather.wind_speed }]);
+    windLaagRef.current.setVisible(true);
+    windStopRef.current = startWindAnimatie(mapRef.current, windLaagRef.current);
+
+    return () => {
+      windStopRef.current?.();
+      windStopRef.current = null;
+    };
+  }, [weather, lat, lng]);
 
   return (
     <div className="locatie-kaart-wrap">
@@ -251,10 +409,22 @@ export function LocatieKaart({ lat, lng, kaartCentrum, homeLocatie, weather, onL
       >
         📍 GPS
       </button>
+      <button
+        type="button"
+        className={`locatie-kaart-meet-btn${meetModus ? ' actief' : ''}`}
+        onClick={wisselMeetModus}
+        disabled={!gpsBeschikbaar}
+        title="Meet afstand vanaf jouw GPS-locatie"
+      >
+        📏 Meten
+      </button>
       <div className="locatie-kaart-zoom">
         <button type="button" onClick={zoomIn} title="Inzoomen" aria-label="Inzoomen">+</button>
         <button type="button" onClick={zoomOut} title="Uitzoomen" aria-label="Uitzoomen">−</button>
       </div>
+      {meetModus && meetAfstand != null && (
+        <div className="locatie-kaart-status">📏 Afstand vanaf GPS-positie: {meetAfstand} m</div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,13 @@
-import L from 'leaflet';
+import Feature from 'ol/Feature.js';
+import VectorLayer from 'ol/layer/Vector.js';
+import VectorSource from 'ol/source/Vector.js';
+import { Circle as CircleGeom, Point, Polygon } from 'ol/geom.js';
+import { fromLonLat } from 'ol/proj.js';
+import CircleStyle from 'ol/style/Circle.js';
+import Fill from 'ol/style/Fill.js';
+import Stroke from 'ol/style/Stroke.js';
+import Style from 'ol/style/Style.js';
+import Text from 'ol/style/Text.js';
 import { degToCompass } from './oordeel.js';
 
 // Komt overeen met de driftzone-visualisatie (FOCUS STEP model, grondspuit)
@@ -50,14 +59,16 @@ export function driftZones(windKmh) {
   return zones;
 }
 
-// Genereer een kegelvorm polygon (windDirVanaf = richting WAAR de wind vandaan komt)
+// Genereer een kegelvorm polygon (windDirVanaf = richting WAAR de wind vandaan komt).
+// Geeft [lng, lat]-punten terug (GeoJSON/OL-volgorde) — let op: dit is omgedraaid
+// t.o.v. de oude Leaflet-versie, die [lat, lng] gebruikte.
 export function driftKegel(lat, lng, windDirVanaf, reikwijdteM, openingshoek = 60) {
   const driftRichting = (windDirVanaf + 180) % 360;
   const punten = [];
   const startHoek = driftRichting - openingshoek / 2;
   const stappen = 20;
 
-  punten.push([lat, lng]);
+  punten.push([lng, lat]);
 
   for (let i = 0; i <= stappen; i++) {
     const hoek = startHoek + (i / stappen) * openingshoek;
@@ -65,15 +76,17 @@ export function driftKegel(lat, lng, windDirVanaf, reikwijdteM, openingshoek = 6
     const R = 6371000;
     const dLat = (reikwijdteM / R) * Math.cos(hoekRad);
     const dLng = (reikwijdteM / R) * Math.sin(hoekRad) / Math.cos((lat * Math.PI) / 180);
-    punten.push([lat + (dLat * 180) / Math.PI, lng + (dLng * 180) / Math.PI]);
+    punten.push([lng + (dLng * 180) / Math.PI, lat + (dLat * 180) / Math.PI]);
   }
 
-  punten.push([lat, lng]);
+  punten.push([lng, lat]);
   return punten;
 }
 
 // Komt overeen met maakDriftZoneLayer() uit docs/index.html — tekent de
-// FOCUS STEP driftzones + windpijl-label op een Leaflet-laag.
+// FOCUS STEP driftzones + windpijl-label, nu als ol/layer/Vector i.p.v.
+// een Leaflet layerGroup. Coördinaten worden naar de kaartprojectie
+// (EPSG:3857) omgezet via fromLonLat.
 export function maakDriftZoneLayer(melding) {
   const lat = melding.gps?.lat;
   const lng = melding.gps?.lng;
@@ -82,37 +95,64 @@ export function maakDriftZoneLayer(melding) {
 
   if (!lat || !lng || windDir == null) return null;
 
-  const groep = L.layerGroup();
+  const features = [];
   const zones = driftZones(windKmh || 5);
 
   [...zones].reverse().forEach((zone) => {
-    const punten = driftKegel(lat, lng, windDir, zone.reikwijdteM);
-    L.polygon(punten, {
-      color: zone.kleur,
-      fillColor: zone.kleur,
-      fillOpacity: zone.alpha * 0.7,
-      weight: 1,
-      opacity: 0.5,
-      dashArray: zone.naam === 'laag' ? '4,4' : null,
-      interactive: false
-    }).addTo(groep);
+    const punten = driftKegel(lat, lng, windDir, zone.reikwijdteM).map((p) => fromLonLat(p));
+    const feature = new Feature({ geometry: new Polygon([punten]) });
+    feature.setStyle(
+      new Style({
+        stroke: new Stroke({ color: zone.kleur, width: 1, lineDash: zone.naam === 'laag' ? [4, 4] : null }),
+        fill: new Fill({ color: hexMetAlpha(zone.kleur, zone.alpha * 0.7) })
+      })
+    );
+    features.push(feature);
   });
 
-  L.circleMarker([lat, lng], {
-    radius: 5, color: '#fff', fillColor: '#ef4444', fillOpacity: 1, weight: 2
-  }).addTo(groep);
+  const centrum = fromLonLat([lng, lat]);
+  const middenpunt = new Feature({ geometry: new Point(centrum) });
+  middenpunt.setStyle(
+    new Style({
+      image: new CircleStyle({
+        radius: 5,
+        fill: new Fill({ color: '#ef4444' }),
+        stroke: new Stroke({ color: '#fff', width: 2 })
+      })
+    })
+  );
+  features.push(middenpunt);
 
   const windLabel = windKmh
     ? `💨 ${windKmh} km/h uit ${degToCompass(windDir)}`
     : `Windrichting: ${degToCompass(windDir)}`;
 
-  L.marker([lat, lng], {
-    icon: L.divIcon({
-      html: `<div style="background:rgba(0,0,0,0.75);color:#fff;font-family:monospace;font-size:10px;padding:3px 6px;border-radius:4px;white-space:nowrap;">${windLabel}</div>`,
-      className: '',
-      iconAnchor: [-8, 10]
+  const labelPunt = new Feature({ geometry: new Point(centrum) });
+  labelPunt.setStyle(
+    new Style({
+      text: new Text({
+        text: windLabel,
+        font: '10px monospace',
+        offsetX: 50,
+        textAlign: 'left',
+        fill: new Fill({ color: '#ffffff' }),
+        backgroundFill: new Fill({ color: 'rgba(0,0,0,0.75)' }),
+        padding: [3, 6, 3, 6]
+      })
     })
-  }).addTo(groep);
+  );
+  features.push(labelPunt);
 
-  return groep;
+  return new VectorLayer({ source: new VectorSource({ features }) });
+}
+
+// CircleGeom wordt niet gebruikt door maakDriftZoneLayer maar is hier
+// beschikbaar voor de mini-kaart-fallback (zie DriftZoneKaart.jsx).
+export { CircleGeom };
+
+function hexMetAlpha(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }

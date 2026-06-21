@@ -1,0 +1,20 @@
+.buurtgebied-tekenaar-kaart {
+  height: 240px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.buurtgebied-tekenaar-balk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.buurtgebied-tekenaar-oppervlakte {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
