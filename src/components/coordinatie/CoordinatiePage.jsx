@@ -34,9 +34,13 @@ const BuurtgebiedTekenaar = lazy(() => import('./BuurtgebiedTekenaar.jsx').then(
 // de echte afscherming gebeurt via de admin/coordinator-RLS-bypass uit
 // migraties 0004/0011, niet hier. Alle acties hieronder (modereren,
 // trust-score, postcode-backfill, buurtrapport) zijn voor coordinators
-// toegestaan; alleen account-verwijdering (migratie 0008) en de
-// Prullenbak (InstellingenPage) blijven admin-only.
-export function CoordinatiePage({ user, thuislocatie }) {
+// toegestaan; alleen account-verwijdering (migratie 0008), de Prullenbak
+// (InstellingenPage) én — sinds 2026-06-22, zie DECISIONS.md — de
+// buurtgebied-CSV/Dossier-PDF-export (BuurtgebiedTekenaar.jsx) blijven
+// admin-only: die exporteert individuele meldingen incl. PII van andere
+// melders, en de gebruiker wil die actie liever zelf blijven uitvoeren
+// i.p.v. een coordinator-sleutel daarvoor uit te delen.
+export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
   const [entries, setEntries] = useState(null);
   const [profielen, setProfielen] = useState(null);
   const [fout, setFout] = useState(null);
@@ -319,7 +323,7 @@ export function CoordinatiePage({ user, thuislocatie }) {
       </div>
 
       <Suspense fallback={<div className="card p-4">Kaart laden...</div>}>
-        <BuurtgebiedTekenaar thuislocatie={filterCentrum || thuislocatie} meldingen={entriesGefilterd} user={user} />
+        <BuurtgebiedTekenaar thuislocatie={filterCentrum || thuislocatie} meldingen={entriesGefilterd} user={user} gebruikerRol={gebruikerRol} />
       </Suspense>
 
       <BuurtrapportGenerator user={user} voorgeselecteerdPostcodegebied={voorgeselecteerdPostcodegebied} />

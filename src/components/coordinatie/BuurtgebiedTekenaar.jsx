@@ -23,6 +23,7 @@ import { entryNaarExportMelding } from '../../lib/meldingen/regioExport.js';
 import { meldingenNaarCSV } from '../../lib/export/csv.js';
 import { downloadFile } from '../../lib/export/download.js';
 import { genereerDossierHTML, openDossierPDF } from '../../lib/export/pdf.js';
+import { isAdmin } from '../../lib/rollen.js';
 import './BuurtgebiedTekenaar.css';
 
 const POLYGOON_STIJL = new Style({
@@ -65,8 +66,11 @@ function clusterStijl(feature) {
 // meldingen geclusterd op de kaart, zodat je ziet waar ze zitten vóór je
 // tekent — voorheen een lege kaart, je tekende dan "blind". Na het tekenen
 // kan het gebied geëxporteerd worden: alle meldingen binnen de polygoon als
-// CSV-download + gebundeld in het bestaande Dossier-PDF-formaat.
-export function BuurtgebiedTekenaar({ thuislocatie, meldingen, user }) {
+// CSV-download + gebundeld in het bestaande Dossier-PDF-formaat. Die export
+// (individuele meldingen incl. PII van andere melders) is sinds 2026-06-22
+// admin-only (zie DECISIONS.md) — een coordinator ziet de kaart en kan het
+// gebied tekenen/als GeoJSON exporteren, maar niet de melding-CSV/PDF.
+export function BuurtgebiedTekenaar({ thuislocatie, meldingen, user, gebruikerRol }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const sourceRef = useRef(null);
@@ -79,6 +83,7 @@ export function BuurtgebiedTekenaar({ thuislocatie, meldingen, user }) {
   const [csvStatus, setCsvStatus] = useState(null);
   const [pdfBezig, setPdfBezig] = useState(false);
   const [pdfStatus, setPdfStatus] = useState(null);
+  const magExporteren = isAdmin(gebruikerRol);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -256,14 +261,24 @@ export function BuurtgebiedTekenaar({ thuislocatie, meldingen, user }) {
         <button type="button" className="btn-outline px-3 py-1" disabled={!geojson} onClick={downloadGeojson}>
           ⬇️ Exporteer GeoJSON
         </button>
-        <button type="button" className="btn-outline px-3 py-1" disabled={!geojson || csvBezig} onClick={handleExporteerCSV}>
-          {csvBezig ? '⏳ Bezig...' : '📄 Exporteer meldingen als CSV'}
-        </button>
-        <button type="button" className="btn-outline px-3 py-1" disabled={!geojson || pdfBezig} onClick={handleSamenstellenDossier}>
-          {pdfBezig ? '⏳ Bezig...' : '📦 Stel Dossier-PDF samen'}
-        </button>
+        {magExporteren && (
+          <>
+            <button type="button" className="btn-outline px-3 py-1" disabled={!geojson || csvBezig} onClick={handleExporteerCSV}>
+              {csvBezig ? '⏳ Bezig...' : '📄 Exporteer meldingen als CSV'}
+            </button>
+            <button type="button" className="btn-outline px-3 py-1" disabled={!geojson || pdfBezig} onClick={handleSamenstellenDossier}>
+              {pdfBezig ? '⏳ Bezig...' : '📦 Stel Dossier-PDF samen'}
+            </button>
+          </>
+        )}
         {oppervlakteHa != null && <span className="buurtgebied-tekenaar-oppervlakte">≈ {oppervlakteHa} ha</span>}
       </div>
+      {!magExporteren && (
+        <div className="export-card-beschrijving mt-2">
+          Meldingen-export (CSV/Dossier-PDF) van een getekend gebied is
+          admin-only — vraag de beheerder om dit dossier samen te stellen.
+        </div>
+      )}
       {csvStatus && <div className="export-card-beschrijving mt-2">{csvStatus}</div>}
       {pdfStatus && <div className="export-card-beschrijving mt-2">{pdfStatus}</div>}
     </div>
