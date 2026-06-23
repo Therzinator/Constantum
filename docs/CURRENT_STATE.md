@@ -126,7 +126,7 @@ gedrag staan zoals migratie 0005 het achterliet.
   migratie voor de exacte `cron.schedule(...)`-aanroep. Niet door een
   agent te plannen (operationele Supabase-dashboard-actie).
 
-## Groepenfunctie — vervangt "Uitnodigen" (sinds 2026-06-23, migratie 0015 — NOG NIET UITGEVOERD)
+## Groepenfunctie — vervangt "Uitnodigen" (sinds 2026-06-23, migraties 0015/0016/0018 uitgevoerd)
 
 Vervangt de hieronder beschreven "Buren uitnodigen"-flow volledig (die
 bestaat niet meer — `DeeltokenGenerator.jsx`/`UitnodigenMenu.jsx`/
@@ -140,9 +140,13 @@ kiest per groep, trust-score hergebruik).
   uitnodigingen + QR, trust-score, meldingenlijst).
 - **Database**: `groepen`/`groep_leden`/`groep_uitnodigingen`/
   `entries_groepen` + SECURITY DEFINER-functies + RLS
-  (`supabase/migrations/0015_groepen.sql`, **nog niet uitgevoerd** — tot
-  uitvoering is de Groepen-tab in de UI wel zichtbaar maar elke
-  data-aanroep faalt, zie NEXT_STEPS.md).
+  (`supabase/migrations/0015_groepen.sql`, uitgevoerd). Migratie 0018
+  herstelt een bug uit 0015 — de SELECT-policy op `groep_leden`
+  verwees naar zichzelf ("infinite recursion detected in policy for
+  relation groep_leden", trof ook Moderatie en de entries-cloud-sync) —
+  fix via `fn_is_groepslid()` (SECURITY DEFINER), ook uitgevoerd.
+  Migratie 0016 (`deel_meldingen`/`opt_in_groepen` + trigger) eveneens
+  uitgevoerd, zie hieronder.
 - **Backend**: `src/lib/groepen/` (`groepen.js`, `groepLeden.js`,
   `uitnodigingen.js`, `trustZichtbaarheid.js`, `rollen.js`).
 - **Rollen per groep** (`groep_leden.rol`, vrije tekst zoals
@@ -344,12 +348,12 @@ kiest per groep, trust-score hergebruik).
 
 ## Database-migraties
 
-Alle migraties **0001 t/m 0011 zijn uitgevoerd** (bevestigd door de
-gebruiker op 2026-06-21, geen foutmeldingen) — inclusief de 5km-
-privacygrens (0009) en de coordinator-RLS (0011). Migraties 0012/0013
-zijn uitgevoerd; **0014 (trust-score op-/afschaling) en 0015
-(Groepenfunctie) zijn geschreven maar nog niet uitgevoerd** — zie
-NEXT_STEPS.md. Nieuwe migraties na 0015 toevoegen op nummer 0016.
+Alle migraties **0001 t/m 0013 en 0015 t/m 0018 zijn uitgevoerd**
+(0015-0018 bevestigd via Supabase op 2026-06-23) — inclusief de 5km-
+privacygrens (0009), de coordinator-RLS (0011), Groepen (0015/0016) en de
+RLS-recursiefix op `groep_leden` (0018). **Migratie 0014 (trust-score
+op-/afschaling) is nog niet uitgevoerd** — zie NEXT_STEPS.md. Nieuwe
+migraties na 0018 toevoegen op nummer 0019.
 
 ## Dossier/bewijskracht (sinds 2026-06-21)
 

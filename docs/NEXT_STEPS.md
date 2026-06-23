@@ -6,15 +6,18 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
-- **Migratie 0015 (Groepenfunctie) uitvoeren in de Supabase SQL-editor.**
-  Nieuw schema (`groepen`/`groep_leden`/`groep_uitnodigingen`/
-  `entries_groepen`) + RLS + SECURITY DEFINER-functies, zie
-  `supabase/migrations/0015_groepen.sql`. De nieuwe Groepen-pagina/-tab is
-  al in de app gebouwd en gekoppeld, maar werkt zonder deze migratie niet
-  (tabellen bestaan dan nog niet). Migratie 0015 leest óók
-  `user_profiles.trust_score` voor de trust-tier-gestuurde zichtbaarheid
-  binnen een groep — werkt los van migratie 0014, maar voor de bedoelde
-  tier-indeling (zie CURRENT_STATE.md) moet 0014 ook uitgevoerd zijn.
+- **Migratie 0014 (trust-score op-/afschaling) nog steeds niet
+  uitgevoerd** (bevestigd via Supabase op 2026-06-23 — `fn_entries_set_
+  visibility()` is nog de oude <40-shadow-versie, geen kwartaalbonus-
+  functie). De trust-tier-gestuurde detailweergave binnen Groepen werkt
+  hierdoor al, maar de automatische op-/afschaling van trust_score bij
+  nieuwe meldingen gebruikt nog het oude gedrag.
+- **`user_roles.role` heeft een CHECK-constraint die alleen
+  `'admin'`/`'gebruiker'` toestaat** (bevestigd via Supabase op
+  2026-06-23) — `'coordinator'` kan dus nooit aan een account toegekend
+  worden, ondanks dat de hele coordinator-rol-infrastructuur (RLS,
+  UI-gating) al klaarstaat. Nieuwe migratie nodig om de constraint uit te
+  breiden vóór een coordinator-account getest kan worden.
 - **Icon_*.png-bestanden (`src/assets/ui-icons/`) waren oorspronkelijk
   RGB zonder alphakanaal — gerepareerd door alpha af te leiden uit
   pixelhelderheid (achtergrond zwart -> transparant), zodat de bestaande
