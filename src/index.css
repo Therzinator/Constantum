@@ -17,6 +17,21 @@ body {
   color-scheme: dark;
 }
 
+html {
+  /* Altijd ruimte reserveren voor de verticale scrollbar, ook op pagina's
+     die (nog) niet hoeven te scrollen — anders verschijnt/verdwijnt de
+     scrollbar afhankelijk van paginahoogte (bv. korte Dashboard-pagina
+     vs. lange Melding-pagina), wat op Windows (niet-overlay-scrollbars)
+     de beschikbare breedte met de scrollbar-breedte (~17px) laat
+     wisselen — en daarmee de gecentreerde #root (max-width 640px,
+     margin:auto) een stukje opzij schuift bij elke paginawissel. Vast-
+     gepositioneerde elementen (BottomNav, AppHeader) bleven daardoor
+     wel op hun plek staan, wat het verschil extra opviel.
+     `overflow-y: scroll` i.p.v. `scrollbar-gutter: stable` voor brede
+     browserondersteuning. */
+  overflow-y: scroll;
+}
+
 /* Mobiel-georiënteerde app — op grote schermen blijft de inhoud beperkt tot
    een vaste breedte (zelfde breakpoint als de mobiele media queries) i.p.v.
    uit te rekken over de volledige beeldschermbreedte. */

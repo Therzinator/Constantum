@@ -16,8 +16,9 @@
 }
 
 .app-header-logo {
-  width: 64px;
-  height: 64px;
+  /* 64px -> 83px -> 108px (+30% nogmaals, op verzoek). */
+  width: 108px;
+  height: 108px;
   flex-shrink: 0;
 }
 
