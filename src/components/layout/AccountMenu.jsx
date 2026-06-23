@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { APP_VERSION_CLIENT } from '../../lib/version.js';
 import { RADIUS_OPTIES, laadBereikMeter, slaBereikMeterOp } from '../../lib/notificaties/buurtMelding.js';
 import { laadDeelVoorkeur, slaDeelVoorkeurOp } from '../../lib/notificaties/deelvoorkeur.js';
-import instellingenIcon from '../../assets/ui-icons/instellingen.png';
+import instellingenIcon from '../../assets/ui-icons/icon_instellingen.png';
 import './AccountMenu.css';
 
 // Vervangt het kale versienummer in de headerbalk (AppHeader.jsx) door een

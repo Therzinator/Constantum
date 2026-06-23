@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 import { markeerHandleidingGezien } from '../../lib/onboarding/handleidingStatus.js';
 import { PrivacyVerklaringModal } from './PrivacyVerklaringModal.jsx';
-import schermDashboard from '../../assets/onboarding/dashboard.png';
-import schermMeldingFormulier from '../../assets/onboarding/melding-formulier.png';
-import schermTijdlijn from '../../assets/onboarding/tijdlijn.png';
-import schermExport from '../../assets/onboarding/export.png';
 import './HandleidingModal.css';
 
 const AANTAL_STAPPEN = 5;
@@ -52,7 +48,6 @@ export function HandleidingModal({ onSluiten }) {
               zijn juridisch onderbouwd met tijdstempels, weerdata en locatiegegevens —
               klaar om als bewijsmateriaal te dienen.
             </div>
-            <img src={schermDashboard} alt="Dashboard met overzicht van uw meldingen" className="handleiding-screenshot" />
           </>
         )}
 
@@ -77,7 +72,6 @@ export function HandleidingModal({ onSluiten }) {
                 <div className="handleiding-grid-label">Exporteer uw dossier — genereer een juridisch PDF-dossier met één tik</div>
               </div>
             </div>
-            <img src={schermMeldingFormulier} alt="Het meldingsformulier met locatiepin, weerdata en omschrijving" className="handleiding-screenshot" />
           </>
         )}
 
@@ -93,7 +87,6 @@ Zo werkt buurtregistratie:
 • Een coördinator kan geanonimiseerde dossiers samenvoegen
 • Uw identiteit blijft beschermd — u bent zichtbaar als Melder#XXXXXX`}
             </div>
-            <img src={schermTijdlijn} alt="Tijdlijn met eigen en gedeelde meldingen uit de buurt" className="handleiding-screenshot" />
           </>
         )}
 
@@ -117,10 +110,9 @@ Zo werkt buurtregistratie:
           <>
             <div className="handleiding-titel">U bent er klaar voor</div>
             <div className="handleiding-tekst">
-              Tip: begin met het instellen van uw thuislocatie in de Instellingen. Dit is
-              het referentiepunt voor afstandsberekeningen en is alleen voor uzelf zichtbaar.
+              Tip: nodig buurtgenoten uit met de Groepsuitnodiging-functie en start samen
+              een groep om gezamenlijk een dossier op te bouwen.
             </div>
-            <img src={schermExport} alt="Export-pagina met PDF-dossier, JSON- en CSV-export" className="handleiding-screenshot" />
             <button type="button" className="btn-primary handleiding-cta" onClick={sluiten}>
               Aan de slag →
             </button>

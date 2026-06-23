@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
 import { AccountMenu } from './AccountMenu.jsx';
-import { UitnodigenMenu } from '../notificaties/UitnodigenMenu.jsx';
 import './AppHeader.css';
 
 // Vaste headerbalk met het SpuitLogger-logo — de app had voorheen helemaal
@@ -12,7 +11,7 @@ import './AppHeader.css';
 // zie styles/theme.css) zodat andere vast-gepositioneerde elementen (bv.
 // VoortgangBalk.jsx) er exact — zonder gat of overlap — onder kunnen
 // aansluiten, ook als de header-hoogte ooit verandert (logo/font/zoom).
-export function AppHeader({ user, onNavigeerInstellingen, thuislocatie, syncNu, syncBezig, laadVanCloud, onUitloggen }) {
+export function AppHeader({ user, onNavigeerInstellingen, syncNu, syncBezig, laadVanCloud, onUitloggen }) {
   const headerRef = useRef(null);
 
   useLayoutEffect(() => {
@@ -37,7 +36,6 @@ export function AppHeader({ user, onNavigeerInstellingen, thuislocatie, syncNu, 
         <span className="app-header-subtitel">Spuitactiviteiten Dossier</span>
       </div>
       <div className="app-header-acties">
-        <UitnodigenMenu user={user} thuislocatie={thuislocatie} />
         <AccountMenu
           user={user}
           onNavigeerInstellingen={onNavigeerInstellingen}

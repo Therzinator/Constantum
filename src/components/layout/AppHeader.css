@@ -9,9 +9,9 @@
   align-items: center;
   gap: 20px;
   padding: 20px 32px;
-  /* Zelfde achtergrondkleur als het logo zelf (manifest background_color
-     in vite.config.js) — logo en headerbalk lopen zo naadloos in elkaar over. */
-  background: #010510;
+  /* Gelijk aan --bg-primary (theme.css/docs/index.html) — logo en
+     headerbalk lopen zo naadloos in elkaar over. */
+  background: #0a0e17;
   border-bottom: 1px solid var(--border);
 }
 
@@ -44,10 +44,6 @@
   text-transform: uppercase;
 }
 
-/* Uitnodigen (UitnodigenMenu.jsx) en Instellingen (AccountMenu.jsx) onder
-   elkaar i.p.v. naast elkaar — beide knoppen delen verder dezelfde,
-   kader-loze opmaak als de bottom-nav-tabs (BottomNav.css): geen
-   omsluitend vierkant/border meer, groter icoon. */
 .app-header-acties {
   margin-left: auto;
   flex-shrink: 0;
@@ -55,37 +51,5 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-}
-
-.app-header-uitnodigen-knop {
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-.app-header-uitnodigen-knop:hover { color: var(--accent); }
-
-.app-header-knop-label {
-  font-family: var(--sans);
-  font-size: 0.6rem;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.app-header-knop-icoon-img {
-  width: 54px;
-  height: 54px;
-  background-color: currentColor;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
 }
 

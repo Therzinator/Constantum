@@ -1,0 +1,50 @@
+.groepen-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.groepen-formulier {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.groepen-checkbox-rij {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.groepen-kaart {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.groepen-kaart:hover,
+.groepen-kaart:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+.groepen-kaart-statisch {
+  cursor: default;
+}
+
+.groepen-kaart-titel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-bottom: 4px;
+}

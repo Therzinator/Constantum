@@ -4,7 +4,7 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-06-22.
+Laatst bijgewerkt: 2026-06-23.
 
 ## Technische stack
 
@@ -89,60 +89,84 @@ Laatst bijgewerkt: 2026-06-22.
   vallen buiten elk filter (blijven wel zichtbaar als er niet gefilterd
   wordt).
 
-## Trust-score — ontwerp voor automatische op-/afschaling (voorstel, 2026-06-22, NIET geïmplementeerd)
+## Trust-score automatische op-/afschaling (sinds 2026-06-22, migratie 0014 — NOG NIET UITGEVOERD)
 
-Besproken maar bewust **niet gebouwd** — gebruiker wilde eerst het
-ontwerp zien. Zie ook NEXT_STEPS.md.
+Ontwerp op 2026-06-22 met concrete getallen bevestigd door de gebruiker en
+uitgewerkt in `supabase/migrations/0014_trust_score_op_afschaling.sql`.
+**Nog niet uitgevoerd** door de gebruiker in de Supabase SQL-editor (zelfde
+"handmatig uitvoeren"-patroon als alle migraties, zie root-CLAUDE.md) — tot
+die uitvoering blijft `fn_entries_set_visibility()` op het oude <40-shadow-
+gedrag staan zoals migratie 0005 het achterliet.
 
-- **Huidige situatie**: `user_profiles.trust_score` (0-100, default 75)
-  wordt nu alleen automatisch *verlaagd* (migratie 0005: -20 bij >10
-  meldingen/perceel/24u, -15 bij herhaalde identieke beschrijving) en
-  alleen handmatig *verhoogd* door een coordinator (CoordinatiePage,
-  los invoerveld). Geen automatische positieve bijstelling.
-- **Voorstel positieve signalen**: (a) periodieke "betrouwbaarheids-
-  bonus" voor accounts ouder dan 90 dagen zonder enige
-  under_review/shadow-vlag in die periode; (b) een iets grotere bonus
-  wanneer een coordinator een melding expliciet goedkeurt (bestaande
-  "✓ Goedkeuren"-knop) i.p.v. alleen visibility te wijzigen zonder
-  score-effect.
-- **Voorstel aanvullende negatieve signalen**: een melding die een
-  coordinator handmatig naar `shadow` zet (nu zonder score-effect) zou
-  een grotere score-straf moeten geven dan automatische detectie, omdat
-  een mens het beoordeeld heeft.
-- **Voorgestelde categorieën en het verschil per categorie**:
-  - **80-100 "Vertrouwd"**: meldingen altijd direct normaal zichtbaar,
-    telt zwaarder mee in de bewijswaardescore van buurtrapporten.
-  - **40-79 "Standaard"** (huidige default 75 valt hierin): huidig
-    gedrag — alleen nieuwe accounts (<48u) of veel meldingen in de
-    eerste week gaan naar `under_review`.
-  - **20-39 "Verhoogd toezicht"** (nieuw, tussenliggend): elke nieuwe
-    melding gaat naar `under_review` tot een coordinator goedkeurt,
-    i.p.v. pas bij account-leeftijd/-volume.
-  - **0-19 "Geschaduwd"**: meldingen direct `shadow` (huidige drempel
-    ligt op <40 — voorstel is die te verlagen naar <20 zodat 20-39 als
-    eigen tussencategorie kan dienen), uitgesloten van buurtrapporten.
-  - Dit raakt `fn_entries_set_visibility()`/`fn_entries_misbruikdetectie()`
-    (migratie 0003/0005) en zou een nieuwe migratie 0014 vereisen —
-    expliciete bevestiging nodig vóór bouw.
+- **Categorieën** (`fn_entries_set_visibility()`, leest trust_score van
+  vóór de insert): 80-100 "Vertrouwd" (geen nieuw-account-checks, altijd
+  `normal`) · 40-79 "Standaard" (ongewijzigd bestaand gedrag: account <48u
+  of <7 dagen + ≥5 meldingen/dag → `under_review`) · 20-39 "Verhoogd
+  toezicht" (nieuw — élke nieuwe melding → `under_review`, los van
+  account-leeftijd) · 0-19 "Geschaduwd" (drempel verlaagd van <40 naar
+  <20 — bevestigd: bestaande gebruikers in de 20-39-band gaan hierdoor
+  meteen van shadow naar under_review zodra de migratie draait).
+- **Score-effect op handmatige moderatie** (nieuwe AFTER UPDATE-trigger
+  `fn_entries_visibility_score_effect()` op `entries.visibility` — een
+  UPDATE is per definitie een mens-beoordeling, de BEFORE INSERT-trigger
+  raakt nooit een UPDATE): "✓ Goedkeuren" geeft nu **+5**, een nieuwe
+  "🚫 Verbergen"-knop (CoordinatiePage.jsx, zet visibility op `shadow`)
+  geeft **-30** — zwaarder dan de automatische -20/-15 (migratie 0005),
+  omdat een mens het beoordeeld heeft. Beide eenmalig per overgang
+  (OLD/NEW visibility moet verschillen), niet bij herhaalde acties.
+- **Verbergen-knop is nieuw in de UI** — er bestond nog geen knop om een
+  melding handmatig naar `shadow` te zetten (alleen Goedkeuren →
+  `normal`); zonder die knop was de -30-straf onbereikbaar.
+- **Kwartaalbonus (+5)** voor accounts >90 dagen oud zonder enige
+  under_review/shadow-melding in die periode — losse SQL-functie
+  `fn_trust_score_kwartaalbonus()`, geen realtime trigger (geen
+  insert-moment om op te hangen). Moet zelf periodiek aangeroepen worden:
+  via `pg_cron` (als die extensie aanstaat in het Supabase-project) of
+  handmatig elk kwartaal in de SQL-editor — zie het commentaarblok in de
+  migratie voor de exacte `cron.schedule(...)`-aanroep. Niet door een
+  agent te plannen (operationele Supabase-dashboard-actie).
 
-## Buren uitnodigen (sinds 2026-06-22)
+## Groepenfunctie — vervangt "Uitnodigen" (sinds 2026-06-23, migratie 0015 — NOG NIET UITGEVOERD)
 
-- **Eigen pagina i.p.v. dashboard-kaart**: `DeeltokenGenerator.jsx`
-  (`src/components/notificaties/`) is verplaatst van `DashboardPage.jsx`
-  naar een nieuwe `UitnodigenPage.jsx`, bereikbaar via een eigen
-  navigatieknop (person+plus-icoon) naast de instellingenknop in
-  `AppHeader.jsx`.
-- **Geldigheid 24 uur i.p.v. 14 dagen** (`lib/supabase/deeltokens.js`,
-  `GELDIGHEID_UUR`) — de link werkt na 24 uur niet meer.
-- **Omschrijving is nu een auto-gegenereerde 8-tekens code** (letters+
-  cijfers, zonder 0/O/1/I) i.p.v. vrije tekst — de gebruiker typt niets
-  meer in, `maakDeeltoken(user)` genereert de code zelf.
-- **Standaardtekst bij kopiëren**: "Doe mee met de buurt en registreer
-  spuitactiviteiten!" wordt samen met de link naar het klembord gekopieerd.
-- **Lijst toont resterende uren** i.p.v. open/verlopen-status, en tokens
-  die meer dan 48 uur verlopen zijn worden niet meer opgehaald
-  (`haalEigenDeeltokens`, `VERBERG_NA_UUR_VERLOPEN`) — blijven wel in de
-  database staan, verdwijnen alleen uit het overzicht.
+Vervangt de hieronder beschreven "Buren uitnodigen"-flow volledig (die
+bestaat niet meer — `DeeltokenGenerator.jsx`/`UitnodigenMenu.jsx`/
+`lib/supabase/deeltokens.js` zijn verwijderd). Zie DECISIONS.md voor de
+volledige afweging (naast i.p.v. in plaats van de buurt-deling, melder
+kiest per groep, trust-score hergebruik).
+
+- **Nieuwe BottomNav-tab "Groepen"** (`src/components/groepen/`) i.p.v.
+  de header-knop — `GroepenPage.jsx` (openbare groepen browsen/groep
+  starten/mijn groepen) en `GroepPage.jsx` (detailpagina: leden, rollen,
+  uitnodigingen + QR, trust-score, meldingenlijst).
+- **Database**: `groepen`/`groep_leden`/`groep_uitnodigingen`/
+  `entries_groepen` + SECURITY DEFINER-functies + RLS
+  (`supabase/migrations/0015_groepen.sql`, **nog niet uitgevoerd** — tot
+  uitvoering is de Groepen-tab in de UI wel zichtbaar maar elke
+  data-aanroep faalt, zie NEXT_STEPS.md).
+- **Backend**: `src/lib/groepen/` (`groepen.js`, `groepLeden.js`,
+  `uitnodigingen.js`, `trustZichtbaarheid.js`, `rollen.js`).
+- **Rollen per groep** (`groep_leden.rol`, vrije tekst zoals
+  `user_roles.role`): `lid`/`beheerder`/`hoofdbeheerder`. Hoofdbeheerder
+  is altijd de aanmaker; aantal beheerders is begrensd door
+  `groepen.max_beheerders` (1-5, instelbaar door de hoofdbeheerder).
+- **Trust-tier-gestuurde detailweergave binnen een groep**
+  (`trustZichtbaarheid.js`) — hergebruikt de bandbreedtes uit migratie
+  0014 (0-19/20-39 laag, 40-79 gemiddeld, 80-100 hoog) om te bepalen
+  hoeveel van een gedeelde melding een KIJKER ziet (exacte locatie/
+  metadata/melderinfo), gebaseerd op zijn eigen trust_score. Geconfigureerd
+  via een array, niet hardcoded if/else, voor toekomstige extra niveaus.
+- **Uitnodigingen** (`groep_uitnodigingen`): link + QR-code (nieuwe
+  dependency `qrcode`), instelbaar aantal gebruikers (1-5) en verlooptijd
+  (24/48/72u), met teller voor keer-geopend/keer-gebruikt. Geen browser-
+  Notification (bewust, zie "Buurt-notificaties verwijderd" hieronder) —
+  statistieken zijn alleen zichtbaar als de beheerder zelf de groepspagina
+  opent.
+- **"Recente meldingen" (Dashboard) is soberder**: toont nu alleen nog
+  meldingstype, datum en algemene regio (gemeente/provincie) —
+  gezondheidsklachten-badge, sync-status, windgegevens, mini-kaartje,
+  omschrijving, melder-code en bestandsaantal zijn uit de compacte
+  `MeldingCard.jsx`-variant verwijderd. De niet-compacte/Tijdlijn-variant
+  is ongewijzigd.
 
 ## Privacybescherming melders: notificaties verwijderd + 30 min vertraging (sinds 2026-06-22)
 
@@ -202,6 +226,43 @@ ontwerp zien. Zie ook NEXT_STEPS.md.
   (rij 1) i.p.v. tussen de overige meta-iconen, als enige signaal dat in
   dit overzicht mag opvallen.
 
+## Navigatie/thema-herontwerp (sinds 2026-06-23)
+
+- **Navigatie-iconen vervangen door de `icon_`-varianten**
+  (`src/assets/ui-icons/icon_dashboard.png` etc.) — de eerder toegevoegde
+  niet-`icon_`-bestanden zijn verwijderd. De aangeleverde `icon_*.png`-
+  bestanden waren **RGB zonder alphakanaal** (PNG color type 2, geen
+  transparantie) — de bestaande currentColor-mask-techniek
+  (`BottomNav.jsx`) toonde ze daardoor als effen blokken i.p.v. lijn-
+  iconen. Gerepareerd door alpha af te leiden uit pixelhelderheid
+  (zwarte achtergrond → transparant, lijn-art → ondoorzichtig) en de
+  bestanden te herschrijven als RGBA — geen wijziging aan het lijn-
+  artwork zelf. Zie NEXT_STEPS.md als dit ooit met nieuwe asset-bestanden
+  opnieuw moet gebeuren.
+- **Bottom-navigatie is nu `position: fixed` i.p.v. `sticky`**
+  (`BottomNav.css`) — sticky's positie hing af van de hoogte van de
+  omliggende pagina-inhoud (de bug: de nav verschoof mee). `BottomNav.jsx`
+  meet zijn eigen hoogte (`ResizeObserver`, zelfde patroon als
+  `AppHeader.jsx`/`--header-hoogte`) en schrijft die naar een nieuwe
+  `--nav-hoogte`-variabele; een nieuwe `.app-inhoud`-wrapper in `App.jsx`
+  (`index.css`) gebruikt die als bottom-padding zodat content niet meer
+  achter de vaste nav verdwijnt.
+- **`--accent` is globaal nylon-groen** (`#8bc34a`, was `#00d4aa` teal) —
+  op expliciet verzoek geen apart token alleen voor navigatie, dus elke
+  knop/badge/focus-outline/actieve-status verandert mee.
+  Kaart-/grafiek-/driftzone-kleuren die dezelfde teal-tint **hardcoded in
+  JS** gebruiken (niet via de CSS-variabele, bv. OpenLayers-stijlen,
+  Chart.js) zijn **bewust niet meegenomen** — dat raakt kaart-/drift-
+  renderlogica, buiten de scope van een CSS-thema-wijziging.
+- **`--bg-primary` is nu exact gelijk aan `docs/index.html`** (`#0a0e17`,
+  was `#010510`) — `AppHeader.css`/`VoortgangBalk.css`'s hardcoded
+  headerkleur is meeveranderd zodat header en root-achtergrond
+  consistent blijven.
+- **Nieuwe `.card-accent`-utility** (`theme.css`, parity met
+  `docs/index.html`) — accent-border + gloed-schaduw voor een
+  uitgelichte/geselecteerde kaart. Bewust geen blanket hover-effect op
+  `.card` zelf (te veel bestaande, niet-interactieve kaarten in de app).
+
 ## Bestaande modules
 
 - **Dashboard** (`components/dashboard/`) — statistieken, kaart met
@@ -223,6 +284,9 @@ ontwerp zien. Zie ook NEXT_STEPS.md.
   migratie 0011 — **bijgewerkt 2026-06-21**, was eerst admin-only).
 - **Auth/Onboarding** — login/signup, handleiding, privacyverklaring,
   algemene voorwaarden.
+- **Groepen** (`components/groepen/`) — leden/rollen, uitnodigingen,
+  openbare groepen, trust-tier-gestuurde meldingenlijst. Vervangt de
+  vroegere "Uitnodigen"-header-knop, zie hierboven.
 
 ## Actieve functionaliteit (kaart-specifiek, vaak verward)
 
@@ -282,8 +346,10 @@ ontwerp zien. Zie ook NEXT_STEPS.md.
 
 Alle migraties **0001 t/m 0011 zijn uitgevoerd** (bevestigd door de
 gebruiker op 2026-06-21, geen foutmeldingen) — inclusief de 5km-
-privacygrens (0009) en de coordinator-RLS (0011). Nieuwe migraties na
-0011 toevoegen op nummer 0012.
+privacygrens (0009) en de coordinator-RLS (0011). Migraties 0012/0013
+zijn uitgevoerd; **0014 (trust-score op-/afschaling) en 0015
+(Groepenfunctie) zijn geschreven maar nog niet uitgevoerd** — zie
+NEXT_STEPS.md. Nieuwe migraties na 0015 toevoegen op nummer 0016.
 
 ## Dossier/bewijskracht (sinds 2026-06-21)
 

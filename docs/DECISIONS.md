@@ -352,3 +352,103 @@ gedelegeerd moeten worden.
 - Een toekomstige keuze om de coordinator-rol volledig te verwijderen of
   juist actief te gaan gebruiken voor delegatie staat nog open — bewust
   geen besluit hierover genomen, alleen deze ene actie afgeschermd.
+
+---
+
+## Trust-score automatische op-/afschaling — concrete getallen vastgelegd (migratie 0014)
+
+### Keuze
+Op 2026-06-22 heeft de gebruiker de open punten uit het eerdere
+trust-score-ontwerp (zie eerdere CURRENT_STATE.md-versie) met concrete
+getallen bevestigd: +5 bij expliciet "✓ Goedkeuren" door een coordinator,
+-30 bij een nieuwe, handmatige "🚫 Verbergen" (shadow)-actie, +5 per
+kwartaal voor accounts >90 dagen zonder under_review/shadow-vlag, en de
+shadow-drempel direct (zonder eerst te inventariseren wie dat raakt)
+verlaagd van <40 naar <20. Uitgewerkt in
+`supabase/migrations/0014_trust_score_op_afschaling.sql`.
+
+### Waarom
+-30 is bewust zwaarder dan de automatische -20/-15 (migratie 0005) omdat
+een coordinator het hier expliciet beoordeelt, niet een heuristiek. De
+shadow-drempel mag direct verlaagd worden omdat het effect voor bestaande
+gebruikers in de 20-39-band een **verzachting** is (under_review i.p.v.
+volledig shadow) — geen nieuwe beperking die eerst gevalideerd moest
+worden.
+
+### Impact
+- `fn_entries_set_visibility()` (migratie 0003/0005) is herschreven naar
+  tier-logica; 80-100 slaat de nieuw-account-checks nu over.
+- Nieuwe AFTER UPDATE-trigger `fn_entries_visibility_score_effect()` op
+  `entries.visibility` — een UPDATE is per definitie een mens-beoordeling
+  (de BEFORE INSERT-trigger raakt nooit een UPDATE), dus geen apart
+  "is dit automatisch of handmatig"-onderscheid nodig in de trigger zelf.
+- CoordinatiePage.jsx kreeg een nieuwe "🚫 Verbergen"-knop — die bestond
+  nog niet; zonder een manier om `shadow` handmatig te zetten was de
+  -30-straf onbereikbaar.
+- De kwartaalbonus heeft geen insert-moment om op te hangen — losse
+  `fn_trust_score_kwartaalbonus()`-functie, scheduling (`pg_cron` of
+  handmatig) is een aparte, door de gebruiker zelf te nemen
+  Supabase-dashboard-actie.
+- Migratie 0014 is **geschreven, nog niet uitgevoerd** — zie
+  NEXT_STEPS.md.
+
+---
+
+## Groepenfunctie — vervangt "Uitnodigen", bestaat náást de buurt-deling (migratie 0015)
+
+### Keuze
+Op 2026-06-23 is de eenvoudige "Uitnodigen"-deeltoken-flow
+(`coordinatie_tokens`, `DeeltokenGenerator.jsx`/`UitnodigenMenu.jsx`,
+migratie 0007) volledig vervangen door een volwaardige Groepenfunctie:
+groepen met leden/rollen (`lid`/`beheerder`/`hoofdbeheerder`), eigen
+uitnodigingen (link + QR, instelbaar aantal gebruikers/verlooptijd),
+openbare groepen, en een melder-gestuurde keuze om een melding met
+specifieke groep(en) te delen (`entries_groepen`, migratie 0015 — **nog
+niet uitgevoerd**, zie NEXT_STEPS.md). Twee expliciete keuzes daarbinnen,
+bevestigd door de gebruiker vóór implementatie:
+- Een melder kiest **per groep** welke meldingen hij deelt — geen
+  automatisch alles-delen zodra je lid wordt.
+- Groepen-deling staat **naast** de bestaande buurt-deling
+  (`opt_in_buurt`/5km-straal/30-min-vertraging, zie eerdere beslissingen
+  hierboven) — die blijft ongewijzigd bestaan, alleen de UI van "Recente
+  meldingen" op het Dashboard is soberder gemaakt (alleen nog type/datum/
+  algemene regio, zie hieronder).
+- Trust-score binnen een groep hergebruikt het **bestaande, globale**
+  `user_profiles.trust_score` (geen apart per-groep-veld) — de hoeveelheid
+  detail die een lid van andermans gedeelde melding ziet binnen een groep
+  is afhankelijk van het EIGEN trust-score-niveau van de kijker, via een
+  nieuwe, configureerbare tier-indeling
+  (`src/lib/groepen/trustZichtbaarheid.js`, hergebruikt dezelfde
+  bandbreedtes als migratie 0014's `fn_entries_set_visibility()`).
+
+### Waarom
+De oude Uitnodigen-flow had geen concept van lidmaatschap of een
+blijvende sociale structuur — alleen een los, anonieme-teaser-tonende
+registratielink. De opdracht vroeg om een sociale-samenwerkingsfunctie
+met rollen/uitnodigingen/openbare groepen, wat een wezenlijk andere
+datamodel-vorm is (lidmaatschap + per-groep rechten) dan een
+wegwerptoken. Het naast elkaar laten bestaan van groepen en de
+bestaande buurt-deling voorkomt dat het al uitgebreid afgewogen
+privacy-dreigingsmodel van de buurt-functie (zie de beslissingen
+hierboven) overhoop gehaald wordt door een grote, ongevraagde
+architectuurwissel.
+
+### Impact
+- `coordinatie_tokens`/`verbruik_coordinatie_token`/
+  `publieke_buurt_telling` (migratie 0002/0007) zijn **niet** gedropt —
+  de app roept ze alleen niet meer aan. Een agent voert nooit zelf een
+  schema-wijziging uit; dat blijft zo.
+- Nieuwe BottomNav-tab `groepen` (vervangt de header-knop "Uitnodigen" in
+  `AppHeader.jsx`) → `GroepenPage.jsx`/`GroepPage.jsx`
+  (`src/components/groepen/`), backend in `src/lib/groepen/`.
+- "Recente meldingen" (Dashboard, `MeldingCard.jsx` compacte variant)
+  toont nu alleen meldingstype/datum/algemene regio (gemeente/provincie)
+  — gezondheidsklachten-badge, sync-status, windgegevens, mini-kaartje,
+  omschrijving, melder-code en bestandsaantal zijn daar verwijderd. De
+  niet-compacte/Tijdlijn-variant is ongewijzigd; dat detailniveau hoort nu
+  bij groepsmeldingen (trust-tier-gated, zie hierboven).
+- Nieuwe afhankelijkheid: `qrcode` (npm), voor de QR-code van een
+  groepsuitnodiging.
+- Toekomstige uitbreiding van de trust-tier-indeling (nieuwe niveaus
+  tussen laag/gemiddeld/hoog) kan in `trustZichtbaarheid.js` zonder de
+  aanroepende code aan te passen — bewust config-gebaseerd opgezet.

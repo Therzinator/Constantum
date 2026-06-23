@@ -73,7 +73,10 @@ export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSele
     ? `${melding.description.substring(0, maxLengte)}...`
     : melding.description;
 
-  const heeftLocatie = toonLocatieKaartje && melding.gps?.lat != null && melding.gps?.lng != null;
+  // Compact ("Recente meldingen") toont geen locatie-detail meer (afstand
+  // noch mini-kaartje) — alleen nog type/datum/algemene regio, zie de
+  // privacy-aanscherping hierboven.
+  const heeftLocatie = !compact && toonLocatieKaartje && melding.gps?.lat != null && melding.gps?.lng != null;
   const afstandTekst = heeftLocatie && gpsLocatie
     ? `Melding ${Math.round(haversineAfstand(gpsLocatie.lat, gpsLocatie.lng, melding.gps.lat, melding.gps.lng))} meter vanaf jouw positie gedaan.`
     : null;
@@ -97,13 +100,10 @@ export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSele
                 <span className={`badge ${TYPE_BADGE[melding.type] || 'badge-muted'}`}>
                   {TYPE_LABEL[melding.type] || melding.type}
                 </span>
-                {compact && melding.gezondheidsklachten?.length > 0 && (
-                  // Enige signaal dat in de compacte rij mag opvallen — staat
-                  // daarom als badge naast het type i.p.v. tussen de overige
-                  // meta-iconen in rij 2, zie comment daar.
+                {!compact && melding.gezondheidsklachten?.length > 0 && (
                   <span className="badge badge-danger">🏥 {melding.gezondheidsklachten.length}</span>
                 )}
-                {SUPABASE_ENABLED && (
+                {!compact && SUPABASE_ENABLED && (
                   <span className={`sync-badge ${syncCls}`}>
                     <span className="sync-dot" />
                     {syncLabel}
@@ -114,21 +114,19 @@ export function MeldingCard({ melding, user, gebruikerRol, onVerwijderen, onSele
             </div>
 
             {compact ? (
-              // Compacte variant ("Recente meldingen"): rij 1 is hierboven
-              // (badges + relatieve tijd, .melding-card-top — de
-              // gezondheidsklacht-badge staat daar nu ook, als enige signaal
-              // dat in dit overzicht mag opvallen), rij 2 is alleen nog
-              // omschrijving + windsnelheid (laag-prioriteit info als
-              // melding-ID/bestandsaantal/melder-code bewust weggelaten —
-              // die voegen op dit niveau niets toe, de detail-modal heeft ze).
-              <div className="melding-card-compact-rij2">
-                <div className="melding-card-desc">{omschrijving}</div>
-                {melding.weather?.wind_speed != null && (
-                  <span className="melding-card-meta" style={{ color: 'var(--info)', fontSize: '0.65rem' }}>
-                    💨 {melding.weather.wind_speed} km/h {degToCompass(melding.weather.wind_dir)}
-                  </span>
-                )}
-              </div>
+              // Compacte variant ("Recente meldingen" op het Dashboard) toont
+              // bewust alleen nog meldingstype (badge hierboven), datum
+              // (hierboven) en algemene regio (gemeente/provincie) — geen
+              // omschrijving, gezondheidsklachten-badge, sync-status, wind-
+              // gegevens, mini-kaartje, melder-code of bestandsaantal meer
+              // (privacy-aanscherping na introductie van de Groepenfunctie:
+              // die uitgebreide info verhuist naar de groepspagina, zie
+              // components/groepen/GroepMeldingenLijst.jsx).
+              (melding.gemeente || melding.provincie) && (
+                <div className="melding-card-compact-rij2">
+                  <span className="melding-card-desc">{[melding.gemeente, melding.provincie].filter(Boolean).join(', ')}</span>
+                </div>
+              )
             ) : (
               <>
                 <div className="melding-card-desc">{omschrijving}</div>

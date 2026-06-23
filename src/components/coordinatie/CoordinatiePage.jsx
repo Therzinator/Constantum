@@ -139,6 +139,23 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
     }
   };
 
+  // Tegenhanger van Goedkeuren — een handmatige shadow door een mens-
+  // beoordeling geeft sinds migratie 0014 een zwaardere trust-score-straf
+  // (-30) dan automatische misbruikdetectie (-20/-15, migratie 0005). De
+  // straf zit in de AFTER UPDATE-trigger op entries.visibility, niet hier
+  // in de UI — deze knop levert alleen de (voorheen ontbrekende) actie om
+  // die trigger te kunnen raken.
+  const handleVerbergen = async (entryId) => {
+    if (!confirm('Deze melding verbergen (shadow)? Dit verlaagt de trust-score van de melder met 30 punten.')) return;
+    setBezigId(entryId);
+    try {
+      await zetVisibilityAdmin(entryId, 'shadow');
+      await laad();
+    } finally {
+      setBezigId(null);
+    }
+  };
+
   // Backfill (Fase 1-4) — historische meldingen van vóór migratie 0004
   // missen postcode (geen DEFAULT, dus niet automatisch ingevuld zoals
   // opt_in_buurt/visibility). Loopt sequentieel om de PDOK Locatieserver
@@ -334,14 +351,27 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
         {onderReview.map((e) => (
           <div key={e.id} className="export-info-rij">
             <span>{melderCode(e.melder_email) || '—'} · {e.type} · {e.visibility} · {new Date(e.timestamp_local).toLocaleDateString('nl-NL')}</span>
-            <button
-              type="button"
-              className="btn-outline px-2 py-1"
-              disabled={bezigId === e.id}
-              onClick={() => handleGoedkeuren(e.id)}
-            >
-              ✓ Goedkeuren
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-outline px-2 py-1"
+                disabled={bezigId === e.id}
+                onClick={() => handleGoedkeuren(e.id)}
+              >
+                ✓ Goedkeuren
+              </button>
+              {e.visibility !== 'shadow' && (
+                <button
+                  type="button"
+                  className="btn-outline px-2 py-1"
+                  style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
+                  disabled={bezigId === e.id}
+                  onClick={() => handleVerbergen(e.id)}
+                >
+                  🚫 Verbergen
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

@@ -29,6 +29,16 @@ body {
   box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
 }
 
+/* Bevat alle pagina-content tussen header en bottom-nav. De bottom-nav is
+   `position: fixed` (BottomNav.css) — zonder deze bottom-padding zou de
+   laatste content achter de vaste navigatie verdwijnen. Vroeger stond de
+   nav op `position: sticky`, waardoor zijn positie meeschoof met de
+   paginahoogte (de bug die dit oplost) i.p.v. altijd exact onderaan het
+   scherm te blijven staan. */
+.app-inhoud {
+  padding-bottom: var(--nav-hoogte);
+}
+
 a {
   color: var(--accent);
 }

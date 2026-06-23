@@ -1,6 +1,19 @@
 .bottom-nav {
-  position: sticky;
+  /* `fixed` i.p.v. `sticky` — sticky's positie hangt af van de hoogte van
+     de omliggende paginainhoud (de bug: de nav verschoof mee met
+     paginahoogte). Fixed verankert hem altijd exact op dezelfde plek
+     t.o.v. de viewport, op elk schermformaat. left/right:0 + max-width +
+     margin:auto i.p.v. width:100% — zelfde centrerings-truc als
+     VoortgangBalk.css, anders zou de nav (los van #root) op brede
+     schermen naar de volle vensterbreedte uitrekken i.p.v. gecentreerd
+     binnen de 640px-breedte van #root (index.css) te blijven. */
+  position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
   /* Zelfde reden als .app-header — anders schuift de OpenLayers-kaart
      (interne z-index tot 1000+) tijdens scrollen over de navigatie heen. */
   z-index: 2000;

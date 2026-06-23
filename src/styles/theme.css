@@ -1,14 +1,19 @@
 /* Design tokens overgenomen uit docs/index.html (:root, .btn-primary, .form-input) */
 :root {
-  --bg-primary: #010510; /* zelfde donkere tint als .app-header (AppHeader.css) */
+  --bg-primary: #0a0e17; /* exact gelijk aan docs/index.html — zie AppHeader.css/VoortgangBalk.css voor de bijpassende headerkleur */
   --bg-secondary: #0f1523;
   --bg-card: #131927;
   --bg-card-hover: #1a2133;
   --border: #1e2d45;
   --border-bright: #2a3f5f;
-  --accent: #00d4aa;
-  --accent-dim: #00a882;
-  --accent-glow: rgba(0, 212, 170, 0.15);
+  /* Cyaan-groen, exact de kleur van het lijnwerk in public/icons/header-logo.png
+     (uitgelezen op pixelniveau: gemiddeld #04e6d9) — vervangt de eerdere
+     nylon-groene keuze (#8bc34a), die niet bij het logo paste. Globaal,
+     niet alleen de navigatie, dus elke knop/badge/focus-outline/actieve-
+     status die var(--accent) gebruikt verandert hierdoor mee. */
+  --accent: #04e6d9;
+  --accent-dim: #03ada3;
+  --accent-glow: rgba(4, 230, 217, 0.15);
   --warning: #f59e0b;
   --danger: #ef4444;
   --info: #3b82f6;
@@ -23,6 +28,10 @@
      gepositioneerde elementen (zie VoortgangBalk.css) sluiten hier exact
      onder aan, zonder gat of overlap. */
   --header-hoogte: 124px;
+  /* Fallback voor de allereerste paint — BottomNav.jsx overschrijft dit
+     meteen (useLayoutEffect, vóór de browser tekent) met de werkelijke,
+     gemeten hoogte via ResizeObserver, zelfde patroon als --header-hoogte. */
+  --nav-hoogte: 90px;
 }
 
 .btn-primary {
@@ -79,6 +88,12 @@
   border: 1px solid var(--border);
   border-radius: 12px;
 }
+/* Aanwezig in docs/index.html, ontbrak nog in deze app — opt-in accent-
+   gloed voor een kaart die actief/geselecteerd/uitgelicht is (bv. een
+   geselecteerde groep, zie GroepenPage.css). Geen blanket hover op .card
+   zelf — te veel bestaande, niet-interactieve kaarten zouden daardoor
+   onbedoeld een hover-gloed krijgen. */
+.card-accent { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
 
 .badge {
   font-family: var(--mono);

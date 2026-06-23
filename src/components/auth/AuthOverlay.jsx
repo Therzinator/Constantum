@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react';
-import { haalBuurtTelling } from '../../lib/supabase/deeltokens.js';
 import { PrivacyVerklaringModal } from '../onboarding/PrivacyVerklaringModal.jsx';
 import { AlgemeneVoorwaardenModal } from '../onboarding/AlgemeneVoorwaardenModal.jsx';
 import './AuthOverlay.css';
 
 // React-versie van het #auth-overlay blok + authTab/authSubmit/authSkip uit
 // docs/index.html. `auth` is het object dat hooks/useAuth.js teruggeeft.
-// `uitnodiging` (optioneel, zie useUitnodigingToken.js) zet de tab
-// geforceerd op registreren en toont een teaser-telling — bewust nooit
-// perceel- of meldingdata, zie migratie 0007.
+// `uitnodiging` (optioneel, zie hooks/useGroepUitnodigingToken.js) zet de
+// tab geforceerd op registreren — de uitnodiging zelf wordt pas na
+// inloggen/registreren geaccepteerd (zie die hook), hier alleen de tab-
+// forcering en een korte uitleg, geen groep-/meldingdata vóór inloggen.
 export function AuthOverlay({ auth, uitnodiging }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [signupInfo, setSignupInfo] = useState(null);
-  const [buurtTelling, setBuurtTelling] = useState(null);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [voorwaardenOpen, setVoorwaardenOpen] = useState(false);
 
@@ -31,10 +30,6 @@ export function AuthOverlay({ auth, uitnodiging }) {
   useEffect(() => {
     if (uitnodiging) setAuthMode('signup');
   }, [uitnodiging, setAuthMode]);
-
-  useEffect(() => {
-    if (uitnodiging?.postcode) haalBuurtTelling(uitnodiging.postcode).then(setBuurtTelling);
-  }, [uitnodiging]);
 
   if (!authOverlayVisible) return null;
 
@@ -64,10 +59,8 @@ export function AuthOverlay({ auth, uitnodiging }) {
 
         {uitnodiging && (
           <div className="auth-info">
-            👋 Je bent uitgenodigd door een buurtgenoot.
-            {buurtTelling != null && buurtTelling > 0
-              ? ` ${buurtTelling} buren in jouw postcodegebied melden al mee.`
-              : ' Maak een account om mee te doen.'}
+            👋 Je bent uitgenodigd voor een groep op SpuitLogger. Maak een
+            account om mee te doen — je wordt na registreren automatisch lid.
           </div>
         )}
 

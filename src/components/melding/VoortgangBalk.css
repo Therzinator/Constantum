@@ -27,7 +27,7 @@
   box-sizing: border-box;
   /* Zelfde achtergrondkleur als .app-header (zie AppHeader.css) — sluit zo
      naadloos op de header aan i.p.v. op de kaartkleur van het formulier. */
-  background: #010510;
+  background: #0a0e17;
   border-bottom: 1px solid var(--border);
 }
 

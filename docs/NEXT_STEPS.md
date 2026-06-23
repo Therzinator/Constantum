@@ -6,6 +6,22 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
+- **Migratie 0015 (Groepenfunctie) uitvoeren in de Supabase SQL-editor.**
+  Nieuw schema (`groepen`/`groep_leden`/`groep_uitnodigingen`/
+  `entries_groepen`) + RLS + SECURITY DEFINER-functies, zie
+  `supabase/migrations/0015_groepen.sql`. De nieuwe Groepen-pagina/-tab is
+  al in de app gebouwd en gekoppeld, maar werkt zonder deze migratie niet
+  (tabellen bestaan dan nog niet). Migratie 0015 leest óók
+  `user_profiles.trust_score` voor de trust-tier-gestuurde zichtbaarheid
+  binnen een groep — werkt los van migratie 0014, maar voor de bedoelde
+  tier-indeling (zie CURRENT_STATE.md) moet 0014 ook uitgevoerd zijn.
+- **Icon_*.png-bestanden (`src/assets/ui-icons/`) waren oorspronkelijk
+  RGB zonder alphakanaal — gerepareerd door alpha af te leiden uit
+  pixelhelderheid (achtergrond zwart -> transparant), zodat de bestaande
+  currentColor-mask-techniek (BottomNav.jsx) ze als lijn-iconen i.p.v.
+  effen blokken toont. Als er ooit nieuwe `icon_*`-bestanden aangeleverd
+  worden: controleer eerst of ze wél een alphakanaal hebben (PNG color
+  type 6), anders is dezelfde fix opnieuw nodig.
 - **Controleren of een coordinator/admin andermans foto's mag lezen
   (attachments-tabel + storage-bucket `spuitlog-bijlagen`-RLS).** Nodig
   voor de nieuwe "Exporteer meldingen + Dossier-PDF" op Buurtgebied
@@ -20,12 +36,14 @@ de code, niet tegen het geheugen van een eerdere sessie.
   meldingen krijgen deze velden nu automatisch. Historische meldingen
   missen ze nog; eenmalig aanvullen via de backfill-knop in de
   "Filter op provincie/gemeente"-kaart.
-- **Trust-score automatische op-/afschaling — wel of niet bouwen?** Een
-  ontwerp staat in `docs/CURRENT_STATE.md` ("Trust-score — ontwerp...").
-  Gebruiker wilde dit eerst zien voordat er code komt; nog geen besluit
-  genomen. Bij akkoord: nieuwe migratie 0014, raakt
-  `fn_entries_set_visibility()`/`fn_entries_misbruikdetectie()`
-  (migratie 0003/0005).
+- **Migratie 0014 (trust-score automatische op-/afschaling) uitvoeren in
+  de Supabase SQL-editor.** Ontwerp + concrete getallen zijn op
+  2026-06-22 bevestigd en uitgewerkt
+  (`supabase/migrations/0014_trust_score_op_afschaling.sql`, zie
+  CURRENT_STATE.md). Tot uitvoering blijft het oude <40-shadow-gedrag uit
+  migratie 0005 actief. Na uitvoering: overwegen of de kwartaalbonus-
+  functie via `pg_cron` gepland wordt of handmatig per kwartaal gedraaid
+  (zie commentaarblok in de migratie).
 
 - **Een gebruiker een `coordinator`-rol toekennen om te testen.** Reden:
   migraties 0008-0011 zijn op 2026-06-21 uitgevoerd (bevestigd, geen
