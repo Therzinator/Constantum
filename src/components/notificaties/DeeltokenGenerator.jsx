@@ -59,7 +59,16 @@ export function DeeltokenGenerator({ user, thuislocatie }) {
     }
   };
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="card p-4">
+        <div className="section-label mb-3">🔗 Buren uitnodigen</div>
+        <div className="export-card-beschrijving">
+          Log in om een uitnodigingslink voor buren te genereren.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card p-4">

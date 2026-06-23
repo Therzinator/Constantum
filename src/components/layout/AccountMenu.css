@@ -1,15 +1,11 @@
 .account-menu {
-  margin-left: auto;
   position: relative;
   flex-shrink: 0;
 }
 
 .account-menu-knop {
-  width: 56px;
-  height: 48px;
-  border-radius: 10px;
-  border: 1px solid var(--border-bright);
-  background: var(--bg-card);
+  border: none;
+  background: none;
   color: var(--text-secondary);
   font-size: 1.1rem;
   cursor: pointer;
@@ -19,11 +15,23 @@
   justify-content: center;
   gap: 2px;
 }
-.account-menu-knop:hover { border-color: var(--accent); color: var(--accent); }
+.account-menu-knop:hover { color: var(--accent); }
 
 .account-menu-knop-icoon {
   font-size: 1.1rem;
   line-height: 1;
+}
+
+.account-menu-knop-icoon-img {
+  width: 54px;
+  height: 54px;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 .account-menu-knop-label {
@@ -60,8 +68,13 @@
 }
 
 .account-menu-item {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
+  /* min-height 44px — Apple HIG/Material-ondergrens voor aanraakdoelen,
+     audit toonde 35px (8px+8px padding + ~19px regelhoogte), ruim onder
+     de 44-48px benchmark. */
+  min-height: 44px;
   text-align: left;
   background: none;
   border: 1px solid transparent;
@@ -102,6 +115,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-height: 44px;
   padding: 8px 10px;
   font-family: var(--sans);
   font-size: 0.8rem;

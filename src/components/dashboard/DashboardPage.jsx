@@ -65,7 +65,7 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
           <div className="dashboard-stat-value">{dezeWeek}</div>
         </div>
         <div className="card dashboard-stat-card">
-          <div className="dashboard-stat-label">Meest wind</div>
+          <div className="dashboard-stat-label">Primaire windrichting</div>
           <div className="dashboard-stat-value">{topWind}</div>
         </div>
       </div>

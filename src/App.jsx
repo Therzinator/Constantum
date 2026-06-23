@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './hooks/useAuth.js'
 import { isHandleidingGezien } from './lib/onboarding/handleidingStatus.js'
 import { HandleidingModal } from './components/onboarding/HandleidingModal.jsx'
@@ -16,7 +16,6 @@ import { DashboardPage } from './components/dashboard/DashboardPage.jsx'
 import { TijdlijnPage } from './components/meldingen/TijdlijnPage.jsx'
 import { ExportPage } from './components/export/ExportPage.jsx'
 import { InstellingenPage } from './components/instellingen/InstellingenPage.jsx'
-import { UitnodigenPage } from './components/notificaties/UitnodigenPage.jsx'
 import { CoordinatiePage } from './components/coordinatie/CoordinatiePage.jsx'
 import { BottomNav } from './components/nav/BottomNav.jsx'
 import { isCoordinatorOfAdmin } from './lib/rollen.js'
@@ -29,13 +28,23 @@ function App() {
   const sync = useSupabaseSync(auth.user, meldingenApi)
   const uitnodiging = useUitnodigingToken(auth.user)
   const [handleidingOpen, setHandleidingOpen] = useState(false)
+  const overlayWasZichtbaarRef = useRef(false)
 
-  // Toont de welkomst-/handleiding-modal automatisch zodra de auth-overlay
-  // weg is (ingelogd of "overslaan" gekozen) en de gebruiker hem nog niet
-  // heeft gezien. Instellingen → "Over SpuitLogger" kan hem ook handmatig
-  // weer openen (zie InstellingenPage.jsx).
+  // Toont de welkomst-/handleiding-modal alleen bij een echte overgang van
+  // het login-portaal (AuthOverlay) náár het dashboard — niet meer bij elke
+  // paginalaad waarop de overlay (nog) niet zichtbaar is. Bij een stil
+  // herstelde sessie (al ingelogd, overlay was nooit zichtbaar) of bij
+  // SUPABASE_ENABLED=false blijft authOverlayVisible vanaf de eerste render
+  // al op false staan — zonder deze ref ging de handleiding dan al open
+  // vóórdat de gebruiker daadwerkelijk naar het dashboard genavigeerd was.
+  // Instellingen → "Over SpuitLogger" kan hem ook handmatig weer openen
+  // (zie InstellingenPage.jsx).
   useEffect(() => {
-    if (!auth.authOverlayVisible && !isHandleidingGezien()) setHandleidingOpen(true)
+    if (auth.authOverlayVisible) {
+      overlayWasZichtbaarRef.current = true
+      return
+    }
+    if (overlayWasZichtbaarRef.current && !isHandleidingGezien()) setHandleidingOpen(true)
   }, [auth.authOverlayVisible])
 
   return (
@@ -43,7 +52,7 @@ function App() {
       <AppHeader
         user={auth.user}
         onNavigeerInstellingen={() => setPagina('instellingen')}
-        onNavigeerUitnodigen={() => setPagina('uitnodigen')}
+        thuislocatie={thuislocatieApi.thuislocatie}
         syncNu={sync.syncNu}
         syncBezig={sync.syncBezig}
         laadVanCloud={sync.laadVanCloud}
@@ -87,10 +96,6 @@ function App() {
           meldingenApi={meldingenApi}
           thuislocatie={thuislocatieApi.thuislocatie}
         />
-      )}
-
-      {pagina === 'uitnodigen' && (
-        <UitnodigenPage user={auth.user} thuislocatie={thuislocatieApi.thuislocatie} />
       )}
 
       {pagina === 'instellingen' && (

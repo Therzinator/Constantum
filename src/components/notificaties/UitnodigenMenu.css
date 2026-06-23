@@ -1,0 +1,24 @@
+.uitnodigen-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.uitnodigen-menu-paneel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 2100;
+  min-width: 320px;
+  max-width: min(90vw, 380px);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.uitnodigen-menu-paneel .card {
+  border: none;
+  box-shadow: none;
+}

@@ -44,14 +44,22 @@
   text-transform: uppercase;
 }
 
-.app-header-uitnodigen-knop {
+/* Uitnodigen (UitnodigenMenu.jsx) en Instellingen (AccountMenu.jsx) onder
+   elkaar i.p.v. naast elkaar — beide knoppen delen verder dezelfde,
+   kader-loze opmaak als de bottom-nav-tabs (BottomNav.css): geen
+   omsluitend vierkant/border meer, groter icoon. */
+.app-header-acties {
   margin-left: auto;
   flex-shrink: 0;
-  width: 56px;
-  height: 48px;
-  border-radius: 10px;
-  border: 1px solid var(--border-bright);
-  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-header-uitnodigen-knop {
+  border: none;
+  background: none;
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
@@ -60,12 +68,24 @@
   justify-content: center;
   gap: 2px;
 }
-.app-header-uitnodigen-knop:hover { border-color: var(--accent); color: var(--accent); }
+.app-header-uitnodigen-knop:hover { color: var(--accent); }
 
 .app-header-knop-label {
   font-family: var(--sans);
   font-size: 0.6rem;
   line-height: 1;
   white-space: nowrap;
+}
+
+.app-header-knop-icoon-img {
+  width: 54px;
+  height: 54px;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 

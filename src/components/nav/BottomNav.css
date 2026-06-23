@@ -14,14 +14,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 10px 0;
+  gap: 3px;
+  /* Hele paneel +50% (was 10px 0 / 0.6rem-label) — anders waren met name
+     het eigen lijn-icoon (.bottom-nav-icoon-img) en de labels te klein om
+     comfortabel te zien/raken. */
+  padding: 15px 0;
   background: none;
   border: none;
   cursor: pointer;
   font-family: var(--mono);
-  font-size: 0.6rem;
-  color: var(--text-muted);
+  font-size: 0.9rem;
+  /* text-secondary i.p.v. text-muted — laatste haalt maar 2.62:1 contrast
+     tegen --bg-card (WCAG AA voor tekst eist 4.5:1), waardoor niet-actieve
+     tabs onleesbaar/uitgeschakeld aanvoelden i.p.v. gewoon "niet
+     geselecteerd". text-secondary haalt hier 5.39:1. */
+  color: var(--text-secondary);
 }
 
 .bottom-nav-tab.actief {
@@ -29,5 +36,20 @@
 }
 
 .bottom-nav-icoon {
-  font-size: 1.1rem;
+  font-size: 1.65rem;
+}
+
+.bottom-nav-icoon-img {
+  /* Groter dan de 1.5x van de emoji-tabs (1.1rem -> 1.65rem ≈ 26px) — bij
+     de algemene schaalslag alleen was dit eigen lijn-icoon nog steeds
+     moeilijk te onderscheiden, dus hier extra opgehoogd (36px -> 54px). */
+  width: 54px;
+  height: 54px;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }

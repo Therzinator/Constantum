@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { APP_VERSION_CLIENT } from '../../lib/version.js';
 import { RADIUS_OPTIES, laadBereikMeter, slaBereikMeterOp } from '../../lib/notificaties/buurtMelding.js';
 import { laadDeelVoorkeur, slaDeelVoorkeurOp } from '../../lib/notificaties/deelvoorkeur.js';
+import instellingenIcon from '../../assets/ui-icons/instellingen.png';
 import './AccountMenu.css';
 
 // Vervangt het kale versienummer in de headerbalk (AppHeader.jsx) door een
@@ -109,7 +110,10 @@ export function AccountMenu({ user, onNavigeerInstellingen, syncNu, syncBezig, l
         aria-expanded={open}
         title="Instellingen"
       >
-        <span className="account-menu-knop-icoon">⚙️</span>
+        <span
+          className="account-menu-knop-icoon account-menu-knop-icoon-img"
+          style={{ WebkitMaskImage: `url(${instellingenIcon})`, maskImage: `url(${instellingenIcon})` }}
+        />
         <span className="account-menu-knop-label">Instellingen</span>
       </button>
 
