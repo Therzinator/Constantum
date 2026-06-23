@@ -249,7 +249,7 @@ export function GroepPage({ groepId, user, onTerug }) {
         </div>
       )}
 
-      {magBeheren && <GroepUitnodigingKaart groepId={groepId} userId={user.id} />}
+      {magBeheren && <GroepUitnodigingKaart groepId={groepId} userId={user.id} groepNaam={groep.naam} />}
 
       <div className="card p-4">
         <div className="section-label mb-3">📤 Meldingen delen met deze groep</div>

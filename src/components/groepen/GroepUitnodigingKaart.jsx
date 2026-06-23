@@ -26,13 +26,13 @@ function statusLabel(u) {
 // statistieken (gebruikt/resterend/verlooptijd). Alleen zichtbaar voor
 // beheerder/hoofdbeheerder (RLS regelt dit ook database-side, zie
 // migratie 0015) — caller bepaalt zichtbaarheid in GroepPage.jsx.
-export function GroepUitnodigingKaart({ groepId, userId }) {
+export function GroepUitnodigingKaart({ groepId, userId, groepNaam }) {
   const [uitnodigingen, setUitnodigingen] = useState([]);
   const [maxGebruikers, setMaxGebruikers] = useState(1);
   const [verloopUren, setVerloopUren] = useState(24);
   const [bezig, setBezig] = useState(false);
   const [laatsteQr, setLaatsteQr] = useState(null);
-  const [laatsteLink, setLaatsteLink] = useState(null);
+  const [laatsteDeelTekst, setLaatsteDeelTekst] = useState(null);
   const [melding, setMelding] = useState(null);
 
   // eslint-disable-next-line react-hooks/purity -- toast-id, geen logica-kritisch gebruik van Date.now(), zelfde patroon als InstellingenPage.jsx/TrustIndicator.jsx
@@ -66,10 +66,11 @@ export function GroepUitnodigingKaart({ groepId, userId }) {
     try {
       const nieuw = await maakGroepUitnodiging(groepId, userId, { maxGebruikers, verloopUren });
       const url = uitnodigingUrl(nieuw.token);
-      setLaatsteLink(url);
+      const deelTekst = `Je bent uitgenodigd voor de SpuitLogger ${groepNaam} groep, klik op de link om deel te nemen: ${url}`;
+      setLaatsteDeelTekst(deelTekst);
       setLaatsteQr(await QRCode.toDataURL(url, { width: 200, margin: 1 }));
-      await navigator.clipboard.writeText(url).catch(() => {});
-      toon('Uitnodiging aangemaakt en link gekopieerd.', 'success');
+      await navigator.clipboard.writeText(deelTekst).catch(() => {});
+      toon('Uitnodiging aangemaakt en deeltekst gekopieerd.', 'success');
       await laad();
     } catch (err) {
       toon(`Uitnodiging maken mislukt: ${err.message}`, 'error');
@@ -105,9 +106,9 @@ export function GroepUitnodigingKaart({ groepId, userId }) {
         {bezig ? 'Genereren...' : '🔗 Uitnodiging genereren'}
       </button>
 
-      {laatsteLink && (
+      {laatsteDeelTekst && (
         <div className="mt-3">
-          <input type="text" readOnly value={laatsteLink} onFocus={(e) => e.target.select()} style={{ width: '100%' }} className="form-input" />
+          <textarea readOnly rows={2} value={laatsteDeelTekst} onFocus={(e) => e.target.select()} style={{ width: '100%' }} className="form-input" />
           {laatsteQr && <img src={laatsteQr} alt="QR-code voor groepsuitnodiging" width={160} height={160} className="mt-2" />}
         </div>
       )}

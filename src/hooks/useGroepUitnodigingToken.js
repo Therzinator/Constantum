@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { accepteerUitnodiging } from '../lib/groepen/uitnodigingen.js';
 
 // Groepenfunctie — vervangt useUitnodigingToken.js (verwijderd samen met
@@ -25,5 +25,11 @@ export function useGroepUitnodigingToken(user) {
     }
   }, [user, token]);
 
-  return token ? { token } : null;
+  // Memoized i.p.v. elke render een nieuw object — anders kreeg
+  // AuthOverlay.jsx's effect (`if (uitnodiging) setAuthMode('signup')`)
+  // bij ELKE re-render een "nieuwe" waarde te zien en zette authMode
+  // steeds terug naar 'signup', ook nadat de gebruiker zelf naar
+  // "Inloggen" was overgeschakeld — een bestaande gebruiker kon zo nooit
+  // inloggen via een uitnodigingslink.
+  return useMemo(() => (token ? { token } : null), [token]);
 }
