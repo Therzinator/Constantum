@@ -13,6 +13,7 @@ import {
 import { zoekPostcodePDOK, zoekGemeenteProvinciePDOK } from '../../lib/pdok/postcode.js';
 import { perceelStatistieken, windrichtingPerPerceel } from '../../lib/meldingen/statistieken.js';
 import { BuurtrapportGenerator } from './BuurtrapportGenerator.jsx';
+import { KNMIInstellingen } from '../export/KNMIInstellingen.jsx';
 import {
   meldersPerPostcode,
   trustScoreVerdeling,
@@ -344,6 +345,8 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
       </Suspense>
 
       <BuurtrapportGenerator user={user} voorgeselecteerdPostcodegebied={voorgeselecteerdPostcodegebied} />
+
+      <KNMIInstellingen />
 
       <div className="card p-4">
         <div className="section-label mb-3" style={{ color: 'var(--danger)' }}>🚩 Onder review / shadow</div>

@@ -1,13 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  haalGroep,
-  haalGroepStatistieken,
-  wijzigGroepInstellingen,
-  deelMeldingMetGroep,
-  trekMeldingTerugUitGroep,
-  haalGroepenVoorMelding,
-  haalEigenMeldingenOmTeDelen
-} from '../../lib/groepen/groepen.js';
+import { haalGroep, haalGroepStatistieken, wijzigGroepInstellingen, wijzigDeelvoorkeur } from '../../lib/groepen/groepen.js';
 import { haalGroepLeden, wijzigRol, verwijderLid, verlaatGroep, wijzigTrustScoreInGroep } from '../../lib/groepen/groepLeden.js';
 import { isGroepBeheerder, isGroepHoofdbeheerder } from '../../lib/groepen/rollen.js';
 import { haalGebruikersProfiel } from '../../lib/supabase/profiel.js';
@@ -28,8 +20,6 @@ export function GroepPage({ groepId, user, onTerug }) {
   const [leden, setLeden] = useState([]);
   const [stats, setStats] = useState({});
   const [profiel, setProfiel] = useState(null);
-  const [eigenMeldingen, setEigenMeldingen] = useState([]);
-  const [gedeeldeMeldingIds, setGedeeldeMeldingIds] = useState(new Set());
   const [laden, setLaden] = useState(true);
   const [fout, setFout] = useState(null);
   const [melding, setMelding] = useState(null);
@@ -44,27 +34,20 @@ export function GroepPage({ groepId, user, onTerug }) {
 
   const laad = async () => {
     try {
-      const [g, l, s, p, em] = await Promise.all([
+      const [g, l, s, p] = await Promise.all([
         haalGroep(groepId),
         haalGroepLeden(groepId),
         haalGroepStatistieken(groepId),
-        haalGebruikersProfiel(user.id),
-        haalEigenMeldingenOmTeDelen(user.id)
+        haalGebruikersProfiel(user.id)
       ]);
       setGroep(g);
       setLeden(l);
       setStats(s);
       setProfiel(p);
-      setEigenMeldingen(em);
       setNaam(g?.naam || '');
       setBeschrijving(g?.beschrijving || '');
       setOpenbaar(Boolean(g?.openbaar));
       setMaxBeheerders(g?.max_beheerders || 1);
-
-      const idsPerMelding = await Promise.all(em.map((m) => haalGroepenVoorMelding(m.id)));
-      const gedeeld = new Set();
-      em.forEach((m, i) => { if (idsPerMelding[i].includes(groepId)) gedeeld.add(m.id); });
-      setGedeeldeMeldingIds(gedeeld);
     } catch (err) {
       setFout(err.message);
     } finally {
@@ -78,28 +61,21 @@ export function GroepPage({ groepId, user, onTerug }) {
     let actief = true;
     (async () => {
       try {
-        const [g, l, s, p, em] = await Promise.all([
+        const [g, l, s, p] = await Promise.all([
           haalGroep(groepId),
           haalGroepLeden(groepId),
           haalGroepStatistieken(groepId),
-          haalGebruikersProfiel(user.id),
-          haalEigenMeldingenOmTeDelen(user.id)
+          haalGebruikersProfiel(user.id)
         ]);
-        const idsPerMelding = await Promise.all(em.map((m) => haalGroepenVoorMelding(m.id)));
         if (!actief) return;
-        const gedeeld = new Set();
-        em.forEach((m, i) => { if (idsPerMelding[i].includes(groepId)) gedeeld.add(m.id); });
-
         setGroep(g);
         setLeden(l);
         setStats(s);
         setProfiel(p);
-        setEigenMeldingen(em);
         setNaam(g?.naam || '');
         setBeschrijving(g?.beschrijving || '');
         setOpenbaar(Boolean(g?.openbaar));
         setMaxBeheerders(g?.max_beheerders || 1);
-        setGedeeldeMeldingIds(gedeeld);
       } catch (err) {
         if (actief) setFout(err.message);
       } finally {
@@ -168,13 +144,12 @@ export function GroepPage({ groepId, user, onTerug }) {
     }
   };
 
-  const handleDelenWisselen = async (entryId, gedeeld) => {
+  const handleDeelvoorkeurWijzigen = async (deelMeldingen) => {
     try {
-      if (gedeeld) await trekMeldingTerugUitGroep(entryId, groepId);
-      else await deelMeldingMetGroep(entryId, groepId);
+      await wijzigDeelvoorkeur(groepId, deelMeldingen);
       await laad();
     } catch (err) {
-      toon(`Delen wijzigen mislukt: ${err.message}`, 'error');
+      toon(`Deelvoorkeur wijzigen mislukt: ${err.message}`, 'error');
     }
   };
 
@@ -277,19 +252,21 @@ export function GroepPage({ groepId, user, onTerug }) {
       {magBeheren && <GroepUitnodigingKaart groepId={groepId} userId={user.id} />}
 
       <div className="card p-4">
-        <div className="section-label mb-3">📤 Eigen meldingen delen met deze groep</div>
-        {eigenMeldingen.length === 0 && <div className="export-card-beschrijving">Nog geen (gesynchroniseerde) eigen meldingen om te delen.</div>}
-        {eigenMeldingen.map((m) => {
-          const gedeeld = gedeeldeMeldingIds.has(m.id);
-          return (
-            <div key={m.id} className="export-info-rij">
-              <span>{m.type} · {new Date(m.timestamp_local).toLocaleDateString('nl-NL')}</span>
-              <button type="button" className="btn-outline px-2 py-1" onClick={() => handleDelenWisselen(m.id, gedeeld)}>
-                {gedeeld ? 'Intrekken' : 'Delen'}
-              </button>
-            </div>
-          );
-        })}
+        <div className="section-label mb-3">📤 Meldingen delen met deze groep</div>
+        <div className="export-card-beschrijving mb-2">
+          Staat dit aan, dan worden nieuwe meldingen waarbij je zelf
+          "Deel deze melding met je groepen" aanvinkt automatisch ook met
+          deze groep gedeeld. Standaard uit — verandert niets aan al
+          eerder gedeelde meldingen.
+        </div>
+        <label className="groepen-deel-toggle">
+          <input
+            type="checkbox"
+            checked={Boolean(eigenLid?.deel_meldingen)}
+            onChange={(e) => handleDeelvoorkeurWijzigen(e.target.checked)}
+          />
+          <span>Deel mijn meldingen met deze groep</span>
+        </label>
       </div>
 
       <div className="card p-4">

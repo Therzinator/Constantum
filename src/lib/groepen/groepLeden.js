@@ -6,7 +6,7 @@ export async function haalGroepLeden(groepId) {
 
   const { data, error } = await sb
     .from('groep_leden')
-    .select('user_id, rol, joined_at')
+    .select('user_id, rol, joined_at, deel_meldingen')
     .eq('groep_id', groepId)
     .order('joined_at', { ascending: true });
 

@@ -4,6 +4,7 @@ import { verwijderAccountData } from '../../lib/supabase/accountVerwijderen.js';
 import { meldingenNaarJSONBackup } from '../../lib/export/json.js';
 import { downloadFile } from '../../lib/export/download.js';
 import { PrivacyVerklaringModal } from '../onboarding/PrivacyVerklaringModal.jsx';
+import { WaaromDitErtoeDoetModal } from './WaaromDitErtoeDoetModal.jsx';
 import { Toast } from '../ui/Toast.jsx';
 
 // Werkfase H, Feature 3 — onderzoeksdata opt-out + account-/gegevensbeheer.
@@ -12,7 +13,7 @@ import { Toast } from '../ui/Toast.jsx';
 // — hier dus alleen onderzoeksdata + account, geen dubbele buurt-toggle.
 export function GegevensPrivacyInstelling({ user, meldingenApi, thuislocatie, onUitloggen }) {
   const [onderzoekOptOut, setOnderzoekOptOut] = useState(false);
-  const [infoOpen, setInfoOpen] = useState(false);
+  const [waaromOpen, setWaaromOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const [melding, setMelding] = useState(null);
@@ -62,27 +63,18 @@ export function GegevensPrivacyInstelling({ user, meldingenApi, thuislocatie, on
       <label className="export-info-rij" style={{ cursor: 'pointer', alignItems: 'flex-start' }}>
         <span>
           Bijdragen aan wetenschappelijk onderzoek
+          <div className="export-card-beschrijving mt-1">
+            Uw anonieme meldingsdata helpt wetenschappers bewijzen wat u zelf
+            ervaart. Uw identiteit blijft volledig beschermd — u kunt zich
+            altijd uitschrijven.
+          </div>
           <button
             type="button"
-            style={{ marginLeft: 6, fontSize: '0.7rem', background: 'none', border: 'none', color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
-            onClick={(e) => { e.preventDefault(); setInfoOpen((o) => !o); }}
-            aria-label="Meer informatie"
+            style={{ marginTop: 4, fontSize: '0.7rem', background: 'none', border: 'none', color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+            onClick={(e) => { e.preventDefault(); setWaaromOpen(true); }}
           >
-            (?)
+            Waarom dit ertoe doet →
           </button>
-          <div className="export-card-beschrijving mt-1">
-            Uw geanonimiseerde meldingsdata wordt beschikbaar gesteld aan universitaire
-            onderzoekers (o.a. WUR, RIVM, IRAS Utrecht) voor onderzoek naar
-            pesticideblootstelling. Uw identiteit blijft volledig beschermd — alleen
-            geaggregeerde, niet-herleidbare data wordt gedeeld.
-          </div>
-          {infoOpen && (
-            <div className="export-card-beschrijving mt-1" style={{ color: 'var(--text-muted)' }}>
-              Meer dan 4.000 studies wereldwijd gebruiken citizen science data. Uw bijdrage
-              helpt beleidsmakers en rechters bij het onderbouwen van pesticideregulering.
-              U kunt zich altijd uitschrijven.
-            </div>
-          )}
         </span>
         <input type="checkbox" checked={!onderzoekOptOut} onChange={handleOnderzoekChange} />
       </label>
@@ -107,6 +99,7 @@ export function GegevensPrivacyInstelling({ user, meldingenApi, thuislocatie, on
       </div>
 
       {privacyOpen && <PrivacyVerklaringModal onSluiten={() => setPrivacyOpen(false)} />}
+      {waaromOpen && <WaaromDitErtoeDoetModal onSluiten={() => setWaaromOpen(false)} />}
       <Toast melding={melding} />
     </div>
   );

@@ -48,3 +48,15 @@
   font-weight: 700;
   margin-bottom: 4px;
 }
+
+.groepen-deel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}

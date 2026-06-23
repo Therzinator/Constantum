@@ -3,7 +3,7 @@
 // binnenkomende meldingen van anderen. Dit cijfer staat ook als absolute
 // bovengrens in de RLS-policy (supabase/migrations/0009_buurt_radius_cap.sql)
 // — deze instelling kan dus alleen vérnauwen, nooit verruimen.
-export const STANDAARD_RADIUS_METER = 5000;
+export const STANDAARD_RADIUS_METER = 2500;
 export const RADIUS_OPTIES = [1000, 2500, 5000];
 
 const SLEUTEL_RADIUS = 'spuitlog_notificatie_radius';

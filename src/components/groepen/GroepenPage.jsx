@@ -4,7 +4,8 @@ import {
   haalOpenbareGroepen,
   haalGroepStatistieken,
   maakGroep,
-  wordLidVanOpenbareGroep
+  wordLidVanOpenbareGroep,
+  wijzigDeelvoorkeur
 } from '../../lib/groepen/groepen.js';
 import { zoekPostcodePDOK } from '../../lib/pdok/postcode.js';
 import { Toast } from '../ui/Toast.jsx';
@@ -93,6 +94,19 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
     if (naam || !thuislocatie?.lat || !thuislocatie?.lng) return;
     const postcode = await zoekPostcodePDOK(thuislocatie.lat, thuislocatie.lng).catch(() => null);
     if (postcode) setNaam(`Groep ${postcode.slice(0, 4)}`);
+  };
+
+  // Optimistisch bijwerken i.p.v. volledig herladen — direct visuele
+  // feedback op de toggle, met terugdraaien + foutmelding als de RPC
+  // mislukt.
+  const handleDeelvoorkeurWijzigen = async (groepId, deelMeldingen) => {
+    setMijnGroepen((prev) => prev.map((g) => (g.id === groepId ? { ...g, deelMeldingen } : g)));
+    try {
+      await wijzigDeelvoorkeur(groepId, deelMeldingen);
+    } catch (err) {
+      setMijnGroepen((prev) => prev.map((g) => (g.id === groepId ? { ...g, deelMeldingen: !deelMeldingen } : g)));
+      toon(`Deelvoorkeur wijzigen mislukt: ${err.message}`, 'error');
+    }
   };
 
   const handleAanmaken = async (e) => {
@@ -189,16 +203,32 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
         {mijnGroepen.map((g) => {
           const stats = statsPerGroep[g.id] || {};
           return (
-            <button key={g.id} type="button" className="groepen-kaart" onClick={() => onOpenGroep(g.id)}>
-              <div className="groepen-kaart-titel">
-                <span>{g.naam}</span>
-                <span className={`badge ${g.openbaar ? 'badge-accent' : 'badge-muted'}`}>{g.openbaar ? 'Openbaar' : 'Privé'}</span>
+            <div key={g.id} className="groepen-kaart">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenGroep(g.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenGroep(g.id); }}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="groepen-kaart-titel">
+                  <span>{g.naam}</span>
+                  <span className={`badge ${g.openbaar ? 'badge-accent' : 'badge-muted'}`}>{g.openbaar ? 'Openbaar' : 'Privé'}</span>
+                </div>
+                <div className="export-info-rij"><span>Leden</span><span>{stats.aantalLeden ?? '—'}</span></div>
+                <div className="export-info-rij"><span>Meldingen</span><span>{stats.aantalMeldingen ?? '—'}</span></div>
+                <div className="export-info-rij"><span>Laatste activiteit</span><span>{relatieveTijd(stats.laatsteActiviteit)}</span></div>
+                <div className="export-info-rij"><span>Jouw rol</span><span>{ROL_LABEL[g.eigenRol] || g.eigenRol}</span></div>
               </div>
-              <div className="export-info-rij"><span>Leden</span><span>{stats.aantalLeden ?? '—'}</span></div>
-              <div className="export-info-rij"><span>Meldingen</span><span>{stats.aantalMeldingen ?? '—'}</span></div>
-              <div className="export-info-rij"><span>Laatste activiteit</span><span>{relatieveTijd(stats.laatsteActiviteit)}</span></div>
-              <div className="export-info-rij"><span>Jouw rol</span><span>{ROL_LABEL[g.eigenRol] || g.eigenRol}</span></div>
-            </button>
+              <label className="groepen-deel-toggle">
+                <input
+                  type="checkbox"
+                  checked={g.deelMeldingen}
+                  onChange={(e) => handleDeelvoorkeurWijzigen(g.id, e.target.checked)}
+                />
+                <span>Deel mijn meldingen met deze groep</span>
+              </label>
+            </div>
           );
         })}
       </div>

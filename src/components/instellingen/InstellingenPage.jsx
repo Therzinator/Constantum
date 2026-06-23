@@ -4,7 +4,6 @@ import { Toast } from '../ui/Toast.jsx';
 import { PrullenbakCard } from '../export/PrullenbakCard.jsx';
 import { DashboardGpsInstelling } from './DashboardGpsInstelling.jsx';
 import { GegevensPrivacyInstelling } from './GegevensPrivacyInstelling.jsx';
-import { KNMIInstellingen } from '../export/KNMIInstellingen.jsx';
 import { TrustIndicator } from '../export/TrustIndicator.jsx';
 import { PrivacyVerklaringModal } from '../onboarding/PrivacyVerklaringModal.jsx';
 import { AlgemeneVoorwaardenModal } from '../onboarding/AlgemeneVoorwaardenModal.jsx';
@@ -16,7 +15,7 @@ import '../export/ExportPage.css';
 // docs/index.html (regel 1569-1602), plus de account-/notificatie-
 // instellingen die tot nu toe tijdelijk in ExportPage stonden (zie
 // historische comment daar). ExportPage blijft puur export/backup/import.
-export function InstellingenPage({ meldingenApi, gebruikerRol, user, laadVanCloud, thuislocatie, onOpenHandleiding, onUitloggen }) {
+export function InstellingenPage({ meldingenApi, gebruikerRol, user, laadVanCloud, thuislocatie, onOpenHandleiding, onUitloggen, onNavigeerFeedback }) {
   const { meldingen, verwijderAlleMeldingenLokaal } = meldingenApi;
   const [idbCount, setIdbCount] = useState(null);
   const [melding, setMelding] = useState(null);
@@ -59,13 +58,22 @@ export function InstellingenPage({ meldingenApi, gebruikerRol, user, laadVanClou
         </button>
       </div>
 
+      <div className="card p-4">
+        <div className="section-label mb-3">💬 Feedback &amp; vragen</div>
+        <div className="export-card-beschrijving mb-3">
+          Technisch probleem gevonden, een vraag over een functie, of een
+          opmerking/compliment? Meld het hier.
+        </div>
+        <button type="button" className="btn-outline px-4 py-2" onClick={onNavigeerFeedback}>
+          💬 Naar Feedback-paneel
+        </button>
+      </div>
+
       <TrustIndicator profiel={profiel} />
 
       <DashboardGpsInstelling />
 
       <GegevensPrivacyInstelling user={user} meldingenApi={meldingenApi} thuislocatie={thuislocatie} onUitloggen={onUitloggen} />
-
-      <KNMIInstellingen />
 
       <div className="card p-4 export-opschonen">
         <div className="section-label mb-2" style={{ color: 'var(--info)' }}>🧹 Opslag Opschonen</div>

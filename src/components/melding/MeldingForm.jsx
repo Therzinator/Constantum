@@ -1,5 +1,6 @@
 import { lazy, Suspense, useRef, useState } from 'react';
 import { useNieuweMeldingForm } from '../../hooks/useNieuweMeldingForm.js';
+import { slaDeelVoorkeurOp, slaDeelVoorkeurGroepenOp } from '../../lib/notificaties/deelvoorkeur.js';
 import { spuitWindOordeel, degToCompass } from '../../lib/drift/oordeel.js';
 import { berekenPasquillKlasse } from '../../lib/weather/pasquill.js';
 import { bedrijfSuggesties } from '../../lib/meldingen/bedrijf.js';
@@ -474,15 +475,34 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
       )}
 
       <div className="mf-field mf-buurt-opt-in">
-        <label className="section-label">Deel melding in je buurt</label>
+        <label className="section-label">🤝 Delen</label>
+        <div className="export-card-beschrijving mb-2">
+          Kies per melding of je deze privé, openbaar of met jouw groepen
+          deelt. Je laatste keuze wordt automatisch onthouden.
+        </div>
         <label className="mf-checkbox-label">
           <input
             type="checkbox"
             checked={veld.optInBuurt}
-            onChange={(e) => form.zetVeld('optInBuurt', e.target.checked)}
+            onChange={(e) => {
+              form.zetVeld('optInBuurt', e.target.checked);
+              slaDeelVoorkeurOp(e.target.checked);
+            }}
           />
-          Deel deze melding met andere melders in de buurt (zij kunnen een
-          notificatie ontvangen als deze melding binnen hun ingestelde bereik valt)
+          Deel deze melding met de buurt (zichtbaar voor andere melders
+          binnen hun ingestelde bereik, pseudoniem en 30 minuten vertraagd)
+        </label>
+        <label className="mf-checkbox-label">
+          <input
+            type="checkbox"
+            checked={veld.optInGroepen}
+            onChange={(e) => {
+              form.zetVeld('optInGroepen', e.target.checked);
+              slaDeelVoorkeurGroepenOp(e.target.checked);
+            }}
+          />
+          Deel deze melding met de groepen waarin je delen hebt
+          ingeschakeld
         </label>
       </div>
 

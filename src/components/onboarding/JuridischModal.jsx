@@ -27,10 +27,12 @@ export function JuridischModal({ titel, versie, laatstGewijzigd, children, onSlu
 
         <div className="juridisch-modal-body">{children}</div>
 
-        <div className="juridisch-modal-footer">
-          <span>Versie {versie}</span>
-          <span>Laatst gewijzigd: {laatstGewijzigd}</span>
-        </div>
+        {(versie || laatstGewijzigd) && (
+          <div className="juridisch-modal-footer">
+            <span>{versie ? `Versie ${versie}` : ''}</span>
+            <span>{laatstGewijzigd ? `Laatst gewijzigd: ${laatstGewijzigd}` : ''}</span>
+          </div>
+        )}
       </div>
     </div>
   );

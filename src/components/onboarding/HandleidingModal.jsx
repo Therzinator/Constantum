@@ -3,7 +3,7 @@ import { markeerHandleidingGezien } from '../../lib/onboarding/handleidingStatus
 import { PrivacyVerklaringModal } from './PrivacyVerklaringModal.jsx';
 import './HandleidingModal.css';
 
-const AANTAL_STAPPEN = 5;
+const AANTAL_STAPPEN = 7;
 
 // Welkomst-/handleiding-wizard. Verschijnt automatisch bij de eerste keer
 // dat de app wordt gebruikt (zie App.jsx, gate op handleidingStatus.js) en
@@ -12,16 +12,17 @@ export function HandleidingModal({ onSluiten }) {
   const [stap, setStap] = useState(0);
   const [privacyOpen, setPrivacyOpen] = useState(false);
 
-  useEffect(() => {
-    const handleEscape = (e) => { if (e.key === 'Escape') sluiten(); };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
-
   const sluiten = () => {
     markeerHandleidingGezien();
     onSluiten();
   };
+
+  useEffect(() => {
+    const handleEscape = (e) => { if (e.key === 'Escape') sluiten(); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sluiten is stabiel genoeg (geen externe deps), enige escape-listener bij mount
+  }, []);
 
   if (privacyOpen) {
     return <PrivacyVerklaringModal onSluiten={() => setPrivacyOpen(false)} />;
@@ -83,14 +84,45 @@ export function HandleidingModal({ onSluiten }) {
 
 Zo werkt buurtregistratie:
 • Elke melder bouwt een eigen privédossier
-• U kiest zelf of u meedoet aan het buurtdossier (opt-in, per melding aanpasbaar)
-• Een coördinator kan geanonimiseerde dossiers samenvoegen
-• Uw identiteit blijft beschermd — u bent zichtbaar als Melder#XXXXXX`}
+• U kiest zelf of u een melding deelt met de buurt (per melding aanpasbaar, zichtbaar binnen uw ingestelde bereik, pseudoniem en 30 minuten vertraagd)
+• Uw identiteit blijft beschermd — u bent zichtbaar als Melder#XXXXXX
+
+Voor gerichter, blijvend samenwerken met een specifieke groep mensen: zie de volgende stap over Groepen.`}
             </div>
           </>
         )}
 
         {stap === 3 && (
+          <>
+            <div className="handleiding-titel">👥 Groepen</div>
+            <div className="handleiding-tekst">
+              {`Groepen zijn voor gericht, blijvend samenwerken — bijvoorbeeld met directe buren of een lokaal collectief — los van de bredere, anonieme buurt-deling.
+
+Zo werkt het:
+• Start een groep (krijgt automatisch een naam op basis van uw postcode, zelf aan te passen) of word lid van een openbare groep
+• Rollen: lid, beheerder of hoofdbeheerder — de hoofdbeheerder kan beheerders aanstellen en groepsinstellingen wijzigen
+• Nodig leden uit met een link of QR-code (instelbaar aantal gebruikers en geldigheidsduur)
+• Per groep zet u een schakelaar aan/uit of u uw meldingen daarmee deelt — en bij het melden zelf kiest u nog een keer of die specifieke melding meegaat
+• Hoeveel detail een ander groepslid van uw melding ziet hangt af van diens trust score binnen de groep — hoe vertrouwder het account, hoe meer detail`}
+            </div>
+          </>
+        )}
+
+        {stap === 4 && (
+          <>
+            <div className="handleiding-titel">💬 Feedback &amp; vragen</div>
+            <div className="handleiding-tekst">
+              {`Loopt iets niet goed, of heeft u een vraag, opmerking of compliment? Dat kan via Instellingen → Feedback-paneel.
+
+• Technisch probleem — zichtbaar voor alle gebruikers, zo ziet u meteen of een bug al gemeld is
+• Vraag, opmerking of compliment — alleen zichtbaar voor u en de beheerder
+
+Elke melding krijgt een status: 🔴 Onbehandeld, 🟡 In behandeling, 🟢 Afgehandeld — u ziet zelf wanneer en hoe erop gereageerd wordt.`}
+            </div>
+          </>
+        )}
+
+        {stap === 5 && (
           <>
             <div className="handleiding-titel">U blijft buiten schot</div>
             <div className="handleiding-tekst">
@@ -98,7 +130,7 @@ Zo werkt buurtregistratie:
 🔐 Uw locatie wordt nooit exact gedeeld — afgerond op buurtniveau
 📧 Uw e-mailadres wordt versleuteld opgeslagen (SHA-256)
 📷 GPS-coördinaten worden automatisch uit uw foto's verwijderd
-🚫 Niemand ziet uw meldingen tenzij u dat zelf kiest`}
+🚫 Niemand ziet uw meldingen tenzij u dat zelf kiest — per melding, per buurt of groep`}
             </div>
             <button type="button" className="handleiding-link-knop" onClick={() => setPrivacyOpen(true)}>
               Lees de volledige privacyverklaring →
@@ -106,12 +138,12 @@ Zo werkt buurtregistratie:
           </>
         )}
 
-        {stap === 4 && (
+        {stap === 6 && (
           <>
             <div className="handleiding-titel">U bent er klaar voor</div>
             <div className="handleiding-tekst">
-              Tip: nodig buurtgenoten uit met de Groepsuitnodiging-functie en start samen
-              een groep om gezamenlijk een dossier op te bouwen.
+              Tip: start of word lid van een Groep (onderaan in de navigatie) en bouw
+              samen met buren of een lokaal collectief een dossier op.
             </div>
             <button type="button" className="btn-primary handleiding-cta" onClick={sluiten}>
               Aan de slag →

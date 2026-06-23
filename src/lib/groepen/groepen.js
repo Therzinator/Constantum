@@ -25,13 +25,30 @@ export async function haalMijnGroepen(userId) {
 
   const { data, error } = await sb
     .from('groep_leden')
-    .select('rol, joined_at, groepen(id, naam, beschrijving, openbaar, created_at, hoofdbeheerder_id)')
+    .select('rol, joined_at, deel_meldingen, groepen(id, naam, beschrijving, openbaar, created_at, hoofdbeheerder_id)')
     .eq('user_id', userId);
 
   if (error) throw error;
   return (data || [])
     .filter((r) => r.groepen)
-    .map((r) => ({ ...r.groepen, eigenRol: r.rol, lidSinds: r.joined_at }));
+    .map((r) => ({ ...r.groepen, eigenRol: r.rol, lidSinds: r.joined_at, deelMeldingen: Boolean(r.deel_meldingen) }));
+}
+
+// Blijvende per-groep voorkeur ("deel ik mijn meldingen met deze groep") —
+// los van de per-melding checkbox (entries.opt_in_groepen). Een melding
+// wordt alleen gedeeld met een groep als BEIDE aanstaan op het moment van
+// melden, zie supabase/migrations/0016_groep_deelvoorkeur.sql.
+export async function wijzigDeelvoorkeur(groepId, deelMeldingen) {
+  const sb = sbClient();
+  if (!sb) return false;
+
+  const { data, error } = await sb.rpc('fn_groep_deelvoorkeur_wijzigen', {
+    p_groep_id: groepId,
+    p_deel_meldingen: deelMeldingen
+  });
+
+  if (error) throw error;
+  return Boolean(data);
 }
 
 export async function haalOpenbareGroepen() {
@@ -114,53 +131,10 @@ export async function wijzigGroepInstellingen(groepId, { naam, beschrijving, ope
   if (error) throw error;
 }
 
-// Meldingen die de melder zelf met deze groep deelt/intrekt (entries_groepen,
-// zie migratie 0015) — los van opt_in_buurt, een expliciete per-groep-keuze.
-export async function deelMeldingMetGroep(entryId, groepId) {
-  const sb = sbClient();
-  if (!sb) return;
-
-  const { error } = await sb.from('entries_groepen').insert({ entry_id: entryId, groep_id: groepId });
-  if (error) throw error;
-}
-
-export async function trekMeldingTerugUitGroep(entryId, groepId) {
-  const sb = sbClient();
-  if (!sb) return;
-
-  const { error } = await sb.from('entries_groepen').delete().eq('entry_id', entryId).eq('groep_id', groepId);
-  if (error) throw error;
-}
-
-export async function haalGroepenVoorMelding(entryId) {
-  const sb = sbClient();
-  if (!sb || !entryId) return [];
-
-  const { data, error } = await sb.from('entries_groepen').select('groep_id').eq('entry_id', entryId);
-  if (error) throw error;
-  return (data || []).map((r) => r.groep_id);
-}
-
-// Eigen, al gesynchroniseerde meldingen, om uit te kiezen welke met een
-// groep gedeeld worden (sectie 1: melder kiest zelf, geen automatisch
-// alles-delen). Alleen synced meldingen (hebben een entries.id) komen in
-// aanmerking — entries_groepen.entry_id verwijst naar die tabel.
-export async function haalEigenMeldingenOmTeDelen(userId) {
-  const sb = sbClient();
-  if (!sb || !userId) return [];
-
-  const { data, error } = await sb
-    .from('entries')
-    .select('id, type, description, timestamp_local')
-    .eq('user_id', userId)
-    .eq('deleted', false)
-    .order('timestamp_local', { ascending: false })
-    .limit(50);
-
-  if (error) throw error;
-  return data || [];
-}
-
+// Meldingen die binnen een groep getoond worden — gevuld via
+// fn_entries_deel_met_groepen() (migratie 0016, AFTER INSERT-trigger op
+// entries) op basis van entries.opt_in_groepen + groep_leden.deel_meldingen,
+// niet meer handmatig per melding gekozen.
 export async function haalMeldingenVoorGroep(groepId) {
   const sb = sbClient();
   if (!sb || !groepId) return [];

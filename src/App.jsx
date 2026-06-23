@@ -19,6 +19,7 @@ import { InstellingenPage } from './components/instellingen/InstellingenPage.jsx
 import { CoordinatiePage } from './components/coordinatie/CoordinatiePage.jsx'
 import { GroepenPage } from './components/groepen/GroepenPage.jsx'
 import { GroepPage } from './components/groepen/GroepPage.jsx'
+import { FeedbackPage } from './components/feedback/FeedbackPage.jsx'
 import { BottomNav } from './components/nav/BottomNav.jsx'
 import { isCoordinatorOfAdmin } from './lib/rollen.js'
 
@@ -119,7 +120,12 @@ function App() {
           thuislocatie={thuislocatieApi.thuislocatie}
           onOpenHandleiding={() => setHandleidingOpen(true)}
           onUitloggen={auth.logout}
+          onNavigeerFeedback={() => naviGeerNaarPagina('feedback')}
         />
+      )}
+
+      {pagina === 'feedback' && (
+        <FeedbackPage user={auth.user} gebruikerRol={auth.gebruikerRol} onTerug={() => naviGeerNaarPagina('instellingen')} />
       )}
 
       {pagina === 'coordinatie' && isCoordinatorOfAdmin(auth.gebruikerRol) && (
