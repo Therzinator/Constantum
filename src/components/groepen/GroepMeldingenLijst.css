@@ -1,0 +1,10 @@
+.melding-card-klikbaar {
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.melding-card-klikbaar:hover,
+.melding-card-klikbaar:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+}

@@ -1,20 +1,46 @@
+// Maximale lange-zijde in pixels en JPEG-kwaliteit voor de bewaarde/
+// geüploade kopie (niet de losse 800px-UI-thumbnail uit
+// lib/media/thumbnail.js). Op 2026-06-24 bewust gekozen i.p.v. de
+// originele resolutie/kwaliteit (0,92) onveranderd te bewaren: de
+// SHA-256-hash (hashFile() in useNieuweMeldingForm.js) wordt al vóór deze
+// stap berekend op het ONBEWERKTE bestand en blijft dus "hash van het
+// origineel" — exact zoals nu al in het PDF-dossier toegelicht (zie
+// CURRENT_STATE.md), dus deze stap verandert niets aan de bewijswaarde-
+// claim. Bij ~3000px/85% is het kwaliteitsverlies visueel vrijwel niet
+// waarneembaar (ruim voldoende voor schermweergave én A4-afdruk in het
+// PDF-dossier), terwijl moderne telefooncamera's (doorgaans 4000px+)
+// hierdoor 40-60% kleiner worden — relevant tegen de Supabase Storage-
+// limiet. Video's lopen niet door deze functie (zie useNieuweMeldingForm.js
+// — isVideo slaat stripEXIFGPS() over) en blijven dus onverkleind; dat is
+// een bewust nog niet aangepakt, apart probleem (zie NEXT_STEPS.md).
+const OPSLAG_MAX_PX = 3000;
+const OPSLAG_KWALITEIT = 0.85;
+
 // ============================================================
 // EXIF-GPS STRIPPER — privacy bescherming melder
 // Rendert JPEG opnieuw via canvas zodat alle EXIF metadata
 // (inclusief GPS-coördinaten) wordt verwijderd uit het opgeslagen bestand.
 // De EXIF-data zelf wordt APART bewaard voor het juridisch dossier.
+// Dezelfde canvas-render beperkt meteen ook de afmetingen (zie
+// OPSLAG_MAX_PX hierboven) — één decodeer/encodeer-stap i.p.v. twee.
 // ============================================================
 export async function stripEXIFGPS(dataUrl, mimeType) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
+      let { naturalWidth: width, naturalHeight: height } = img;
+      if (width > OPSLAG_MAX_PX || height > OPSLAG_MAX_PX) {
+        const ratio = Math.min(OPSLAG_MAX_PX / width, OPSLAG_MAX_PX / height);
+        width  = Math.round(width  * ratio);
+        height = Math.round(height * ratio);
+      }
       const canvas = document.createElement('canvas');
-      canvas.width  = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      canvas.width  = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, width, height);
       // Canvas-export heeft geen EXIF — alle metadata is verwijderd
-      const cleanDataUrl = canvas.toDataURL(mimeType || 'image/jpeg', 0.92);
+      const cleanDataUrl = canvas.toDataURL(mimeType || 'image/jpeg', OPSLAG_KWALITEIT);
       resolve(cleanDataUrl);
     };
     img.onerror = () => resolve(dataUrl); // Fallback: origineel bij fout

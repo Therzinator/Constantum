@@ -49,6 +49,18 @@ export async function trekUitnodigingIn(uitnodigingId) {
   if (error) throw error;
 }
 
+// Definitief verwijderen — anders dan trekUitnodigingIn() (zet alleen
+// ingetrokken=true) verdwijnt de rij hiermee uit de lijst, zodat
+// ingetrokken/verlopen uitnodigingen niet blijven ophopen. Vereist
+// migratie 0020 (DELETE-policy, ontbrak in 0015).
+export async function verwijderUitnodiging(uitnodigingId) {
+  const sb = sbClient();
+  if (!sb) return;
+
+  const { error } = await sb.from('groep_uitnodigingen').delete().eq('id', uitnodigingId);
+  if (error) throw error;
+}
+
 // Server-side validatie (verlopen/ingetrokken/vol) + lidmaatschap toevoegen
 // — geen directe tabeltoegang nodig (fn_groep_uitnodiging_accepteren is
 // SECURITY DEFINER, zie migratie 0015). Retourneert de groep-id bij

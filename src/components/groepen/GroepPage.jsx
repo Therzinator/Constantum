@@ -271,7 +271,7 @@ export function GroepPage({ groepId, user, onTerug }) {
 
       <div className="card p-4">
         <div className="section-label mb-3">📋 Meldingen in deze groep</div>
-        <GroepMeldingenLijst groepId={groepId} viewerTrustScore={profiel?.trust_score} viewerUserId={user.id} />
+        <GroepMeldingenLijst groepId={groepId} viewerTrustScore={profiel?.trust_score} viewerUserId={user.id} user={user} />
       </div>
 
       <Toast melding={melding} />

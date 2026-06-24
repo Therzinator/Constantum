@@ -1,0 +1,51 @@
+/* Zelfde overlay/modal-vorm als MeldingDetailModal.css (bewust
+   gedupliceerd i.p.v. cross-importeren, zelfde patroon als TYPE_KLEUR-
+   duplicatie elders in dit project, zie CURRENT_STATE.md). */
+.detail-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30000;
+  background: rgba(5, 7, 12, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.detail-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-bright);
+  border-radius: 14px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  align-self: flex-end;
+  font-size: 1.2rem;
+  line-height: 1;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.detail-modal-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detail-mono-block {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}

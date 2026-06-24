@@ -200,14 +200,32 @@ kiest per groep, trust-score hergebruik).
   (`trustZichtbaarheid.js`) — hergebruikt de bandbreedtes uit migratie
   0014 (0-19/20-39 laag, 40-79 gemiddeld, 80-100 hoog) om te bepalen
   hoeveel van een gedeelde melding een KIJKER ziet (exacte locatie/
-  metadata/melderinfo), gebaseerd op zijn eigen trust_score. Geconfigureerd
-  via een array, niet hardcoded if/else, voor toekomstige extra niveaus.
+  metadata/melderinfo/**foto's**), gebaseerd op zijn eigen trust_score.
+  Geconfigureerd via een array, niet hardcoded if/else, voor toekomstige
+  extra niveaus.
+- **Melding-detailweergave binnen Groepen (sinds 2026-06-24)** — kaarten
+  in `GroepMeldingenLijst.jsx` zijn nu klikbaar en openen
+  `GroepMeldingDetailModal.jsx`, een lichtere variant van
+  `MeldingDetailModal.jsx` (geen hash/RFC3161/device/weerdata — die horen
+  bij het bewijsdossier, niet bij de sociale Groepen-functie). Toont
+  dezelfde trust-tier-gate als de kaart (`toon`-object), nu ook voor
+  foto's: alleen leden met "hoog" trust-tier zien foto's, opgehaald via de
+  bestaande `laadBijlagenVanSupabase()` (`lib/supabase/bijlagen.js`,
+  zelfde Storage-signed-URL-aanpak als de admin-buurtgebied-export).
+  Afhankelijk van onbevestigde `attachments`/storage-RLS, zie
+  NEXT_STEPS.md.
 - **Uitnodigingen** (`groep_uitnodigingen`): link + QR-code (nieuwe
   dependency `qrcode`), instelbaar aantal gebruikers (1-5) en verlooptijd
   (24/48/72u), met teller voor keer-geopend/keer-gebruikt. Geen browser-
   Notification (bewust, zie "Buurt-notificaties verwijderd" hieronder) —
   statistieken zijn alleen zichtbaar als de beheerder zelf de groepspagina
-  opent.
+  opent. **Sinds 2026-06-24**: ook delen via de systeem-deelsheet
+  (`navigator.share()` — WhatsApp/Signal/e-mail/etc., met dezelfde
+  kant-en-klare deeltekst als "Kopieer"; valt terug op kopiëren als
+  `navigator.share` niet beschikbaar is, bv. desktop-Firefox), en een
+  "Verwijderen"-knop voor ingetrokken/verlopen/volle uitnodigingen
+  (`verwijderUitnodiging()`, **migratie 0020 nodig** — ontbrekende
+  DELETE-policy, zelfde patroon als migratie 0019 voor feedback).
 - **"Recente meldingen" (Dashboard) is soberder**: toont nu alleen nog
   meldingstype, datum en algemene regio (gemeente/provincie) —
   gezondheidsklachten-badge, sync-status, windgegevens, mini-kaartje,
@@ -391,12 +409,14 @@ kiest per groep, trust-score hergebruik).
 
 ## Database-migraties
 
-Alle migraties **0001 t/m 0013 en 0015 t/m 0018 zijn uitgevoerd**
-(0015-0018 bevestigd via Supabase op 2026-06-23) — inclusief de 5km-
-privacygrens (0009), de coordinator-RLS (0011), Groepen (0015/0016) en de
-RLS-recursiefix op `groep_leden` (0018). **Migratie 0014 (trust-score
-op-/afschaling) is nog niet uitgevoerd** — zie NEXT_STEPS.md. Nieuwe
-migraties na 0018 toevoegen op nummer 0019.
+Alle migraties **0001 t/m 0013 en 0015 t/m 0020 zijn uitgevoerd**
+(0015-0018 bevestigd via Supabase op 2026-06-23, 0019/0020 bevestigd op
+2026-06-24) — inclusief de 5km-privacygrens (0009), de coordinator-RLS
+(0011), Groepen (0015/0016), de RLS-recursiefix op `groep_leden` (0018),
+feedback-verwijderen door admin (0019) en groepsuitnodiging-verwijderen
+door beheerder/admin (0020). **Migratie 0014 (trust-score op-/afschaling)
+is nog niet uitgevoerd** — zie NEXT_STEPS.md. Nieuwe migraties na 0020
+toevoegen op nummer 0021.
 
 ## Dossier/bewijskracht (sinds 2026-06-21)
 
@@ -410,6 +430,16 @@ migraties na 0018 toevoegen op nummer 0019.
   (metadata) verifieert, niet de foto's. Geen nieuwe hash-berekening, geen
   wijziging aan SHA-256/RFC3161-logica zelf (freeze-zone gerespecteerd) —
   alleen bestaande waarden eerlijker tonen/labelen.
+- **Opgeslagen/geüploade foto's beperkt tot 3000px/85%-JPEG (sinds
+  2026-06-24)**, was ongewijzigd 0,92-kwaliteit op volledige resolutie
+  (`stripEXIFGPS()`, `lib/bewijsmateriaal/exif.js`) — verkleint typische
+  telefoonfoto's (4000px+) met ~40-60%, relevant tegen de Supabase
+  Storage-limiet. **Raakt de bewijswaarde niet**: de SHA-256-hash per foto
+  wordt al vóór deze stap berekend op het onbewerkte bestand
+  (`hashFile()` in `useNieuweMeldingForm.js`) en is dus, zoals al
+  toegelicht in het dossier, een hash van het origineel — niet van de
+  opgeslagen kopie. Geldt alleen voor foto's; video's lopen niet door
+  `stripEXIFGPS()` en blijven onverkleind, zie NEXT_STEPS.md.
 
 ## Bekende beperkingen / inconsistenties
 

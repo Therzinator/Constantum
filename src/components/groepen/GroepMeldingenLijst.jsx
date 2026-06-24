@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { haalMeldingenVoorGroep } from '../../lib/groepen/groepen.js';
 import { bepaalZichtbaarheidsniveau, velden } from '../../lib/groepen/trustZichtbaarheid.js';
 import { melderCode } from '../../utils/format.js';
+import { GroepMeldingDetailModal } from './GroepMeldingDetailModal.jsx';
 import '../meldingen/MeldingCard.css';
+import './GroepMeldingenLijst.css';
 
 const TYPE_LABEL = {
   spuitactiviteit: '🚜 Spuitactiviteit',
@@ -35,9 +37,10 @@ const NIVEAU_LABEL = { laag: 'Laag', gemiddeld: 'Gemiddeld', hoog: 'Hoog' };
 // hier wordt alleen bepaald welke VELDEN getoond worden, via
 // src/lib/groepen/trustZichtbaarheid.js (config-gebaseerd, zodat nieuwe
 // niveaus later makkelijk toevoegbaar zijn).
-export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId }) {
+export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId, user }) {
   const [meldingen, setMeldingen] = useState(null);
   const [fout, setFout] = useState(null);
+  const [geopend, setGeopend] = useState(null);
 
   useEffect(() => {
     let actief = true;
@@ -65,7 +68,14 @@ export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId })
         const regio = toon.grofweLocatie ? [m.gemeente, m.provincie].filter(Boolean).join(', ') : null;
 
         return (
-          <div key={m.id} className="card melding-card">
+          <div
+            key={m.id}
+            className="card melding-card melding-card-klikbaar"
+            role="button"
+            tabIndex={0}
+            onClick={() => setGeopend(m)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setGeopend(m); }}
+          >
             <div className="melding-card-body">
               <div className="melding-card-top">
                 <div className="melding-card-badges">
@@ -97,6 +107,16 @@ export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId })
           </div>
         );
       })}
+
+      {geopend && (
+        <GroepMeldingDetailModal
+          melding={geopend}
+          toon={toon}
+          isEigen={geopend.user_id && geopend.user_id === viewerUserId}
+          user={user}
+          onClose={() => setGeopend(null)}
+        />
+      )}
     </div>
   );
 }

@@ -19,6 +19,25 @@
   gap: 8px;
 }
 
+.uitnodiging-rij {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+.uitnodiging-rij:last-child { border-bottom: none; margin-bottom: 0; }
+
+.uitnodiging-acties {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.uitnodiging-knop {
+  min-height: 44px;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+}
+
 .groepen-formulier-acties {
   display: flex;
   gap: 8px;

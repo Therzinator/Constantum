@@ -26,10 +26,13 @@ export function bepaalZichtbaarheidsniveau(trustScore) {
 // lage trust score → alleen algemene melding, geen exacte locatie/
 // metadata/gebruikersinfo; gemiddeld → meer detail, grovere locatie;
 // hoog → volledige informatie).
+// `fotos` hergebruikt dezelfde "hoog"-drempel als exacteLocatie/melderInfo
+// — een foto kan net als exacte GPS de melder herleidbaar maken, dus
+// dezelfde voorzichtige grens i.p.v. al bij "gemiddeld" tonen.
 const VELDEN_PER_NIVEAU = {
-  laag: { exacteLocatie: false, metadata: false, melderInfo: false, grofweLocatie: false },
-  gemiddeld: { exacteLocatie: false, metadata: true, melderInfo: false, grofweLocatie: true },
-  hoog: { exacteLocatie: true, metadata: true, melderInfo: true, grofweLocatie: true }
+  laag: { exacteLocatie: false, metadata: false, melderInfo: false, grofweLocatie: false, fotos: false },
+  gemiddeld: { exacteLocatie: false, metadata: true, melderInfo: false, grofweLocatie: true, fotos: false },
+  hoog: { exacteLocatie: true, metadata: true, melderInfo: true, grofweLocatie: true, fotos: true }
 };
 
 export function velden(niveau) {

@@ -4,14 +4,32 @@ import {
   maakGroepUitnodiging,
   haalGroepUitnodigingen,
   trekUitnodigingIn,
+  verwijderUitnodiging,
   uitnodigingUrl
 } from '../../lib/groepen/uitnodigingen.js';
 import { Toast } from '../ui/Toast.jsx';
 
 const VERLOOPTIJDEN = [24, 48, 72];
 
+// navigator.share() geeft de gebruiker de systeem-deelkeuze (WhatsApp,
+// Messenger, Signal, Mail, ...) i.p.v. losse, per-app deeplinks te
+// hardcoden — werkt op alle apps die de gebruiker al geïnstalleerd heeft,
+// zonder per app onderhoud. Niet overal beschikbaar (vrijwel altijd op
+// mobiel, niet op desktop-Firefox/de meeste desktopbrowsers) — daarom
+// blijft "Kopieer tekst" altijd als universele fallback bestaan.
+const kanNatiefDelen = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+function bouwDeelTekst(groepNaam, token) {
+  const url = uitnodigingUrl(token);
+  return { url, tekst: `Je bent uitgenodigd voor de SpuitLogger groep ${groepNaam}, klik hier om deel te nemen: ${url}` };
+}
+
 function urenResterend(verloopOp) {
   return Math.round((new Date(verloopOp) - new Date()) / (60 * 60 * 1000));
+}
+
+function isActief(u) {
+  return !u.ingetrokken && urenResterend(u.verloopt_op) > 0 && u.gebruikt_aantal < u.max_gebruikers;
 }
 
 function statusLabel(u) {
@@ -65,11 +83,10 @@ export function GroepUitnodigingKaart({ groepId, userId, groepNaam }) {
     setBezig(true);
     try {
       const nieuw = await maakGroepUitnodiging(groepId, userId, { maxGebruikers, verloopUren });
-      const url = uitnodigingUrl(nieuw.token);
-      const deelTekst = `Je bent uitgenodigd voor de SpuitLogger ${groepNaam} groep, klik op de link om deel te nemen: ${url}`;
-      setLaatsteDeelTekst(deelTekst);
+      const { url, tekst } = bouwDeelTekst(groepNaam, nieuw.token);
+      setLaatsteDeelTekst(tekst);
       setLaatsteQr(await QRCode.toDataURL(url, { width: 200, margin: 1 }));
-      await navigator.clipboard.writeText(deelTekst).catch(() => {});
+      await navigator.clipboard.writeText(tekst).catch(() => {});
       toon('Uitnodiging aangemaakt en deeltekst gekopieerd.', 'success');
       await laad();
     } catch (err) {
@@ -88,6 +105,35 @@ export function GroepUitnodigingKaart({ groepId, userId, groepNaam }) {
     }
   };
 
+  // Definitief verwijderen — alleen aangeboden voor niet meer actieve
+  // uitnodigingen (ingetrokken/verlopen/vol), zodat een nog werkende link
+  // niet per ongeluk weggegooid wordt i.p.v. ingetrokken.
+  const handleVerwijderen = async (id) => {
+    if (!confirm('Deze uitnodiging definitief verwijderen?')) return;
+    try {
+      await verwijderUitnodiging(id);
+      await laad();
+    } catch (err) {
+      toon(`Verwijderen mislukt: ${err.message}`, 'error');
+    }
+  };
+
+  const handleDelen = async (token) => {
+    const { tekst } = bouwDeelTekst(groepNaam, token);
+    if (kanNatiefDelen) {
+      try {
+        await navigator.share({ text: tekst });
+        return;
+      } catch {
+        // Gebruiker annuleerde de deel-keuze of geen app gekozen — geen
+        // foutmelding nodig, dat is normaal gedrag van de share-sheet.
+        return;
+      }
+    }
+    await navigator.clipboard.writeText(tekst).catch(() => {});
+    toon('Uitnodigingstekst gekopieerd.', 'success');
+  };
+
   return (
     <div className="card p-4">
       <div className="section-label mb-3">🔗 Uitnodigingen</div>
@@ -102,13 +148,18 @@ export function GroepUitnodigingKaart({ groepId, userId, groepNaam }) {
         {VERLOOPTIJDEN.map((u) => <option key={u} value={u}>{u} uur</option>)}
       </select>
 
-      <button type="button" className="btn-primary px-4 py-2 mt-3" disabled={bezig} onClick={handleGenereer}>
+      <button type="button" className="btn-primary groepen-knop mt-3" disabled={bezig} onClick={handleGenereer}>
         {bezig ? 'Genereren...' : '🔗 Uitnodiging genereren'}
       </button>
 
       {laatsteDeelTekst && (
         <div className="mt-3">
           <textarea readOnly rows={2} value={laatsteDeelTekst} onFocus={(e) => e.target.select()} style={{ width: '100%' }} className="form-input" />
+          <div className="uitnodiging-acties mt-2">
+            <button type="button" className="btn-outline uitnodiging-knop" onClick={() => handleDelen(uitnodigingen[0]?.token)} disabled={!uitnodigingen[0]}>
+              📤 Delen
+            </button>
+          </div>
           {laatsteQr && <img src={laatsteQr} alt="QR-code voor groepsuitnodiging" width={160} height={160} className="mt-2" />}
         </div>
       )}
@@ -117,16 +168,28 @@ export function GroepUitnodigingKaart({ groepId, userId, groepNaam }) {
         <div className="mt-3">
           <div className="section-label mb-2">Eerder gegenereerd</div>
           {uitnodigingen.map((u) => (
-            <div key={u.id} className="export-info-rij">
-              <span>{u.gebruikt_aantal}/{u.max_gebruikers} gebruikt · {u.keer_geopend}x geopend</span>
-              <span>
-                {statusLabel(u)}
-                {!u.ingetrokken && urenResterend(u.verloopt_op) > 0 && (
-                  <button type="button" className="btn-outline px-2 py-1 ml-2" onClick={() => handleIntrekken(u.id)} style={{ marginLeft: 8 }}>
-                    Intrekken
+            <div key={u.id} className="uitnodiging-rij">
+              <div className="export-info-rij">
+                <span>{u.gebruikt_aantal}/{u.max_gebruikers} gebruikt · {u.keer_geopend}x geopend</span>
+                <span>{statusLabel(u)}</span>
+              </div>
+              <div className="uitnodiging-acties mt-1">
+                {isActief(u) && (
+                  <>
+                    <button type="button" className="btn-outline uitnodiging-knop" onClick={() => handleDelen(u.token)}>
+                      📤 Delen
+                    </button>
+                    <button type="button" className="btn-outline uitnodiging-knop" onClick={() => handleIntrekken(u.id)}>
+                      Intrekken
+                    </button>
+                  </>
+                )}
+                {!isActief(u) && (
+                  <button type="button" className="btn-outline uitnodiging-knop" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => handleVerwijderen(u.id)}>
+                    🗑️ Verwijderen
                   </button>
                 )}
-              </span>
+              </div>
             </div>
           ))}
         </div>

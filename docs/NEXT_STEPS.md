@@ -25,14 +25,18 @@ de code, niet tegen het geheugen van een eerdere sessie.
   effen blokken toont. Als er ooit nieuwe `icon_*`-bestanden aangeleverd
   worden: controleer eerst of ze wél een alphakanaal hebben (PNG color
   type 6), anders is dezelfde fix opnieuw nodig.
-- **Controleren of een coordinator/admin andermans foto's mag lezen
-  (attachments-tabel + storage-bucket `spuitlog-bijlagen`-RLS).** Nodig
-  voor de nieuwe "Exporteer meldingen + Dossier-PDF" op Buurtgebied
-  tekenen (CoordinatiePage) — die bundelt foto's van ALLE melders binnen
-  het getekende gebied, niet alleen eigen meldingen. Niet vanuit de code
-  te verifiëren: geen migratie regelt RLS op `attachments`/storage. Werkt
-  ook zonder (faalt stilletjes terug naar geen foto's per melding), maar
-  check of dat het gewenste gedrag is.
+- **Controleren of een coordinator/admin/groepslid-met-hoge-trustscore
+  andermans foto's mag lezen (attachments-tabel + storage-bucket
+  `spuitlog-bijlagen`-RLS).** Nodig voor zowel de "Exporteer meldingen +
+  Dossier-PDF" op Buurtgebied tekenen (CoordinatiePage, bundelt foto's van
+  ALLE melders binnen het getekende gebied) als — sinds 2026-06-24 — de
+  nieuwe melding-detailweergave binnen Groepen
+  (`GroepMeldingDetailModal.jsx`, toont foto's alleen aan leden met
+  "hoog" trust-tier, zie CURRENT_STATE.md). Niet vanuit de code te
+  verifiëren: geen migratie regelt RLS op `attachments`/storage. Werkt
+  ook zonder (faalt stilletjes terug naar "geen foto's" per melding), maar
+  check of dat het gewenste gedrag is — een hoge-trust-groepslid dat
+  expliciet foto's zou mogen zien, krijgt anders zonder foutmelding niets.
 - **Provincie/gemeente backfillen-knop draaien op CoordinatiePage.**
   Migratie 0013 (`gemeente`/`provincie`-kolommen op `entries`) is
   **uitgevoerd** (bevestigd door de gebruiker op 2026-06-22) — nieuwe
@@ -56,6 +60,15 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Middel
 
+- **Video's worden nog niet verkleind vóór cloud-opslag.** Foto's zijn op
+  2026-06-24 al aangepakt (`stripEXIFGPS()` in `lib/bewijsmateriaal/exif.js`
+  beperkt nu ook de afmetingen tot 3000px lange zijde op 85% JPEG-kwaliteit
+  i.p.v. ongewijzigd 0,92 — zelfde canvas-render als de bestaande GPS-strip,
+  geen aparte stap). Video's lopen niet door die functie
+  (`useNieuweMeldingForm.js` slaat `stripEXIFGPS()` over bij `isVideo`) en
+  blijven dus onverkleind — een video-her-encodering in de browser
+  (WebCodecs/ffmpeg.wasm) is een aanzienlijk grotere, apart te plannen
+  taak, niet zomaar uit te breiden vanuit de foto-aanpak.
 - **App-brede dode "utility"-classNames (`p-4`, `flex`, `gap-2`, `mb-3`,
   `px-4 py-2`, etc.) — geen enkele bestaat als CSS-regel.** Gevonden
   tijdens het herontwerp van Instellingen/Export/Groepen/Coördinatie

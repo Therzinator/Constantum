@@ -99,9 +99,9 @@ Voor gerichter, blijvend samenwerken met een specifieke groep mensen: zie de vol
               {`Groepen zijn voor gericht, blijvend samenwerken, bijvoorbeeld met directe buren of een lokaal collectief, los van de bredere, anonieme buurt-deling.
 
 Zo werkt het:
-• Start een groep (krijgt automatisch een naam op basis van uw postcode, zelf aan te passen) of word lid van een openbare groep
+• Start een groep (u kiest zelf een naam) of word lid van een openbare groep
 • Rollen: lid, beheerder of hoofdbeheerder. De hoofdbeheerder kan beheerders aanstellen en groepsinstellingen wijzigen
-• Nodig leden uit met een link of QR-code (instelbaar aantal gebruikers en geldigheidsduur)
+• Nodig leden uit met een link, QR-code of deel rechtstreeks via WhatsApp/Signal/e-mail (instelbaar aantal gebruikers en geldigheidsduur)
 • Per groep zet u een schakelaar aan/uit of u uw meldingen daarmee deelt, en bij het melden zelf kiest u nog een keer of die specifieke melding meegaat
 • Hoeveel detail een ander groepslid van uw melding ziet hangt af van diens trust score binnen de groep: hoe vertrouwder het account, hoe meer detail`}
             </div>
@@ -127,7 +127,7 @@ Elke melding krijgt een status (🔴 Onbehandeld, 🟡 In behandeling, 🟢 Afge
             <div className="handleiding-titel">U blijft buiten schot</div>
             <div className="handleiding-tekst">
               {`SpuitLogger is gebouwd met privacy als fundament:
-🔐 Uw locatie wordt nooit exact gedeeld, afgerond op buurtniveau
+🔐 Uw thuislocatie wordt nooit exact gedeeld, alleen afgerond tot op ~1 km
 📧 Uw e-mailadres wordt versleuteld opgeslagen (SHA-256)
 📷 GPS-coördinaten worden automatisch uit uw foto's verwijderd
 🚫 Niemand ziet uw meldingen tenzij u dat zelf kiest, per melding, per buurt of groep`}
