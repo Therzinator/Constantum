@@ -24,6 +24,11 @@ export function TrustIndicator({ profiel }) {
         <span>Trust score</span>
         <span>{trustScore ?? '—'} / 100</span>
       </div>
+      {trustScore != null && (
+        <div className="trust-gauge-track">
+          <div className="trust-gauge-fill" style={{ width: `${trustScore}%` }} />
+        </div>
+      )}
 
       <div className="export-info-rij">
         <span>Telefoon geverifieerd</span>
@@ -40,7 +45,7 @@ export function TrustIndicator({ profiel }) {
       {nieuwAccount && (
         <div className="export-card-beschrijving mt-2">
           Nieuwe accounts (eerste 7 dagen) worden automatisch beoordeeld vóór
-          meldingen breder zichtbaar worden — dit helpt misbruik te voorkomen.
+          meldingen breder zichtbaar worden. Dit helpt misbruik te voorkomen.
         </div>
       )}
     </div>

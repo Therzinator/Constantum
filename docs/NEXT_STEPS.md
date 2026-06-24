@@ -56,6 +56,19 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Middel
 
+- **App-brede dode "utility"-classNames (`p-4`, `flex`, `gap-2`, `mb-3`,
+  `px-4 py-2`, etc.) — geen enkele bestaat als CSS-regel.** Gevonden
+  tijdens het herontwerp van Instellingen/Export/Groepen/Coördinatie
+  (2026-06-24, zie CURRENT_STATE.md): geen Tailwind of ander utility-
+  stylesheet aanwezig in dit project, dus deze classNames (gebruikt in
+  vrijwel elke component) hebben nooit effect gehad. Concreet gevolg: elke
+  pagina mist eigenlijk de bedoelde buitenrand-padding, en knoppen hebben
+  geen gegarandeerd tik-doel. In de 4 herontworpen pagina's al opgelost
+  met echte, pagina-specifieke CSS-klassen; de rest van de app (Dashboard,
+  Melding, Tijdlijn, Auth, Feedback, etc.) heeft dit gat nog. Aanpak:
+  ofwel een project-brede utility-stylesheet toevoegen, ofwel (consistent
+  met de bestaande stijl van dit project) per pagina/component echte
+  CSS-regels schrijven zoals nu gedaan — een grotere, losse opruimtaak.
 - **Verdampings-/blootstellingsrisico-indicator uitwerken — eerst
   vuistregels afstemmen, dan pas bouwen.** Reden: het driftzone-model
   (FOCUS STEP) gaat bewust uit van "geen driftreductie" als worst-case

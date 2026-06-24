@@ -86,7 +86,7 @@ export function FeedbackPage({ user, gebruikerRol, onTerug }) {
 
   if (!user) {
     return (
-      <div className="p-4 feedback-page">
+      <div className="feedback-page">
         <div className="export-titel">Feedback</div>
         <div className="card p-4"><div className="export-card-beschrijving">Log in om feedback te bekijken of te versturen.</div></div>
       </div>
@@ -94,19 +94,19 @@ export function FeedbackPage({ user, gebruikerRol, onTerug }) {
   }
 
   return (
-    <div className="p-4 feedback-page">
-      <button type="button" className="btn-outline px-3 py-1" onClick={onTerug}>← Terug naar Instellingen</button>
+    <div className="feedback-page">
+      <button type="button" className="btn-outline feedback-knop feedback-terug-knop" onClick={onTerug}>← Terug naar Instellingen</button>
       <div className="export-titel">Feedback</div>
       <div className="export-subtitel">Bugs melden, vragen stellen of een opmerking/compliment delen</div>
 
       {!nieuwType && (
         <div className="card p-4">
           <div className="section-label mb-3">Nieuwe melding</div>
-          <div className="flex gap-2">
-            <button type="button" className="btn-primary px-4 py-2" onClick={() => setNieuwType('technisch')}>
+          <div className="feedback-keuzerij">
+            <button type="button" className="btn-primary feedback-knop" onClick={() => setNieuwType('technisch')}>
               🐛 Technisch probleem
             </button>
-            <button type="button" className="btn-outline px-4 py-2" onClick={() => setNieuwType('vraag')}>
+            <button type="button" className="btn-outline feedback-knop" onClick={() => setNieuwType('vraag')}>
               💬 Vraag/opmerking/compliment
             </button>
           </div>
@@ -117,10 +117,10 @@ export function FeedbackPage({ user, gebruikerRol, onTerug }) {
         <div className="card p-4">
           <div className="section-label mb-3">{TYPE_LABEL[nieuwType]}</div>
           {nieuwType === 'technisch' && (
-            <div className="export-card-beschrijving mb-2">Zichtbaar voor alle gebruikers — handig om te zien of een probleem al gemeld is.</div>
+            <div className="export-card-beschrijving mb-2">Zichtbaar voor alle gebruikers, handig om te zien of een probleem al gemeld is.</div>
           )}
           {nieuwType === 'vraag' && (
-            <div className="export-card-beschrijving mb-2">Alleen jij en de beheerder zien dit — niet publiek zichtbaar.</div>
+            <div className="export-card-beschrijving mb-2">Alleen jij en de beheerder zien dit, niet publiek zichtbaar.</div>
           )}
           <form onSubmit={handleVerzenden} className="groepen-formulier">
             <label className="section-label" htmlFor="feedback-titel">Onderwerp</label>
@@ -142,9 +142,9 @@ export function FeedbackPage({ user, gebruikerRol, onTerug }) {
               placeholder="Wat gebeurde er, wat verwachtte je?"
               required
             />
-            <div className="flex gap-2 mt-2">
-              <button type="submit" className="btn-primary px-4 py-2" disabled={bezig}>{bezig ? 'Versturen...' : 'Versturen'}</button>
-              <button type="button" className="btn-outline px-4 py-2" onClick={() => setNieuwType(null)}>Annuleren</button>
+            <div className="feedback-keuzerij mt-2">
+              <button type="submit" className="btn-primary feedback-knop" disabled={bezig}>{bezig ? 'Versturen...' : 'Versturen'}</button>
+              <button type="button" className="btn-outline feedback-knop" onClick={() => setNieuwType(null)}>Annuleren</button>
             </div>
           </form>
         </div>
@@ -178,7 +178,7 @@ function FeedbackItem({ item, isEigen, magBeheren, onStatusWijzigen, onVerwijder
   return (
     <div className="feedback-item">
       <div className="feedback-item-top">
-        <span className="feedback-item-titel">{TYPE_LABEL[item.type]} — {item.titel}</span>
+        <span className="feedback-item-titel">{TYPE_LABEL[item.type]} · {item.titel}</span>
         <span className="badge" style={{ color: STATUS_KLEUR[item.status], borderColor: STATUS_KLEUR[item.status] }}>
           {STATUS_LABEL[item.status]}
         </span>
@@ -210,7 +210,7 @@ function FeedbackItem({ item, isEigen, magBeheren, onStatusWijzigen, onVerwijder
             value={reactie}
             onChange={(e) => setReactie(e.target.value)}
           />
-          <button type="button" className="btn-outline px-3 py-1 mt-1" onClick={() => onStatusWijzigen(item.id, item.status, reactie)}>
+          <button type="button" className="btn-outline feedback-knop mt-1" onClick={() => onStatusWijzigen(item.id, item.status, reactie)}>
             Opslaan
           </button>
         </div>

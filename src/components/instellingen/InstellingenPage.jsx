@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { idbCountBijlagen, idbVerwijderVerweesdeBijlagen } from '../../lib/storage/indexedDB.js';
 import { Toast } from '../ui/Toast.jsx';
+import { Collapsible } from '../ui/Collapsible.jsx';
 import { PrullenbakCard } from '../export/PrullenbakCard.jsx';
 import { GegevensPrivacyInstelling } from './GegevensPrivacyInstelling.jsx';
 import { TrustIndicator } from '../export/TrustIndicator.jsx';
@@ -44,18 +45,15 @@ export function InstellingenPage({ meldingenApi, gebruikerRol, user, laadVanClou
   };
 
   return (
-    <div className="p-4 export-page">
+    <div className="export-page">
       <div>
         <div className="export-titel">Instellingen</div>
         <div className="export-subtitel">Account, notificaties en opslagbeheer</div>
       </div>
 
-      <div className="card p-4">
-        <div className="section-label mb-3">🌿 Over SpuitLogger</div>
-        <button type="button" className="btn-outline px-4 py-2" onClick={onOpenHandleiding}>
-          📖 Handleiding opnieuw bekijken
-        </button>
-      </div>
+      <TrustIndicator profiel={profiel} />
+
+      <GegevensPrivacyInstelling user={user} meldingenApi={meldingenApi} thuislocatie={thuislocatie} onUitloggen={onUitloggen} />
 
       <div className="card p-4">
         <div className="section-label mb-3">💬 Feedback &amp; vragen</div>
@@ -63,45 +61,44 @@ export function InstellingenPage({ meldingenApi, gebruikerRol, user, laadVanClou
           Technisch probleem gevonden, een vraag over een functie, of een
           opmerking/compliment? Meld het hier.
         </div>
-        <button type="button" className="btn-outline px-4 py-2" onClick={onNavigeerFeedback}>
+        <button type="button" className="btn-outline export-knop" onClick={onNavigeerFeedback}>
           💬 Naar Feedback-paneel
         </button>
       </div>
 
-      <TrustIndicator profiel={profiel} />
+      <Collapsible icoon="🌿" titel="Over SpuitLogger">
+        <button type="button" className="btn-outline export-knop" onClick={onOpenHandleiding}>
+          📖 Handleiding opnieuw bekijken
+        </button>
+      </Collapsible>
 
-      <GegevensPrivacyInstelling user={user} meldingenApi={meldingenApi} thuislocatie={thuislocatie} onUitloggen={onUitloggen} />
-
-      <div className="card p-4 export-opschonen">
-        <div className="section-label mb-2" style={{ color: 'var(--info)' }}>🧹 Opslag Opschonen</div>
+      <Collapsible icoon="🧹" titel="Opslag opschonen" kleur="var(--info)">
         <div className="export-card-beschrijving mb-3">
           Verwijdert tijdelijke cache en oude previews uit IndexedDB. <strong>Meldingen blijven behouden.</strong>
           {idbCount != null && <> Huidig aantal bijlagen in IndexedDB: <strong>{idbCount}</strong>.</>}
         </div>
-        <button type="button" className="btn-outline px-4 py-2" style={{ borderColor: 'var(--info)', color: 'var(--info)' }} onClick={handleOpslagOpschonen}>
+        <button type="button" className="btn-outline export-knop" style={{ borderColor: 'var(--info)', color: 'var(--info)' }} onClick={handleOpslagOpschonen}>
           🧹 Verwijder bijlagen zonder melding
         </button>
-      </div>
+      </Collapsible>
 
-      <div className="card p-4 export-gevaarzone">
-        <div className="section-label mb-2" style={{ color: 'var(--danger)' }}>⚠️ Gevaarzone</div>
+      <Collapsible icoon="⚠️" titel="Gevaarzone" kleur="var(--danger)">
         <div className="export-card-beschrijving mb-3">Verwijder alle lokaal opgeslagen meldingen. Dit kan niet ongedaan worden gemaakt.</div>
-        <button type="button" className="btn-outline px-4 py-2" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={handleAllesVerwijderen}>
+        <button type="button" className="btn-outline export-knop" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={handleAllesVerwijderen}>
           🗑️ Alle data verwijderen
         </button>
-      </div>
+      </Collapsible>
 
-      <div className="card p-4">
-        <div className="section-label mb-3">⚖️ Juridisch</div>
-        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-          <button type="button" className="btn-outline px-4 py-2" onClick={() => setPrivacyOpen(true)}>
+      <Collapsible icoon="⚖️" titel="Juridisch">
+        <div className="instellingen-knoppenrij">
+          <button type="button" className="btn-outline export-knop" onClick={() => setPrivacyOpen(true)}>
             📄 Privacyverklaring
           </button>
-          <button type="button" className="btn-outline px-4 py-2" onClick={() => setVoorwaardenOpen(true)}>
+          <button type="button" className="btn-outline export-knop" onClick={() => setVoorwaardenOpen(true)}>
             📜 Algemene Voorwaarden
           </button>
         </div>
-      </div>
+      </Collapsible>
 
       <PrullenbakCard gebruikerRol={gebruikerRol} user={user} laadVanCloud={laadVanCloud} />
 

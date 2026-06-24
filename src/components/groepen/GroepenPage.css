@@ -2,12 +2,27 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 16px;
+}
+
+/* Echte tik-doelmaat — de `px-*`/`py-*`-classNames die elders in de JSX
+   gebruikt worden bestaan nergens als CSS-regel in dit project en hebben
+   dus geen effect; deze klasse levert de daadwerkelijke afmeting. */
+.groepen-knop {
+  min-height: 44px;
+  padding: 10px 16px;
 }
 
 .groepen-formulier {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.groepen-formulier-acties {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .groepen-checkbox-rij {
@@ -41,18 +56,63 @@
   cursor: default;
 }
 
+.groepen-kaart-klikbaar {
+  cursor: pointer;
+}
+
 .groepen-kaart-titel {
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.groepen-stat-chips {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.groepen-stat-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 4px;
+}
+
+.groepen-stat-waarde {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.groepen-stat-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.groepen-kaart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-secondary);
 }
 
 .groepen-deel-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--border);

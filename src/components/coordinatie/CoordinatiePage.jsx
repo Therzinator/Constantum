@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { Collapsible } from '../ui/Collapsible.jsx';
 import { melderCode } from '../../utils/format.js';
 import {
   haalAlleEntriesAdmin,
@@ -175,7 +176,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
           gelukt++;
         }
       }
-      setBackfillStatus(`Klaar — ${gelukt} / ${teBackfillen.length} meldingen aangevuld`);
+      setBackfillStatus(`Klaar: ${gelukt} / ${teBackfillen.length} meldingen aangevuld`);
       await laad();
     } catch (err) {
       setBackfillStatus(`Mislukt: ${err.message}`);
@@ -201,7 +202,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
           gelukt++;
         }
       }
-      setGemeenteBackfillStatus(`Klaar — ${gelukt} / ${teBackfillen.length} meldingen aangevuld`);
+      setGemeenteBackfillStatus(`Klaar: ${gelukt} / ${teBackfillen.length} meldingen aangevuld`);
       await laad();
     } catch (err) {
       setGemeenteBackfillStatus(`Mislukt: ${err.message}`);
@@ -210,19 +211,22 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
     }
   };
 
-  return (
-    <div className="p-4 coordinatie-page">
-      <div className="export-titel">Coördinatie</div>
-      <div className="export-subtitel">Admin/coordinator-overzicht — niet zichtbaar voor gewone gebruikers</div>
+  const maxVerdeling = Math.max(1, ...verdeling.map((b) => b.aantal));
+  const maxPerceelTotaal = Math.max(1, ...Object.values(perceelStats).map((s) => s.totaal));
+  const maxDominantPct = Math.max(1, ...Object.values(windroosPerPerceel).map((w) => w.dominantPct));
 
-      <div className="card p-4">
-        <div className="section-label mb-3">🗺️ Filter op provincie/gemeente</div>
+  return (
+    <div className="coordinatie-page">
+      <div className="export-titel">Coördinatie</div>
+      <div className="export-subtitel">Admin/coordinator-overzicht, niet zichtbaar voor gewone gebruikers</div>
+
+      <Collapsible icoon="🗺️" titel="Filter op provincie/gemeente" defaultOpen>
         <div className="export-card-beschrijving mb-3">
           Filtert perceel-analyse, windroos, melder-overzicht en onder
           review/shadow hieronder, centreert Buurtgebied tekenen op de
           regio en vult het postcodegebied van Buurtrapport genereren voor.
           Meldingen zonder provincie/gemeente (van vóór migratie 0013)
-          vallen buiten elk filter — eenmalig aanvullen via PDOK.
+          vallen buiten elk filter, eenmalig aanvullen via PDOK.
         </div>
         <label className="export-info-rij">
           <span>Provincie</span>
@@ -246,14 +250,46 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
         {provincieOpties.length === 0 && (
           <div className="export-card-beschrijving mt-2">Nog geen meldingen met provincie/gemeente gevonden.</div>
         )}
-        <button type="button" className="btn-outline px-3 py-1 mt-2" disabled={gemeenteBackfillBezig} onClick={handleBackfillGemeente}>
+        <button type="button" className="btn-outline coordinatie-knop mt-2" disabled={gemeenteBackfillBezig} onClick={handleBackfillGemeente}>
           {gemeenteBackfillBezig ? `⏳ Bezig... ${gemeenteBackfillStatus || ''}` : '🗺️ Provincie/gemeente backfillen'}
         </button>
         {!gemeenteBackfillBezig && gemeenteBackfillStatus && <div className="export-card-beschrijving mt-2">{gemeenteBackfillStatus}</div>}
-      </div>
+      </Collapsible>
 
-      <div className="card p-4">
-        <div className="section-label mb-3">📮 Opt-in-melders per postcode</div>
+      <Collapsible icoon="🚩" titel="Onder review / shadow" kleur="var(--danger)" badge={onderReview.length || null} defaultOpen>
+        {onderReview.length === 0 && <div className="export-card-beschrijving">Geen meldingen onder review of shadow.</div>}
+        {onderReview.map((e) => (
+          <div key={e.id} className="coordinatie-review-rij">
+            <div className="coordinatie-review-top">
+              <span className={`badge ${e.visibility === 'shadow' ? 'badge-danger' : 'badge-warning'}`}>{e.visibility}</span>
+              <span className="coordinatie-review-meta">{melderCode(e.melder_email) || '—'} · {e.type} · {new Date(e.timestamp_local).toLocaleDateString('nl-NL')}</span>
+            </div>
+            <div className="coordinatie-review-acties">
+              <button
+                type="button"
+                className="btn-outline coordinatie-knop"
+                disabled={bezigId === e.id}
+                onClick={() => handleGoedkeuren(e.id)}
+              >
+                ✓ Goedkeuren
+              </button>
+              {e.visibility !== 'shadow' && (
+                <button
+                  type="button"
+                  className="btn-outline coordinatie-knop"
+                  style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
+                  disabled={bezigId === e.id}
+                  onClick={() => handleVerbergen(e.id)}
+                >
+                  🚫 Verbergen
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </Collapsible>
+
+      <Collapsible icoon="📮" titel="Opt-in-melders per postcode" badge={perPostcode.length || null}>
         {perPostcode.length === 0 && <div className="export-card-beschrijving">Geen opt-in-meldingen met postcode gevonden.</div>}
         {perPostcode.map((r) => (
           <div key={r.postcode} className="export-info-rij">
@@ -263,65 +299,82 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
         ))}
         <div className="export-card-beschrijving mt-2">
           Historische meldingen (vóór de postcode-koppeling) missen dit
-          veld nog — eenmalig aanvullen via PDOK.
+          veld nog, eenmalig aanvullen via PDOK.
         </div>
-        <button type="button" className="btn-outline px-3 py-1 mt-2" disabled={backfillBezig} onClick={handleBackfillPostcode}>
+        <button type="button" className="btn-outline coordinatie-knop mt-2" disabled={backfillBezig} onClick={handleBackfillPostcode}>
           {backfillBezig ? `⏳ Bezig... ${backfillStatus || ''}` : '📮 Postcode backfillen'}
         </button>
         {!backfillBezig && backfillStatus && <div className="export-card-beschrijving mt-2">{backfillStatus}</div>}
-      </div>
+      </Collapsible>
 
-      <div className="card p-4">
-        <div className="section-label mb-3">🛡️ Trust-score-verdeling</div>
+      <Collapsible icoon="🛡️" titel="Trust-score-verdeling">
         {verdeling.map((b) => (
-          <div key={b.label} className="export-info-rij">
-            <span>{b.label}</span>
-            <span>{b.aantal} gebruiker{b.aantal === 1 ? '' : 's'}</span>
+          <div key={b.label} className="coordinatie-stat-rij">
+            <div className="coordinatie-stat-label">
+              <span>{b.label}</span>
+              <span>{b.aantal} gebruiker{b.aantal === 1 ? '' : 's'}</span>
+            </div>
+            <div className="coordinatie-stat-balk-track">
+              <div className="coordinatie-stat-balk-fill" style={{ width: `${(b.aantal / maxVerdeling) * 100}%` }} />
+            </div>
           </div>
         ))}
-      </div>
+      </Collapsible>
 
-      <div className="card p-4">
-        <div className="section-label mb-3">🌾 Perceel-analyse</div>
+      <Collapsible icoon="🌾" titel="Perceel-analyse" badge={Object.keys(perceelStats).length || null}>
         {Object.keys(perceelStats).length === 0 && <div className="export-card-beschrijving">Geen percelen gevonden.</div>}
         {Object.entries(perceelStats).map(([perceel, stats]) => (
-          <div key={perceel} className="export-info-rij">
-            <span>{perceel}</span>
-            <span>{stats.totaal}x · {stats.ditJaar}x dit jaar{stats.bovenWindNorm ? ` · ${stats.bovenWindNorm}x boven windnorm` : ''}</span>
+          <div key={perceel} className="coordinatie-stat-rij">
+            <div className="coordinatie-stat-label">
+              <span>{perceel}</span>
+              <span>{stats.totaal}x · {stats.ditJaar}x dit jaar{stats.bovenWindNorm ? ` · ${stats.bovenWindNorm}x boven windnorm` : ''}</span>
+            </div>
+            <div className="coordinatie-stat-balk-track">
+              <div className="coordinatie-stat-balk-fill" style={{ width: `${(stats.totaal / maxPerceelTotaal) * 100}%` }} />
+            </div>
           </div>
         ))}
-      </div>
+      </Collapsible>
 
-      <div className="card p-4">
-        <div className="section-label mb-3">🧭 Windroos per perceel</div>
+      <Collapsible icoon="🧭" titel="Windroos per perceel" badge={Object.keys(windroosPerPerceel).length || null}>
         {Object.keys(windroosPerPerceel).length === 0 && (
           <div className="export-card-beschrijving">Nog geen perceel met genoeg meldingen + winddata voor een windroos (minimaal 3).</div>
         )}
         {Object.entries(windroosPerPerceel).map(([perceel, w]) => (
-          <div key={perceel} className="export-info-rij">
-            <span>{perceel}</span>
-            <span>
-              {w.dominantPct}% uit het {w.dominanteRichting} ({w.totaal} meldingen met windrichting)
-            </span>
+          <div key={perceel} className="coordinatie-stat-rij">
+            <div className="coordinatie-stat-label">
+              <span>{perceel}</span>
+              <span>{w.dominantPct}% uit het {w.dominanteRichting} ({w.totaal}x)</span>
+            </div>
+            <div className="coordinatie-stat-balk-track">
+              <div className="coordinatie-stat-balk-fill" style={{ width: `${(w.dominantPct / maxDominantPct) * 100}%` }} />
+            </div>
           </div>
         ))}
-        <div className="export-card-beschrijving mt-2">
-          Een hoog percentage uit één richting is sterker bewijs van een
-          patroon dan losse, onafhankelijke waarnemingen — toevallige
-          spreiding zou rond een paar windrichtingen schommelen, niet
-          structureel naar één kant overhellen.
-        </div>
-      </div>
+        {Object.keys(windroosPerPerceel).length > 0 && (
+          <div className="export-card-beschrijving mt-2">
+            Een hoog percentage uit één richting is sterker bewijs van een
+            patroon dan losse, onafhankelijke waarnemingen. Toevallige
+            spreiding zou rond een paar windrichtingen schommelen, niet
+            structureel naar één kant overhellen.
+          </div>
+        )}
+      </Collapsible>
 
-      <div className="card p-4">
-        <div className="section-label mb-3">👥 Melder-overzicht</div>
+      <Collapsible icoon="👥" titel="Melder-overzicht" badge={melders.length || null}>
         {melders.map((m) => (
           <div key={m.userId} className="coordinatie-melder-rij">
             <div className="export-info-rij">
               <span>{melderCode(m.melderEmail) || m.userId.slice(0, 8)}</span>
-              <span>{m.aantalMeldingen} melding{m.aantalMeldingen === 1 ? '' : 'en'}{m.aantalUnderReview ? ` · ${m.aantalUnderReview} under review` : ''}{m.aantalShadow ? ` · ${m.aantalShadow} shadow` : ''}</span>
+              <span>{m.aantalMeldingen} melding{m.aantalMeldingen === 1 ? '' : 'en'}</span>
             </div>
-            <div className="export-info-rij">
+            {(m.aantalUnderReview > 0 || m.aantalShadow > 0) && (
+              <div className="coordinatie-badges-rij">
+                {m.aantalUnderReview > 0 && <span className="badge badge-warning">{m.aantalUnderReview} under review</span>}
+                {m.aantalShadow > 0 && <span className="badge badge-danger">{m.aantalShadow} shadow</span>}
+              </div>
+            )}
+            <div className="export-info-rij coordinatie-trust-rij">
               <span>Trust score</span>
               <input
                 type="number"
@@ -338,46 +391,19 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
             </div>
           </div>
         ))}
-      </div>
+      </Collapsible>
 
-      <Suspense fallback={<div className="card p-4">Kaart laden...</div>}>
-        <BuurtgebiedTekenaar thuislocatie={filterCentrum || thuislocatie} meldingen={entriesGefilterd} user={user} gebruikerRol={gebruikerRol} />
-      </Suspense>
+      <Collapsible icoon="🛠️" titel="Rapportages & tools">
+        <div className="coordinatie-tools-stack">
+          <Suspense fallback={<div className="card p-4">Kaart laden...</div>}>
+            <BuurtgebiedTekenaar thuislocatie={filterCentrum || thuislocatie} meldingen={entriesGefilterd} user={user} gebruikerRol={gebruikerRol} />
+          </Suspense>
 
-      <BuurtrapportGenerator user={user} voorgeselecteerdPostcodegebied={voorgeselecteerdPostcodegebied} />
+          <BuurtrapportGenerator user={user} voorgeselecteerdPostcodegebied={voorgeselecteerdPostcodegebied} />
 
-      <KNMIInstellingen />
-
-      <div className="card p-4">
-        <div className="section-label mb-3" style={{ color: 'var(--danger)' }}>🚩 Onder review / shadow</div>
-        {onderReview.length === 0 && <div className="export-card-beschrijving">Geen meldingen onder review of shadow.</div>}
-        {onderReview.map((e) => (
-          <div key={e.id} className="export-info-rij">
-            <span>{melderCode(e.melder_email) || '—'} · {e.type} · {e.visibility} · {new Date(e.timestamp_local).toLocaleDateString('nl-NL')}</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="btn-outline px-2 py-1"
-                disabled={bezigId === e.id}
-                onClick={() => handleGoedkeuren(e.id)}
-              >
-                ✓ Goedkeuren
-              </button>
-              {e.visibility !== 'shadow' && (
-                <button
-                  type="button"
-                  className="btn-outline px-2 py-1"
-                  style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-                  disabled={bezigId === e.id}
-                  onClick={() => handleVerbergen(e.id)}
-                >
-                  🚫 Verbergen
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+          <KNMIInstellingen />
+        </div>
+      </Collapsible>
     </div>
   );
 }

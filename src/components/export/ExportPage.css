@@ -2,6 +2,16 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 16px;
+}
+
+/* Echte tik-doelmaat — de `px-*`/`py-*`-classNames die elders in de JSX
+   gebruikt worden bestaan nergens als CSS-regel in dit project en hebben
+   dus geen effect; deze klasse levert de daadwerkelijke afmeting. Gedeeld
+   door ExportPage.jsx en InstellingenPage.jsx (importeert dit bestand). */
+.export-knop {
+  min-height: 44px;
+  padding: 10px 16px;
 }
 
 .export-titel {
@@ -24,8 +34,42 @@
   gap: 12px;
 }
 
+.export-card-inhoud {
+  flex: 1;
+  min-width: 0;
+}
+
 .export-card-icoon {
   font-size: 1.5rem;
+}
+
+.export-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.export-stat-tegel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.export-stat-tegel-waarde {
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+.export-stat-tegel-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
 }
 
 .export-card-titel {
@@ -59,3 +103,25 @@
 }
 
 .export-hidden-input { display: none; }
+
+.instellingen-knoppenrij {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trust-gauge-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin: 4px 0 8px;
+}
+
+.trust-gauge-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.25s;
+}

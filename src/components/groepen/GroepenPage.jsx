@@ -9,6 +9,7 @@ import {
 } from '../../lib/groepen/groepen.js';
 import { zoekPostcodePDOK } from '../../lib/pdok/postcode.js';
 import { Toast } from '../ui/Toast.jsx';
+import { Collapsible } from '../ui/Collapsible.jsx';
 import './GroepenPage.css';
 
 const ROL_LABEL = { lid: 'Lid', beheerder: 'Beheerder', hoofdbeheerder: 'Hoofdbeheerder' };
@@ -162,14 +163,14 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
   const teTonenOpenbaar = openbareGroepen.filter((g) => !mijnGroepIds.has(g.id));
 
   return (
-    <div className="p-4 groepen-page">
+    <div className="groepen-page">
       <div className="export-titel">Groepen</div>
       <div className="export-subtitel">Sociale samenwerking binnen SpuitLogger</div>
 
       <div className="card p-4">
         <div className="section-label mb-3">➕ Groep starten</div>
         {!formOpen && (
-          <button type="button" className="btn-primary px-4 py-2" onClick={openFormulier}>Nieuwe groep aanmaken</button>
+          <button type="button" className="btn-primary groepen-knop" onClick={openFormulier}>Nieuwe groep aanmaken</button>
         )}
         {formOpen && (
           <form onSubmit={handleAanmaken} className="groepen-formulier">
@@ -181,7 +182,7 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
 
             <label className="groepen-checkbox-rij">
               <input type="checkbox" checked={openbaar} onChange={(e) => setOpenbaar(e.target.checked)} />
-              <span>Openbaar — vindbaar bij "Openbare groepen browsen"</span>
+              <span>Openbaar, vindbaar bij "Openbare groepen browsen"</span>
             </label>
 
             <label className="section-label" htmlFor="groep-max-beheerders">Maximaal aantal beheerders</label>
@@ -189,9 +190,9 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
 
-            <div className="flex gap-2 mt-2">
-              <button type="submit" className="btn-primary px-4 py-2" disabled={bezig}>{bezig ? 'Aanmaken...' : 'Groep aanmaken'}</button>
-              <button type="button" className="btn-outline px-4 py-2" onClick={() => setFormOpen(false)}>Annuleren</button>
+            <div className="groepen-formulier-acties">
+              <button type="submit" className="btn-primary groepen-knop" disabled={bezig}>{bezig ? 'Aanmaken...' : 'Groep aanmaken'}</button>
+              <button type="button" className="btn-outline groepen-knop" onClick={() => setFormOpen(false)}>Annuleren</button>
             </div>
           </form>
         )}
@@ -209,16 +210,26 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
                 tabIndex={0}
                 onClick={() => onOpenGroep(g.id)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenGroep(g.id); }}
-                style={{ cursor: 'pointer' }}
+                className="groepen-kaart-klikbaar"
               >
                 <div className="groepen-kaart-titel">
                   <span>{g.naam}</span>
                   <span className={`badge ${g.openbaar ? 'badge-accent' : 'badge-muted'}`}>{g.openbaar ? 'Openbaar' : 'Privé'}</span>
                 </div>
-                <div className="export-info-rij"><span>Leden</span><span>{stats.aantalLeden ?? '—'}</span></div>
-                <div className="export-info-rij"><span>Meldingen</span><span>{stats.aantalMeldingen ?? '—'}</span></div>
-                <div className="export-info-rij"><span>Laatste activiteit</span><span>{relatieveTijd(stats.laatsteActiviteit)}</span></div>
-                <div className="export-info-rij"><span>Jouw rol</span><span>{ROL_LABEL[g.eigenRol] || g.eigenRol}</span></div>
+                <div className="groepen-stat-chips">
+                  <div className="groepen-stat-chip">
+                    <span className="groepen-stat-waarde">{stats.aantalLeden ?? '—'}</span>
+                    <span className="groepen-stat-label">leden</span>
+                  </div>
+                  <div className="groepen-stat-chip">
+                    <span className="groepen-stat-waarde">{stats.aantalMeldingen ?? '—'}</span>
+                    <span className="groepen-stat-label">meldingen</span>
+                  </div>
+                </div>
+                <div className="groepen-kaart-footer">
+                  <span className="badge badge-muted">{ROL_LABEL[g.eigenRol] || g.eigenRol}</span>
+                  <span>{relatieveTijd(stats.laatsteActiviteit)}</span>
+                </div>
               </div>
               <label className="groepen-deel-toggle">
                 <input
@@ -233,8 +244,7 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
         })}
       </div>
 
-      <div className="card p-4">
-        <div className="section-label mb-3">🌐 Openbare groepen browsen</div>
+      <Collapsible icoon="🌐" titel="Openbare groepen browsen" badge={teTonenOpenbaar.length || null} defaultOpen={mijnGroepen.length === 0}>
         {teTonenOpenbaar.length === 0 && <div className="export-card-beschrijving">Geen (andere) openbare groepen gevonden.</div>}
         {teTonenOpenbaar.map((g) => {
           const stats = statsPerGroep[g.id] || {};
@@ -242,15 +252,23 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
             <div key={g.id} className="groepen-kaart groepen-kaart-statisch">
               <div className="groepen-kaart-titel"><span>{g.naam}</span></div>
               {g.beschrijving && <div className="export-card-beschrijving">{g.beschrijving}</div>}
-              <div className="export-info-rij"><span>Leden</span><span>{stats.aantalLeden ?? '—'}</span></div>
-              <div className="export-info-rij"><span>Meldingen</span><span>{stats.aantalMeldingen ?? '—'}</span></div>
-              <button type="button" className="btn-outline px-3 py-1 mt-2" disabled={lidWordenBezig === g.id} onClick={() => handleLidWorden(g.id)}>
+              <div className="groepen-stat-chips">
+                <div className="groepen-stat-chip">
+                  <span className="groepen-stat-waarde">{stats.aantalLeden ?? '—'}</span>
+                  <span className="groepen-stat-label">leden</span>
+                </div>
+                <div className="groepen-stat-chip">
+                  <span className="groepen-stat-waarde">{stats.aantalMeldingen ?? '—'}</span>
+                  <span className="groepen-stat-label">meldingen</span>
+                </div>
+              </div>
+              <button type="button" className="btn-outline groepen-knop mt-2" disabled={lidWordenBezig === g.id} onClick={() => handleLidWorden(g.id)}>
                 {lidWordenBezig === g.id ? 'Bezig...' : 'Lid worden'}
               </button>
             </div>
           );
         })}
-      </div>
+      </Collapsible>
 
       <Toast melding={melding} />
     </div>

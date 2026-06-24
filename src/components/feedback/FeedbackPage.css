@@ -2,6 +2,25 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 16px;
+}
+
+/* Echte tik-doelmaat — de `px-*`/`py-*`-classNames die elders in de JSX
+   gebruikt worden bestaan nergens als CSS-regel in dit project en hebben
+   dus geen effect; deze klasse levert de daadwerkelijke afmeting. */
+.feedback-knop {
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+.feedback-terug-knop {
+  align-self: flex-start;
+}
+
+.feedback-keuzerij {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .feedback-item {
@@ -49,9 +68,14 @@
   cursor: pointer;
   color: var(--text-muted);
   opacity: 0.7;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   line-height: 1;
-  padding: 0 2px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .feedback-item-verwijderen:hover { opacity: 1; color: var(--danger); }
 
@@ -60,7 +84,8 @@
   border: 1px solid var(--border);
   color: var(--text-primary);
   border-radius: 6px;
-  padding: 6px 8px;
+  padding: 10px 8px;
+  min-height: 44px;
   font-family: var(--mono);
   font-size: 0.7rem;
 }

@@ -4,7 +4,50 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-06-23.
+Laatst bijgewerkt: 2026-06-24.
+
+## Herontwerp Instellingen/Export/Groepen/Coördinatie (sinds 2026-06-24)
+
+- **Nieuw gedeeld component `src/components/ui/Collapsible.jsx`** —
+  herbruikbare inklapbare sectie (knop-header met icoon/titel/optioneel
+  badge-aantal + chevron, `min-height: 48px`, children alleen gemount als
+  open). Vervangt permanent-uitgeklapte kaartenstapels door progressive
+  disclosure, conform mobile-UI-best-practices (tik-doelen ≥44px,
+  kritieke content boven de vouw, secundaire content ingeklapt).
+- **CoordinatiePage.jsx** ("Moderatie"-tab in BottomNav) — alle 8 secties
+  zitten nu in een `Collapsible`. Alleen "Filter op provincie/gemeente" en
+  "Onder review/shadow" staan standaard open (de eigenlijke
+  moderatiewachtrij); de rest (opt-in-postcodes, trust-score-verdeling,
+  perceel-analyse, windroos, melder-overzicht) is standaard dicht.
+  Trust-score-verdeling/perceel-analyse/windroos tonen nu een CSS-only
+  horizontale stat-balk i.p.v. platte tekstregels. Buurtgebied
+  tekenen/Buurtrapport/KNMI-instellingen zitten samen onder één
+  "Rapportages & tools"-Collapsible — BuurtgebiedTekenaar (OpenLayers,
+  lazy) laadt daardoor pas bij het openen van die sectie, een gratis
+  perf-bonus naast de UI-wijziging.
+- **GroepenPage.jsx** — "Mijn groepen"-kaarten tonen leden/meldingen nu
+  als stat-chips i.p.v. platte regels; "Openbare groepen browsen" zit in
+  een Collapsible (standaard dicht, behalve open als de gebruiker nog 0
+  eigen groepen heeft).
+- **ExportPage.jsx** (ook gebruikt door InstellingenPage) — "Dossier
+  Informatie" toont nu een 2-koloms stat-grid voor de 4 belangrijkste
+  getallen i.p.v. 6 platte mono-regels.
+- **InstellingenPage.jsx** — "Opslag opschonen"/"Gevaarzone"/"Juridisch"
+  zitten nu in een Collapsible (standaard dicht); Account-betrouwbaarheid
+  (TrustIndicator, met nieuwe CSS-gauge-balk bij de trust-score) en
+  Gegevens & Privacy blijven altijd zichtbaar boven aan de pagina.
+- **Bijvinding, niet opgelost**: de `px-4 py-2`/`flex`/`gap-2`/`mb-3`/etc.
+  "utility"-classNames die in vrijwel de hele JSX-codebase gebruikt
+  worden, bestaan nergens als CSS-regel (geen Tailwind/utility-
+  stylesheet aanwezig) — ze zijn dus no-ops, project-breed. Effect: elke
+  pagina rendert zonder padding (de `p-4`-wrapper deed niets) en knoppen
+  zonder gegarandeerd tik-doel. In dit herontwerp opgelost met echte
+  CSS-regels, alleen voor de 4 betrokken pagina's
+  (`.export-page`/`.groepen-page`/`.coordinatie-page` kregen
+  `padding: 16px`, nieuwe `.export-knop`/`.groepen-knop`/
+  `.coordinatie-knop`-klassen kregen `min-height: 44px`). De rest van de
+  app (Dashboard, Melding, Tijdlijn, etc.) heeft dit gat nog steeds —
+  bewust niet meegenomen, aparte, grotere opruimtaak.
 
 ## Technische stack
 

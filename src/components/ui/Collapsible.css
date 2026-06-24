@@ -1,0 +1,60 @@
+.collapsible {
+  padding: 0;
+  overflow: hidden;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  color: #fff;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.collapsible-titel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsible-icoon {
+  font-size: 0.9rem;
+}
+
+.collapsible-rechts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsible-badge {
+  text-transform: none;
+}
+
+.collapsible-chevron {
+  display: inline-block;
+  color: var(--text-muted);
+  transition: transform 0.18s;
+  font-size: 0.85rem;
+}
+
+.collapsible-chevron-open {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.collapsible-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}

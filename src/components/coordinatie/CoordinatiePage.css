@@ -1,3 +1,92 @@
+.coordinatie-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* Echte tik-doelmaat — de `px-*`/`py-*`-classNames die elders in de JSX
+   gebruikt worden bestaan nergens als CSS-regel in dit project en hebben
+   dus geen effect; deze klasse levert de daadwerkelijke afmeting. */
+.coordinatie-knop {
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+.coordinatie-stat-rij {
+  margin-bottom: 10px;
+}
+.coordinatie-stat-rij:last-child { margin-bottom: 0; }
+
+.coordinatie-stat-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.coordinatie-stat-balk-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.coordinatie-stat-balk-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.25s;
+}
+
+.coordinatie-review-rij {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.coordinatie-review-rij:last-child { margin-bottom: 0; }
+
+.coordinatie-review-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.coordinatie-review-meta {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.coordinatie-review-acties {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.coordinatie-badges-rij {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.coordinatie-trust-rij {
+  margin-top: 6px;
+}
+
+.coordinatie-tools-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .coordinatie-melder-rij {
   border-bottom: 1px solid var(--border);
   padding-bottom: 8px;

@@ -37,7 +37,7 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
     try {
       const html = await genereerDossierHTML(meldingen, thuislocatie?.label);
       openDossierPDF(html);
-      toon('✓ Dossier geopend — gebruik "Afdrukken als PDF"', 'success');
+      toon('✓ Dossier geopend, gebruik "Afdrukken als PDF"', 'success');
     } catch (err) {
       toon(err.message, 'error');
     }
@@ -75,7 +75,7 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
   const totaalBijlagen = meldingen.reduce((s, m) => s + (m.bestanden?.length || 0), 0);
 
   return (
-    <div className="p-4 export-page">
+    <div className="export-page">
       <div>
         <div className="export-titel">Export &amp; Backup</div>
         <div className="export-subtitel">Juridisch dossier exporteren</div>
@@ -83,10 +83,10 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
 
       <div className="card p-4 export-card">
         <div className="export-card-icoon">📄</div>
-        <div className="flex-1">
+        <div className="export-card-inhoud">
           <div className="export-card-titel">PDF Dossier</div>
-          <div className="export-card-beschrijving">Juridisch dossier met hash, RFC 3161, weerdata en foto's — printbaar/opslaan als PDF</div>
-          <button type="button" className="btn-outline px-4 py-2 mt-3" onClick={handleExportPDF}>
+          <div className="export-card-beschrijving">Juridisch dossier met hash, RFC 3161, weerdata en foto's, printbaar/opslaan als PDF</div>
+          <button type="button" className="btn-outline export-knop mt-3" onClick={handleExportPDF}>
             📄 Open PDF-dossier
           </button>
         </div>
@@ -94,10 +94,10 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
 
       <div className="card p-4 export-card">
         <div className="export-card-icoon">💾</div>
-        <div className="flex-1">
+        <div className="export-card-inhoud">
           <div className="export-card-titel">JSON Backup</div>
           <div className="export-card-beschrijving">Volledige ruwe data backup incl. weerdata JSON</div>
-          <button type="button" className="btn-outline px-4 py-2 mt-3" onClick={handleExportJSON}>
+          <button type="button" className="btn-outline export-knop mt-3" onClick={handleExportJSON}>
             💾 Exporteer JSON
           </button>
         </div>
@@ -105,10 +105,10 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
 
       <div className="card p-4 export-card">
         <div className="export-card-icoon">📊</div>
-        <div className="flex-1">
+        <div className="export-card-inhoud">
           <div className="export-card-titel">CSV Export</div>
           <div className="export-card-beschrijving">Platte tabel van alle meldingen, te openen in Excel/Sheets</div>
-          <button type="button" className="btn-outline px-4 py-2 mt-3" onClick={handleExportCSV}>
+          <button type="button" className="btn-outline export-knop mt-3" onClick={handleExportCSV}>
             📊 Exporteer CSV
           </button>
         </div>
@@ -116,11 +116,11 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
 
       <div className="card p-4 export-card">
         <div className="export-card-icoon">📥</div>
-        <div className="flex-1">
+        <div className="export-card-inhoud">
           <div className="export-card-titel">JSON Importeren</div>
           <div className="export-card-beschrijving">Herstel eerder gemaakte backup</div>
           <input ref={importInputRef} type="file" accept=".json" className="export-hidden-input" onChange={handleImportJSON} />
-          <button type="button" className="btn-outline px-4 py-2 mt-3" onClick={() => importInputRef.current?.click()}>
+          <button type="button" className="btn-outline export-knop mt-3" onClick={() => importInputRef.current?.click()}>
             📂 Importeer JSON
           </button>
         </div>
@@ -128,12 +128,26 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
 
       <div className="card p-4">
         <div className="section-label mb-3">Dossier Informatie</div>
-        <div className="export-info-rij"><span>Totaal meldingen:</span><span className="export-info-waarde-accent">{meldingen.length}</span></div>
-        <div className="export-info-rij"><span>Eerste melding:</span><span>{dates.length ? dates[0].toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : '—'}</span></div>
-        <div className="export-info-rij"><span>Laatste melding:</span><span>{dates.length ? dates[dates.length - 1].toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : '—'}</span></div>
-        <div className="export-info-rij"><span>Opslag (LS):</span><span>{getStorageSize()}</span></div>
-        <div className="export-info-rij"><span>Bijlagen (totaal):</span><span className="export-info-waarde-info">{totaalBijlagen}</span></div>
-        <div className="export-info-rij"><span>Bijlagen in IndexedDB:</span><span className="export-info-waarde-accent">{idbCount ?? '—'}</span></div>
+        <div className="export-stat-grid">
+          <div className="export-stat-tegel">
+            <div className="export-stat-tegel-waarde export-info-waarde-accent">{meldingen.length}</div>
+            <div className="export-stat-tegel-label">Totaal meldingen</div>
+          </div>
+          <div className="export-stat-tegel">
+            <div className="export-stat-tegel-waarde export-info-waarde-accent">{idbCount ?? '—'}</div>
+            <div className="export-stat-tegel-label">Bijlagen in IndexedDB</div>
+          </div>
+          <div className="export-stat-tegel">
+            <div className="export-stat-tegel-waarde export-info-waarde-info">{totaalBijlagen}</div>
+            <div className="export-stat-tegel-label">Bijlagen totaal</div>
+          </div>
+          <div className="export-stat-tegel">
+            <div className="export-stat-tegel-waarde">{getStorageSize()}</div>
+            <div className="export-stat-tegel-label">Opslag (LS)</div>
+          </div>
+        </div>
+        <div className="export-info-rij mt-2"><span>Eerste melding</span><span>{dates.length ? dates[0].toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : '—'}</span></div>
+        <div className="export-info-rij"><span>Laatste melding</span><span>{dates.length ? dates[dates.length - 1].toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : '—'}</span></div>
       </div>
 
       <Toast melding={melding} />
