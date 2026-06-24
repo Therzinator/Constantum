@@ -229,7 +229,7 @@ export function GroepPage({ groepId, user, onTerug }) {
       {magBeheren && (
         <div className="card p-4">
           <div className="section-label mb-3">🛠️ Trust score van leden aanpassen</div>
-          <div className="export-card-beschrijving mb-2">Beperkt tot leden van deze groep — geen globale admin-actie.</div>
+          <div className="export-card-beschrijving mb-2">Beperkt tot leden van deze groep, geen globale admin-actie.</div>
           {leden.filter((l) => l.user_id !== user.id).map((l) => (
             <div key={l.user_id} className="export-info-rij">
               <span>{l.user_id.slice(0, 8)}</span>
@@ -256,7 +256,7 @@ export function GroepPage({ groepId, user, onTerug }) {
         <div className="export-card-beschrijving mb-2">
           Staat dit aan, dan worden nieuwe meldingen waarbij je zelf
           "Deel deze melding met je groepen" aanvinkt automatisch ook met
-          deze groep gedeeld. Standaard uit — verandert niets aan al
+          deze groep gedeeld. Standaard uit, dit verandert niets aan al
           eerder gedeelde meldingen.
         </div>
         <label className="groepen-deel-toggle">

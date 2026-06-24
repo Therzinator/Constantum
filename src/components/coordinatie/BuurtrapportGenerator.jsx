@@ -113,7 +113,7 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdPostcodegebied }) 
     <div className="card p-4">
       <div className="section-label mb-3">📋 Buurtrapport genereren</div>
       <div className="export-card-beschrijving mb-3">
-        Geanonimiseerd collectief rapport over een postcodegebied — alleen
+        Geanonimiseerd collectief rapport over een postcodegebied. Alleen
         meldingen met opt_in_buurt=true tellen mee.
       </div>
 
@@ -149,7 +149,7 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdPostcodegebied }) 
           <div className="section-label mb-2">Eerder gegenereerd</div>
           {dossiers.map((d) => (
             <div key={d.id} className="export-info-rij">
-              <span>{d.postcodegebied} — {d.aantal_meldingen} meldingen ({new Date(d.created_at).toLocaleDateString('nl-NL')})</span>
+              <span>{d.postcodegebied} · {d.aantal_meldingen} meldingen ({new Date(d.created_at).toLocaleDateString('nl-NL')})</span>
               <button type="button" className="btn-outline px-2 py-1" onClick={() => openBuurtrapportPDF(genereerBuurtrapportHTML(d.rapport_json))}>
                 📄 Openen
               </button>

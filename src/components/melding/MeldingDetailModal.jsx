@@ -172,7 +172,7 @@ export function MeldingDetailModal({ melding, alleMeldingen, onClose }) {
                 const toeRichting = w.windToeRichting ?? (w.windDeg + 180) % 360;
                 return (
                   <div style={{ color: 'var(--danger)', fontWeight: 700 }}>
-                    💨 Wind waait richting de woning — wind komt uit {degToCompass(w.windDeg)} ({w.windDeg}°,
+                    💨 Wind waait richting de woning. Wind komt uit {degToCompass(w.windDeg)} ({w.windDeg}°,
                     dus naartoe {degToCompass(toeRichting)}/{toeRichting}°),
                     woning ligt vanaf het meldpunt op {degToCompass(w.hoekNaarWoning)}/{w.hoekNaarWoning}°
                   </div>
@@ -301,7 +301,7 @@ export function MeldingDetailModal({ melding, alleMeldingen, onClose }) {
               )}
             </div>
           ) : (
-            <div className="detail-rfc3161-geen">⚠️ Geen RFC 3161 tijdstempel — mogelijk offline bij aanmaken</div>
+            <div className="detail-rfc3161-geen">⚠️ Geen RFC 3161 tijdstempel, mogelijk offline bij aanmaken</div>
           )}
           <div className="section-label mt-3 mb-1">Apparaat</div>
           <div className="detail-mono-block" style={{ wordBreak: 'break-all' }}>{melding.device?.substring(0, 120)}...</div>

@@ -45,7 +45,7 @@ export function PrullenbakCard({ gebruikerRol, user, laadVanCloud }) {
       <div className="flex items-start gap-3">
         <div style={{ fontSize: '1.5rem' }}>👑</div>
         <div className="flex-1">
-          <div className="prullenbak-titel">Beheer — Admin</div>
+          <div className="prullenbak-titel">Beheer · Admin</div>
           <div className="prullenbak-label" style={{ marginTop: 12 }}>BACKUP TERUGZETTEN</div>
           <div className="export-card-beschrijving mb-2">Herstel verwijderde meldingen uit de cloud (max 14 dagen terug).</div>
 

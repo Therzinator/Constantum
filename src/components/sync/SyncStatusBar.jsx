@@ -5,7 +5,7 @@ const TEKST = {
   bezig: 'Synchroniseren...',
   ok: '✓ Synchronisatie voltooid',
   fout: '✗ Synchronisatie deels mislukt',
-  offline: 'Offline — synchronisatie wacht'
+  offline: 'Offline, synchronisatie wacht'
 };
 
 // React-versie van #sync-status-bar + toonSyncBalk/sluitSyncBalk/verbergSyncBalk

@@ -65,7 +65,7 @@ export function GegevensPrivacyInstelling({ user, meldingenApi, thuislocatie, on
           Bijdragen aan wetenschappelijk onderzoek
           <div className="export-card-beschrijving mt-1">
             Uw anonieme meldingsdata helpt wetenschappers bewijzen wat u zelf
-            ervaart. Uw identiteit blijft volledig beschermd — u kunt zich
+            ervaart. Uw identiteit blijft volledig beschermd, u kunt zich
             altijd uitschrijven.
           </div>
           <button

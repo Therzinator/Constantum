@@ -17,7 +17,7 @@ export function DeelVoorkeurInstelling() {
     <div className="card p-4">
       <div className="section-label mb-3">🤝 Meldingen delen met de buurt</div>
       <div className="export-card-beschrijving mb-3">
-        Standaardwaarde voor nieuwe meldingen — andere gebruikers binnen
+        Standaardwaarde voor nieuwe meldingen. Andere gebruikers binnen
         bereik van hun thuislocatie zien de melding dan ook. Per melding
         blijft dit aanpasbaar in het formulier.
       </div>

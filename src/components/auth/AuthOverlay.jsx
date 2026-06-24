@@ -55,12 +55,12 @@ export function AuthOverlay({ auth, uitnodiging }) {
     <div className="auth-overlay">
       <div className="auth-card">
         <div className="auth-title">SpuitLogger</div>
-        <div className="auth-sub">SPUITACTIVITEITEN DOSSIER — INLOGGEN</div>
+        <div className="auth-sub">SPUITACTIVITEITEN DOSSIER · INLOGGEN</div>
 
         {uitnodiging && (
           <div className="auth-info">
             👋 Je bent uitgenodigd voor een groep op SpuitLogger. Maak een
-            account om mee te doen — je wordt na registreren automatisch lid.
+            account om mee te doen, je wordt na registreren automatisch lid.
           </div>
         )}
 
@@ -136,7 +136,7 @@ export function AuthOverlay({ auth, uitnodiging }) {
         </form>
 
         <button type="button" className="auth-skip" onClick={skip}>
-          Overslaan — alleen lokaal werken (geen sync)
+          Overslaan, alleen lokaal werken (geen sync)
         </button>
       </div>
 
