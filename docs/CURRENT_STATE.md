@@ -36,18 +36,11 @@ Laatst bijgewerkt: 2026-06-29.
   zitten nu in een Collapsible (standaard dicht); Account-betrouwbaarheid
   (TrustIndicator, met nieuwe CSS-gauge-balk bij de trust-score) en
   Gegevens & Privacy blijven altijd zichtbaar boven aan de pagina.
-- **Bijvinding, niet opgelost**: de `px-4 py-2`/`flex`/`gap-2`/`mb-3`/etc.
-  "utility"-classNames die in vrijwel de hele JSX-codebase gebruikt
-  worden, bestaan nergens als CSS-regel (geen Tailwind/utility-
-  stylesheet aanwezig) — ze zijn dus no-ops, project-breed. Effect: elke
-  pagina rendert zonder padding (de `p-4`-wrapper deed niets) en knoppen
-  zonder gegarandeerd tik-doel. In dit herontwerp opgelost met echte
-  CSS-regels, alleen voor de 4 betrokken pagina's
-  (`.export-page`/`.groepen-page`/`.coordinatie-page` kregen
-  `padding: 16px`, nieuwe `.export-knop`/`.groepen-knop`/
-  `.coordinatie-knop`-klassen kregen `min-height: 44px`). De rest van de
-  app (Dashboard, Melding, Tijdlijn, etc.) heeft dit gat nog steeds —
-  bewust niet meegenomen, aparte, grotere opruimtaak.
+- **CSS utility-klassen project-breed opgelost (2026-06-29)**: de
+  `p-1..p-4`/`px-3/4`/`py-1/2`/`mb-1..mb-3`/`mt-1..mt-3`/`gap-2`/`flex`
+  classNames waren no-ops (geen Tailwind aanwezig). Nu als echte CSS-regels
+  in `src/styles/theme.css` (globaal). `.btn-primary` en `.btn-outline`
+  krijgen `min-height: 44px; min-width: 44px` (Apple HIG touch-target).
 
 ## Technische stack
 
@@ -109,14 +102,15 @@ Laatst bijgewerkt: 2026-06-29.
 - **Nieuwe kolommen `entries.gemeente`/`entries.provincie`** (migratie
   0013, **uitgevoerd** — bevestigd door de gebruiker op 2026-06-22).
   Historische meldingen moeten nog via de backfill-knop op
-  CoordinatiePage aangevuld worden, zie NEXT_STEPS.md. Gevuld via een
-  nieuwe, additieve PDOK-functie
-  `zoekGemeenteProvinciePDOK()` (`lib/pdok/postcode.js`) — bewust naast
-  de bestaande `zoekPostcodePDOK()` gehouden i.p.v. samengevoegd, zie
-  CLAUDE.md ("PDOK-koppelingen niet refactoren zonder toestemming").
-  Wordt net als postcode ingevuld bij het plaatsen van de meldingspin
-  (`useNieuweMeldingForm.js`) en heeft een eigen admin-backfill-knop op
-  CoordinatiePage voor historische meldingen.
+  CoordinatiePage aangevuld worden, zie NEXT_STEPS.md. Gevuld via
+  `zoekGemeenteProvinciePDOK()` (`lib/pdok/postcode.js`) bij het
+  plaatsen van de meldingspin (`useNieuweMeldingForm.js`, fire-and-forget
+  — geen blokkade voor de gebruiker; bij mislukken gaat gemeente=null de
+  database in). **Fix 2026-06-29**: `type=adres` verwijderd uit de
+  PDOK-Locatieserver-URL — dit veroorzaakte lege results bij agrarische
+  percelen (geen adres in de buurt). Vervangen door
+  `fl=gemeentenaam,provincienaam,woonplaatsnaam`, 5s
+  `AbortController`-timeout en 1 automatische retry.
 - **Filter op CoordinatiePage** (`provincies()`/`gemeentenInProvincie()`/
   `filterOpRegio()` in `lib/meldingen/coordinatieStatistieken.js`) — een
   provincie+gemeente-dropdown filtert Perceel-analyse, Windroos,
@@ -405,10 +399,14 @@ kiest per groep, trust-score hergebruik).
   ~136KB, `DashboardKaart-*.js` ~113KB, etc.) i.p.v. in de hoofdbundel.
   `MeldingenLijst.jsx` is dead code (nergens geïmporteerd) — niet
   meegenomen in de lazy-load-ronde, niet verwijderd (buiten scope).
-- **Realtime-subscriptie weer ongefilterd** (`useSupabaseSync.js`): een
-  poging om dit te filteren (user_id/opt_in_buurt) veroorzaakte bij de
-  eerste echte login een oneindige reconnect-lus en bevroor de app —
-  **teruggedraaid op 2026-06-21**, zie NEXT_STEPS.md.
+- **Realtime-subscriptie nu gefilterd met backoff** (`useSupabaseSync.js`,
+  2026-06-29): twee aparte `postgres_changes`-channels met server-side
+  filters (`user_id=eq.{uid}` voor eigen meldingen; `opt_in_buurt=eq.true`
+  voor buurtmeldingen). Root-oorzaak van de eerdere reconnect-lus
+  (2026-06-21) was instabiele `laadVanCloud`-dep in `startRealtime` —
+  opgelost via `laadVanCloudRef` (ref die elke render bijgewerkt wordt,
+  zodat `startRealtime` stabiel is op `[user]` en het useEffect niet meer
+  per render trigt). Exponential backoff 2s → 4s → 8s, max 3 retries.
 - **Reconnect-sync**: `window.addEventListener('online', syncNu)`
   toegevoegd — de offline-queue wordt nu automatisch verwerkt zodra de
   verbinding teruggekomt, niet pas bij de volgende handmatige actie.
@@ -421,11 +419,11 @@ kiest per groep, trust-score hergebruik).
 
 ## Database-migraties
 
-Alle migraties **0001 t/m 0024 zijn uitgevoerd** (0021: entries_groepen
-delete-policies; 0022: trust-score 4-tier systeem compleet;
-0023: actie-bonussen + trust_score_events; 0024: legacy-triggers
-verwijderd). Migratie 0014 is nooit volledig uitgevoerd — 0022 vervangt
-en voltooit het. Nieuwe migraties na 0024 toevoegen op nummer 0025.
+Alle migraties **0001 t/m 0026 zijn uitgevoerd** (0025:
+spuitregister-brief, client-only placeholder; 0026: CHECK-constraint op
+`user_roles.role` — beperkt tot `'gebruiker'`, `'admin'`, `'coordinator'`,
+gesynchroniseerd met `src/lib/rollen.js`). Nieuwe migraties na 0026
+toevoegen op nummer 0027.
 
 ## Dossier/bewijskracht (sinds 2026-06-21)
 
@@ -448,7 +446,35 @@ en voltooit het. Nieuwe migraties na 0024 toevoegen op nummer 0025.
   (`hashFile()` in `useNieuweMeldingForm.js`) en is dus, zoals al
   toegelicht in het dossier, een hash van het origineel — niet van de
   opgeslagen kopie. Geldt alleen voor foto's; video's lopen niet door
-  `stripEXIFGPS()` en blijven onverkleind, zie NEXT_STEPS.md.
+  `stripEXIFGPS()` en bleven onverkleind — zie hieronder.
+- **Video-compressie vóór cloud-opslag (2026-06-29)**: `comprimeerVideo()`
+  in `lib/bewijsmateriaal/exif.js` — hert-encodeert video's ≥5 MB via
+  `MediaRecorder` (canvas captureStream 30fps + audio via
+  `video.captureStream()`), max 1280×720, 1,5 Mbps. Hash berekend vóór
+  compressie — bewijswaarde intact. Geeft origineel terug als MediaRecorder
+  niet beschikbaar is, geen supported codec, of compressie geen winst
+  oplevert. Aanroep in `useNieuweMeldingForm.js` na `hashFile()` met een
+  ⏳-toast bij grote video's.
+
+## Spuitregister opvraagbrief (2026-06-29)
+
+- **Nieuwe feature op ExportPage** (`src/components/export/SpuitregisterBrief.jsx`,
+  `src/lib/export/spuitregisterBrief.js`) — genereert een vooringevulde
+  formele brief voor inzageverzoeken op grond van art. 67 VO 1107/2009,
+  gebaseerd op uitspraken Rb. Noord-Nederland 12 januari 2026 (zaaknummers
+  LEE 23/5100 en LEE 23/1511, ECLI:NL:RBNNE:2026:130 en
+  ECLI:NL:RBNNE:2026:129). Selecteer een melding met perceelnummer als
+  basis; vul naam en adres in; preview in readonly-textarea; download als
+  HTML-blob die in de browser als PDF afgedrukt kan worden.
+- **RFC 3161 null-safe**: meldingen zonder tijdstempel (offline aangemaakt,
+  of vóór RFC 3161-implementatie) genereren een geldige brief met een
+  waarschuwingsblok in de UI en de opgeslagen datum in de voetnoot i.p.v.
+  een tijdstempel.
+- **Hoger beroep voetnoot**: het ministerie van LVVN heeft hoger beroep
+  ingesteld bij de Raad van State; de brief vermeldt dit expliciet
+  (schorsende werking, aanhouding van verzoeken, metenweten.nl).
+- **Geen DB-wijzigingen** — volledig client-side; migratie 0025 is een
+  no-op placeholder.
 
 ## Bekende beperkingen / inconsistenties
 
@@ -457,9 +483,6 @@ en voltooit het. Nieuwe migraties na 0024 toevoegen op nummer 0025.
   Prullenbak-herstel (InstellingenPage/PrullenbakCard, blijft
   `isAdmin()`-only). Dit is per ontwerp, niet per ongeluk — zie
   DECISIONS.md voor de afgebakende scope.
-- **Geen db-enum/CHECK-constraint op `user_roles.role`**: een typo in de
-  database (bv. `'Admin'` met hoofdletter) faalt stil terug naar
-  `'gebruiker'`-gedrag, zonder foutmelding.
 - **`docs/` is geen documentatiemap**: het is de legacy single-file
   HTML-prototype (`docs/index.html`, 7500+ regels) waarnaar veel
   code-comments verwijzen ("Komt overeen met ... uit docs/index.html").
