@@ -4,7 +4,7 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-06-24.
+Laatst bijgewerkt: 2026-06-29.
 
 ## Herontwerp Instellingen/Export/Groepen/Coördinatie (sinds 2026-06-24)
 
@@ -62,8 +62,9 @@ Laatst bijgewerkt: 2026-06-24.
   BAG/woninglocaties), Open-Meteo (live weer), KNMI Open Data EDR
   (gecertificeerd weer), BRP (volgens root-CLAUDE.md aanwezig, niet
   vandaag bekeken).
-- **Testen**: ESLint, Playwright (`npm run test:e2e`), `npm run build` als
-  rooktest (geen unit-testrunner geconfigureerd in `package.json`).
+- **Testen**: ESLint, Playwright (`npm run test:e2e`), Vitest (`npm test`,
+  60 unit-tests voor pure functies in `src/lib/meldingen/`), `npm run build`
+  als rooktest. Vitest-config in `vitest.config.js`, alleen `src/**/*.test.js`.
 
 ## Buurtgebied tekenen → export + Dossier-PDF (sinds 2026-06-22)
 
@@ -132,42 +133,53 @@ Laatst bijgewerkt: 2026-06-24.
   vallen buiten elk filter (blijven wel zichtbaar als er niet gefilterd
   wordt).
 
-## Trust-score automatische op-/afschaling (sinds 2026-06-22, migratie 0014 — NOG NIET UITGEVOERD)
+## Trust-score systeem — volledig operationeel (migraties 0022/0023/0024, 2026-06-29)
 
-Ontwerp op 2026-06-22 met concrete getallen bevestigd door de gebruiker en
-uitgewerkt in `supabase/migrations/0014_trust_score_op_afschaling.sql`.
-**Nog niet uitgevoerd** door de gebruiker in de Supabase SQL-editor (zelfde
-"handmatig uitvoeren"-patroon als alle migraties, zie root-CLAUDE.md) — tot
-die uitvoering blijft `fn_entries_set_visibility()` op het oude <40-shadow-
-gedrag staan zoals migratie 0005 het achterliet.
+Migratie 0014 is nooit volledig uitgevoerd; migratie 0022 vervangt en
+voltooit het geheel. Het systeem draait nu met 4 lagen actief.
 
-- **Categorieën** (`fn_entries_set_visibility()`, leest trust_score van
-  vóór de insert): 80-100 "Vertrouwd" (geen nieuw-account-checks, altijd
-  `normal`) · 40-79 "Standaard" (ongewijzigd bestaand gedrag: account <48u
-  of <7 dagen + ≥5 meldingen/dag → `under_review`) · 20-39 "Verhoogd
-  toezicht" (nieuw — élke nieuwe melding → `under_review`, los van
-  account-leeftijd) · 0-19 "Geschaduwd" (drempel verlaagd van <40 naar
-  <20 — bevestigd: bestaande gebruikers in de 20-39-band gaan hierdoor
-  meteen van shadow naar under_review zodra de migratie draait).
-- **Score-effect op handmatige moderatie** (nieuwe AFTER UPDATE-trigger
-  `fn_entries_visibility_score_effect()` op `entries.visibility` — een
-  UPDATE is per definitie een mens-beoordeling, de BEFORE INSERT-trigger
-  raakt nooit een UPDATE): "✓ Goedkeuren" geeft nu **+5**, een nieuwe
-  "🚫 Verbergen"-knop (CoordinatiePage.jsx, zet visibility op `shadow`)
-  geeft **-30** — zwaarder dan de automatische -20/-15 (migratie 0005),
-  omdat een mens het beoordeeld heeft. Beide eenmalig per overgang
-  (OLD/NEW visibility moet verschillen), niet bij herhaalde acties.
-- **Verbergen-knop is nieuw in de UI** — er bestond nog geen knop om een
-  melding handmatig naar `shadow` te zetten (alleen Goedkeuren →
-  `normal`); zonder die knop was de -30-straf onbereikbaar.
-- **Kwartaalbonus (+5)** voor accounts >90 dagen oud zonder enige
-  under_review/shadow-melding in die periode — losse SQL-functie
-  `fn_trust_score_kwartaalbonus()`, geen realtime trigger (geen
-  insert-moment om op te hangen). Moet zelf periodiek aangeroepen worden:
-  via `pg_cron` (als die extensie aanstaat in het Supabase-project) of
-  handmatig elk kwartaal in de SQL-editor — zie het commentaarblok in de
-  migratie voor de exacte `cron.schedule(...)`-aanroep. Niet door een
-  agent te plannen (operationele Supabase-dashboard-actie).
+### 4-tier zichtbaarheidslogica (`fn_entries_set_visibility`, BEFORE INSERT)
+- **0-19 "Geschaduwd"**: altijd `shadow`
+- **20-39 "Verhoogd toezicht"**: altijd `under_review`
+- **40-79 "Standaard"**: `under_review` bij account <48u of <7 dagen +
+  ≥5 meldingen/dag; anders `normal`
+- **80-100 "Vertrouwd"**: altijd `normal`, geen account-leeftijdschecks
+
+### Score-effect handmatige moderatie (`fn_entries_visibility_score_effect`, AFTER UPDATE)
+- Coordinator zet melding naar `shadow` → **-30** (eenmalig per overgang)
+- Coordinator keurt melding goed (`normal`) → **+5**
+
+### Actie-gebaseerde bonussen (`fn_trust_score_actie_bonus`, migratie 0023)
+Beloont kwaliteitsgedrag van gevestigde gebruikers. 5 guards:
+1. Account ≥30 dagen oud
+2. Minimaal 5 normale meldingen als schone basis
+3. Deduplicatie (per entry of per user)
+4. Dagelijkse cap +5 (alleen per-entry bonussen)
+5. Perceel-spam: ≥5 meldingen op zelfde perceel in 24u → geen bonus
+
+| Actie | Delta | Type |
+|-------|-------|------|
+| `melding_volledig` (perceelnummer + beschrijving) | +2 | per entry |
+| `opt_in_buurt` | +3 | per entry |
+| `drempel_5_meldingen` | +3 | eenmalig |
+| `drempel_10_meldingen` | +5 | eenmalig |
+| `drempel_25/50_meldingen` | +5 elk | eenmalig |
+| `telefoon_geverifieerd` | +8 | eenmalig |
+
+Bonus-log in `trust_score_events`-tabel (RLS: user leest eigen log).
+
+### Kwartaalbonus (`fn_trust_score_kwartaalbonus`)
++5 voor accounts >90 dagen zonder recente incidenten. Gepland via
+**pg_cron** (actief, job `trust_score_kwartaalbonus`, `0 3 1 */3 *`).
+
+### Automatische misbruikdetectie (`fn_entries_misbruikdetectie`, AFTER INSERT)
+- ≥11 meldingen op zelfde perceel in 24u → -20
+- ≥2 identieke beschrijvingen → -15
+
+### Legacy triggers verwijderd (migratie 0024)
+`trg_nieuwe_melding_review` (overschreef 4-tier voor scores 20-39 en 80+)
+en `trg_trust_score_check` (dubbele -40-straf op 11e GPS-melding) zijn
+verwijderd. Alleen de 7 correcte triggers staan nog op `entries`.
 
 ## Groepenfunctie — vervangt "Uitnodigen" (sinds 2026-06-23, migraties 0015/0016/0018 uitgevoerd)
 
@@ -409,14 +421,11 @@ kiest per groep, trust-score hergebruik).
 
 ## Database-migraties
 
-Alle migraties **0001 t/m 0013 en 0015 t/m 0020 zijn uitgevoerd**
-(0015-0018 bevestigd via Supabase op 2026-06-23, 0019/0020 bevestigd op
-2026-06-24) — inclusief de 5km-privacygrens (0009), de coordinator-RLS
-(0011), Groepen (0015/0016), de RLS-recursiefix op `groep_leden` (0018),
-feedback-verwijderen door admin (0019) en groepsuitnodiging-verwijderen
-door beheerder/admin (0020). **Migratie 0014 (trust-score op-/afschaling)
-is nog niet uitgevoerd** — zie NEXT_STEPS.md. Nieuwe migraties na 0020
-toevoegen op nummer 0021.
+Alle migraties **0001 t/m 0024 zijn uitgevoerd** (0021: entries_groepen
+delete-policies; 0022: trust-score 4-tier systeem compleet;
+0023: actie-bonussen + trust_score_events; 0024: legacy-triggers
+verwijderd). Migratie 0014 is nooit volledig uitgevoerd — 0022 vervangt
+en voltooit het. Nieuwe migraties na 0024 toevoegen op nummer 0025.
 
 ## Dossier/bewijskracht (sinds 2026-06-21)
 

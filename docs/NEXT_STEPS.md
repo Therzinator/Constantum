@@ -6,18 +6,18 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
-- **Migratie 0014 (trust-score op-/afschaling) nog steeds niet
-  uitgevoerd** (bevestigd via Supabase op 2026-06-23 — `fn_entries_set_
-  visibility()` is nog de oude <40-shadow-versie, geen kwartaalbonus-
-  functie). De trust-tier-gestuurde detailweergave binnen Groepen werkt
-  hierdoor al, maar de automatische op-/afschaling van trust_score bij
-  nieuwe meldingen gebruikt nog het oude gedrag.
 - **`user_roles.role` heeft een CHECK-constraint die alleen
   `'admin'`/`'gebruiker'` toestaat** (bevestigd via Supabase op
   2026-06-23) — `'coordinator'` kan dus nooit aan een account toegekend
   worden, ondanks dat de hele coordinator-rol-infrastructuur (RLS,
-  UI-gating) al klaarstaat. Nieuwe migratie nodig om de constraint uit te
-  breiden vóór een coordinator-account getest kan worden.
+  UI-gating) al klaarstaat. Nieuwe migratie (0025) nodig om de constraint
+  uit te breiden vóór een coordinator-account getest kan worden.
+- **Een gebruiker een `coordinator`-rol toekennen om te testen.** Reden:
+  migraties 0008-0011 zijn op 2026-06-21 uitgevoerd (bevestigd, geen
+  foutmeldingen), maar er is nog geen account met de rol `coordinator`;
+  `user_roles.role = 'coordinator'` moet handmatig gezet worden (geen UI
+  hiervoor) om de CoördinatiePage-toegang/Heatmap-toggle te verifiëren.
+  Afhankelijk van bovenstaande CHECK-constraint-fix.
 - **Icon_*.png-bestanden (`src/assets/ui-icons/`) waren oorspronkelijk
   RGB zonder alphakanaal — gerepareerd door alpha af te leiden uit
   pixelhelderheid (achtergrond zwart -> transparant), zodat de bestaande
@@ -29,34 +29,17 @@ de code, niet tegen het geheugen van een eerdere sessie.
   andermans foto's mag lezen (attachments-tabel + storage-bucket
   `spuitlog-bijlagen`-RLS).** Nodig voor zowel de "Exporteer meldingen +
   Dossier-PDF" op Buurtgebied tekenen (CoordinatiePage, bundelt foto's van
-  ALLE melders binnen het getekende gebied) als — sinds 2026-06-24 — de
-  nieuwe melding-detailweergave binnen Groepen
-  (`GroepMeldingDetailModal.jsx`, toont foto's alleen aan leden met
-  "hoog" trust-tier, zie CURRENT_STATE.md). Niet vanuit de code te
-  verifiëren: geen migratie regelt RLS op `attachments`/storage. Werkt
-  ook zonder (faalt stilletjes terug naar "geen foto's" per melding), maar
-  check of dat het gewenste gedrag is — een hoge-trust-groepslid dat
-  expliciet foto's zou mogen zien, krijgt anders zonder foutmelding niets.
+  ALLE melders binnen het getekende gebied) als de melding-detailweergave
+  binnen Groepen (`GroepMeldingDetailModal.jsx`, toont foto's alleen aan
+  leden met "hoog" trust-tier). Niet vanuit de code te verifiëren: geen
+  migratie regelt RLS op `attachments`/storage. Werkt ook zonder (faalt
+  stilletjes terug naar "geen foto's" per melding), maar check of dat het
+  gewenste gedrag is.
 - **Provincie/gemeente backfillen-knop draaien op CoordinatiePage.**
   Migratie 0013 (`gemeente`/`provincie`-kolommen op `entries`) is
-  **uitgevoerd** (bevestigd door de gebruiker op 2026-06-22) — nieuwe
-  meldingen krijgen deze velden nu automatisch. Historische meldingen
-  missen ze nog; eenmalig aanvullen via de backfill-knop in de
-  "Filter op provincie/gemeente"-kaart.
-- **Migratie 0014 (trust-score automatische op-/afschaling) uitvoeren in
-  de Supabase SQL-editor.** Ontwerp + concrete getallen zijn op
-  2026-06-22 bevestigd en uitgewerkt
-  (`supabase/migrations/0014_trust_score_op_afschaling.sql`, zie
-  CURRENT_STATE.md). Tot uitvoering blijft het oude <40-shadow-gedrag uit
-  migratie 0005 actief. Na uitvoering: overwegen of de kwartaalbonus-
-  functie via `pg_cron` gepland wordt of handmatig per kwartaal gedraaid
-  (zie commentaarblok in de migratie).
-
-- **Een gebruiker een `coordinator`-rol toekennen om te testen.** Reden:
-  migraties 0008-0011 zijn op 2026-06-21 uitgevoerd (bevestigd, geen
-  foutmeldingen), maar er is nog geen account met de rol `coordinator`;
-  `user_roles.role = 'coordinator'` moet handmatig gezet worden (geen UI
-  hiervoor) om de CoördinatiePage-toegang/Heatmap-toggle te verifiëren.
+  uitgevoerd — nieuwe meldingen krijgen deze velden automatisch.
+  Historische meldingen missen ze nog; eenmalig aanvullen via de
+  backfill-knop in de "Filter op provincie/gemeente"-kaart.
 
 ## Middel
 
