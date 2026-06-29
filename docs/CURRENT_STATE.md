@@ -397,8 +397,8 @@ kiest per groep, trust-score hergebruik).
   Hoofdbundel: 1.377 MB → ~751 KB (gzip 414 KB → 228 KB). OpenLayers zit nu
   in losse, on-demand chunks (`lagen-*.js` ~318KB, `perceelLaag-*.js`
   ~136KB, `DashboardKaart-*.js` ~113KB, etc.) i.p.v. in de hoofdbundel.
-  `MeldingenLijst.jsx` is dead code (nergens geïmporteerd) — niet
-  meegenomen in de lazy-load-ronde, niet verwijderd (buiten scope).
+  `MeldingenLijst.jsx` is niet meer aanwezig (was dead code, inmiddels
+  verwijderd).
 - **Realtime-subscriptie nu gefilterd met backoff** (`useSupabaseSync.js`,
   2026-06-29): twee aparte `postgres_changes`-channels met server-side
   filters (`user_id=eq.{uid}` voor eigen meldingen; `opt_in_buurt=eq.true`
@@ -419,7 +419,8 @@ kiest per groep, trust-score hergebruik).
 
 ## Database-migraties
 
-Alle migraties **0001 t/m 0029 zijn uitgevoerd**:
+Migraties **0001 t/m 0029 zijn uitgevoerd**; 0030 staat klaar maar
+nog niet uitgevoerd in Supabase (zie NEXT_STEPS.md):
 - 0025: spuitregister-brief, client-only placeholder
 - 0026: CHECK-constraint op `user_roles.role` (toegestane waarden)
 - 0027: `fn_trust_score_actie_bonus` en `trust_score_events.entry_id`
@@ -432,8 +433,11 @@ Alle migraties **0001 t/m 0029 zijn uitgevoerd**:
   de directe `entries_groepen`-join in de `entries_select_groepslid` RLS-
   policy — voorkomt "infinite recursion in policy for entries_groepen" bij
   DELETE door een groepbeheerder (zelfde patroon als `fn_is_groepslid`)
+- 0030 (nog uit te voeren): RLS op `attachments`-tabel +
+  Storage-bucket-policies `spuitlog-bijlagen` voor
+  admin/coordinator/groepslid-hoog bijlagen-toegang
 
-Nieuwe migraties na 0029 toevoegen op nummer 0030.
+Nieuwe migraties na 0030 toevoegen op nummer 0031.
 
 ## Dossier/bewijskracht (sinds 2026-06-21)
 
@@ -485,6 +489,26 @@ Nieuwe migraties na 0029 toevoegen op nummer 0030.
   (schorsende werking, aanhouding van verzoeken, metenweten.nl).
 - **Geen DB-wijzigingen** — volledig client-side; migratie 0025 is een
   no-op placeholder.
+
+## CoordinatiePage — gemeente-backfill en buurtrapport (2026-06-29)
+
+- **Rate limiting backfill** (`CoordinatiePage.jsx`): de gemeente-backfill-
+  loop wachtte niet tussen PDOK-aanroepen — bij grote backlogs (100+
+  meldingen) liep dit tegen 429-throttling aan. Nu 200ms delay tussen elke
+  aanroep (`await new Promise(r => setTimeout(r, 200))`).
+- **Buurtrapport `rapport.gebied` fix** (`BuurtrapportGenerator.jsx`):
+  `rapport.postcodegebied` hernoemd naar `rapport.gebied` zodat
+  `genereerBuurtrapportHTML()` (die `gebied` destructuurt) de gemeente-naam
+  correct toont in titel en tabelrij (was: `undefined`).
+- **Buurtdossier rapport-JSON fix** (`admin.js` `maakBuurtdossier`):
+  `rapport_json: dossier.rapportJson` (altijd `undefined`) →
+  `rapport_json: dossier` — de "Eerder gegenereerd"-knop laadde altijd een
+  leeg rapport; nu wordt het volledige rapport-object opgeslagen.
+- **Info-melding zonder gemeente** (`BuurtrapportGenerator.jsx`):
+  `telOptInEntriesZonderGemeente()` telt bij component-load het aantal
+  opt_in_buurt meldingen zonder gemeente. Als dat > 0 is, toont een
+  info-blokje hoeveel meldingen buiten het rapport vallen en verwijst naar
+  de backfill-knop.
 
 ## Bekende beperkingen / inconsistenties
 

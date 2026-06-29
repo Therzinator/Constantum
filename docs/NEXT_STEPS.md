@@ -29,6 +29,8 @@ de code, niet tegen het geheugen van een eerdere sessie.
   uitgevoerd — nieuwe meldingen krijgen deze velden automatisch.
   Historische meldingen missen ze nog; eenmalig aanvullen via de
   backfill-knop in de "Filter op provincie/gemeente"-kaart.
+  Rate limiting (200ms/aanroep) is per 2026-06-29 in orde; de knop
+  kan nu ook voor grote backlogs veilig gedraaid worden.
 
 ## Middel
 
