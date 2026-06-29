@@ -14,7 +14,7 @@ export function trustScoreVerdeling(profielen) {
     { label: '80-100', min: 80, max: 100, aantal: 0 }
   ];
   profielen.forEach((p) => {
-    const score = p.trust_score ?? 50;
+    const score = p.trust_score ?? 75;
     const bucket = buckets.find((b) => score >= b.min && score <= b.max);
     if (bucket) bucket.aantal++;
   });
