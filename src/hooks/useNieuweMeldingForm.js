@@ -220,7 +220,32 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
   }, [veld.weather?.wind_dir, veld.afstandWoningLat, veld.afstandWoningLng, veld.lat, veld.lng, veld.afstandWoning]);
 
   const voegBestandenToe = useCallback(async (files) => {
+    const MAX_VIDEO_MB = 15;
+    const MAX_VIDEO_SEC = 30;
+
     for (const file of Array.from(files)) {
+      const isVideo = file.type.startsWith('video/');
+
+      if (isVideo) {
+        if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
+          setWeerMelding({ id: Date.now(), tekst: `Video te groot (${(file.size / 1024 / 1024).toFixed(1)} MB) — maximum is ${MAX_VIDEO_MB} MB voor bewijsmateriaal. Knip een kortere clip.`, type: 'error' });
+          continue;
+        }
+        // Duur controleren via tijdelijk video-element (browser-only, werkt in PWA-context)
+        const duur = await new Promise((resolve) => {
+          const url = URL.createObjectURL(file);
+          const el = document.createElement('video');
+          el.preload = 'metadata';
+          el.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(el.duration); };
+          el.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+          el.src = url;
+        });
+        if (duur != null && Number.isFinite(duur) && duur > MAX_VIDEO_SEC) {
+          setWeerMelding({ id: Date.now(), tekst: `Video te lang (${Math.round(duur)} seconden) — maximum is ${MAX_VIDEO_SEC} seconden. Knip een kortere bewijsclip.`, type: 'error' });
+          continue;
+        }
+      }
+
       const hash = await hashFile(file);
       const exif = await extractEXIF(file);
       const rawDataUrl = await new Promise((resolve, reject) => {
@@ -229,7 +254,6 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
         r.onerror = () => reject(new Error('Bestand lezen mislukt'));
         r.readAsDataURL(file);
       });
-      const isVideo = file.type.startsWith('video/');
       const dataUrl = isVideo ? rawDataUrl : await stripEXIFGPS(rawDataUrl, file.type);
       const thumbnail = isVideo ? null : await compressToThumbnail(dataUrl, file.type);
 

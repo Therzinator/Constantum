@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { sbClient, SUPABASE_ENABLED } from '../lib/supabase/client.js';
-import { sbSyncMelding, laadVanSupabase as laadVanSupabaseData } from '../lib/supabase/entries.js';
+import { sbSyncMeldingenBatch, laadVanSupabase as laadVanSupabaseData } from '../lib/supabase/entries.js';
 import { sbSyncBijlagen } from '../lib/supabase/bijlagen.js';
 import { sbAuditLog } from '../lib/supabase/auditLog.js';
 import { getMeldingen, saveMeldingen } from '../lib/storage/localStorage.js';
@@ -71,42 +71,44 @@ export function useSupabaseSync(user, meldingenApi) {
     let geslaagd = 0;
     let mislukt  = 0;
 
-    for (const melding of teSync) {
-      try {
-        const ok = await sbSyncMelding(melding, user);
-        if (ok) {
-          await sbSyncBijlagen(melding.id, melding.bestanden, user);
-          await sbAuditLog(melding.id, 'synced', {
-            hash:     melding.hash,
-            rfc3161:  melding.rfc3161?.timestamp || null,
-            bijlagen: melding.bestanden?.length  || 0,
-            device:   navigator.platform
-          }, user);
+    // Batch upsert alle entries in één DB-call i.p.v. N seriële calls
+    let oks = teSync.map(() => false);
+    try {
+      oks = await sbSyncMeldingenBatch(teSync, user);
+    } catch (e) {
+      console.error('[Supabase] Batch sync fout:', e.message);
+    }
 
-          // Update lokale sync_status
-          const alle = getMeldingen();
-          const idx  = alle.findIndex(m => m.id === melding.id);
-          if (idx >= 0) {
-            alle[idx].sync_status = 'synced';
-            alle[idx].sync_at     = new Date().toISOString();
-            saveMeldingen(alle);
-          }
-          verwijderUitQueue(melding.id);
-          geslaagd++;
-        } else {
-          // Markeer als mislukt
-          const alle = getMeldingen();
-          const idx  = alle.findIndex(m => m.id === melding.id);
-          if (idx >= 0) { alle[idx].sync_status = 'sync_mislukt'; saveMeldingen(alle); }
-          voegToeAanQueue(melding.id);
-          mislukt++;
-        }
-      } catch (e) {
-        console.error('[Supabase] Sync fout voor', melding.id, ':', e.message);
+    // Bijlagen parallel uploaden — bijlagen per melding hebben eigen meldingId,
+    // dus geen conflict. De localStorage-update daarna is serieel (één write).
+    const bijlagenResultaten = await Promise.all(teSync.map(async (melding, i) => {
+      if (!oks[i]) return false;
+      await sbSyncBijlagen(melding.id, melding.bestanden, user);
+      sbAuditLog(melding.id, 'synced', {
+        hash:     melding.hash,
+        rfc3161:  melding.rfc3161?.timestamp || null,
+        bijlagen: melding.bestanden?.length  || 0,
+        device:   navigator.platform
+      }, user);
+      return true;
+    }));
+
+    // Eén lees + één schrijf naar localStorage, na afloop van alle parallelle taken
+    const alle = getMeldingen();
+    for (let i = 0; i < teSync.length; i++) {
+      const melding = teSync[i];
+      const idx = alle.findIndex(m => m.id === melding.id);
+      if (bijlagenResultaten[i]) {
+        if (idx >= 0) { alle[idx].sync_status = 'synced'; alle[idx].sync_at = new Date().toISOString(); }
+        verwijderUitQueue(melding.id);
+        geslaagd++;
+      } else {
+        if (idx >= 0) { alle[idx].sync_status = 'sync_mislukt'; }
         voegToeAanQueue(melding.id);
         mislukt++;
       }
     }
+    saveMeldingen(alle);
 
     setSyncBezig(false);
     setSyncStatus(mislukt > 0 ? 'fout' : 'ok');

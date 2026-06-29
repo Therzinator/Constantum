@@ -115,6 +115,36 @@ export async function haalGroepStatistieken(groepId) {
   };
 }
 
+// Batch-variant van haalGroepStatistieken — 3 queries voor N groepen i.p.v. N×3.
+export async function haalAlleGroepStatistieken(groepIds) {
+  const sb = sbClient();
+  if (!sb || !groepIds.length) return {};
+
+  const [ledenRes, meldingenRes, activiteitRes] = await Promise.all([
+    sb.from('groep_leden').select('groep_id').in('groep_id', groepIds),
+    sb.from('entries_groepen').select('groep_id').in('groep_id', groepIds),
+    sb.from('entries_groepen')
+      .select('groep_id, gedeeld_op')
+      .in('groep_id', groepIds)
+      .order('gedeeld_op', { ascending: false })
+  ]);
+
+  const leden = {};
+  (ledenRes.data || []).forEach((r) => { leden[r.groep_id] = (leden[r.groep_id] || 0) + 1; });
+
+  const meldingen = {};
+  (meldingenRes.data || []).forEach((r) => { meldingen[r.groep_id] = (meldingen[r.groep_id] || 0) + 1; });
+
+  const activiteit = {};
+  (activiteitRes.data || []).forEach((r) => { if (!activiteit[r.groep_id]) activiteit[r.groep_id] = r.gedeeld_op; });
+
+  return Object.fromEntries(groepIds.map((id) => [id, {
+    aantalLeden:       leden[id]      || 0,
+    aantalMeldingen:   meldingen[id]  || 0,
+    laatsteActiviteit: activiteit[id] || null
+  }]));
+}
+
 // Alleen door de hoofdbeheerder (RLS, zie migratie 0015) — naam/
 // beschrijving/openbaar/max_beheerders.
 export async function wijzigGroepInstellingen(groepId, { naam, beschrijving, openbaar, maxBeheerders }) {

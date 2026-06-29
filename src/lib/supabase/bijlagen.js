@@ -103,6 +103,37 @@ export async function sbSyncBijlagen(meldingId, bestanden, user) {
   }
 }
 
+// Batch-variant: haalt metadata op voor meerdere entries in één query.
+// Downloadt géén bestanden — dataUrl/thumbnail blijven null (lazy loaded bij weergave).
+export async function laadBijlagenMetadataBatch(entryIds, user) {
+  const sb = sbClient();
+  if (!sb || !user || !entryIds.length) return new Map();
+
+  const { data: rows, error } = await sb
+    .from('attachments')
+    .select('entry_id, filename, mime_type, file_size, file_hash')
+    .in('entry_id', entryIds);
+
+  if (error) {
+    console.warn('[Supabase] Batch bijlagen ophalen mislukt:', error.message);
+    return new Map();
+  }
+
+  const result = new Map();
+  for (const row of rows || []) {
+    if (!result.has(row.entry_id)) result.set(row.entry_id, []);
+    result.get(row.entry_id).push({
+      name:      row.filename  || 'bijlage',
+      type:      row.mime_type || 'application/octet-stream',
+      size:      row.file_size || 0,
+      hash:      row.file_hash || null,
+      thumbnail: null,
+      dataUrl:   null
+    });
+  }
+  return result;
+}
+
 // Haal bijlage-metadata + dataUrl op van Supabase voor één entry
 // Slaat de dataUrl ook op in IDB zodat de lightbox offline werkt
 export async function laadBijlagenVanSupabase(meldingId, user) {

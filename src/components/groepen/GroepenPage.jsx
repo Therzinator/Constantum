@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   haalMijnGroepen,
   haalOpenbareGroepen,
-  haalGroepStatistieken,
+  haalAlleGroepStatistieken,
   maakGroep,
   wordLidVanOpenbareGroep,
   wijzigDeelvoorkeur
@@ -54,8 +54,8 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
       setOpenbareGroepen(openbaarLijst);
 
       const alleIds = [...new Set([...mijn.map((g) => g.id), ...openbaarLijst.map((g) => g.id)])];
-      const statsEntries = await Promise.all(alleIds.map(async (id) => [id, await haalGroepStatistieken(id)]));
-      setStatsPerGroep(Object.fromEntries(statsEntries));
+      const statsData = await haalAlleGroepStatistieken(alleIds);
+      setStatsPerGroep(statsData);
     } catch (err) {
       setFout(err.message);
     } finally {
@@ -74,11 +74,11 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
       try {
         const [mijn, openbaarLijst] = await Promise.all([haalMijnGroepen(user.id), haalOpenbareGroepen()]);
         const alleIds = [...new Set([...mijn.map((g) => g.id), ...openbaarLijst.map((g) => g.id)])];
-        const statsEntries = await Promise.all(alleIds.map(async (id) => [id, await haalGroepStatistieken(id)]));
+        const statsData = await haalAlleGroepStatistieken(alleIds);
         if (!actief) return;
         setMijnGroepen(mijn);
         setOpenbareGroepen(openbaarLijst);
-        setStatsPerGroep(Object.fromEntries(statsEntries));
+        setStatsPerGroep(statsData);
       } catch (err) {
         if (actief) setFout(err.message);
       } finally {

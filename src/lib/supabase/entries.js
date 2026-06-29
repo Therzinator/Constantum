@@ -1,7 +1,7 @@
 import { sbClient } from './client.js';
 import { sha256 } from '../bewijsmateriaal/hash.js';
 import { getMeldingen, saveMeldingen } from '../storage/localStorage.js';
-import { laadBijlagenVanSupabase } from './bijlagen.js';
+import { laadBijlagenMetadataBatch } from './bijlagen.js';
 
 // Komt overeen met sbSyncMelding() — user wordt meegegeven i.p.v. _sbUser global
 export async function sbSyncMelding(melding, user) {
@@ -69,6 +69,72 @@ export async function sbSyncMelding(melding, user) {
   return true;
 }
 
+// Batch-variant: upsert meerdere meldingen in één DB-call.
+// Geeft een boolean[] terug (index correspondeert met meldingen[]).
+export async function sbSyncMeldingenBatch(meldingen, user) {
+  const sb = sbClient();
+  if (!sb || !user || !meldingen.length) return meldingen.map(() => false);
+
+  let records;
+  try {
+    records = await Promise.all(meldingen.map(async (melding) => {
+      const melderEmailHash = melding.melder_email
+        ? await sha256(melding.melder_email)
+        : (user.email ? await sha256(user.email) : null);
+      return {
+        id:                   melding.id,
+        user_id:              user.id,
+        timestamp_local:      melding.timestamp_local  || null,
+        timestamp_utc:        melding.timestamp_utc    || null,
+        type:                 melding.type             || 'overig',
+        types:                melding.types            || [],
+        description:          melding.description      || '',
+        gps_lat:              melding.gps?.lat         ?? null,
+        gps_lng:              melding.gps?.lng         ?? null,
+        gps_accuracy:         melding.gps?.accuracy    ?? null,
+        weather:              melding.weather          || null,
+        geur_intensiteit:     melding.geur_intensiteit ?? null,
+        wind_subjectief:      melding.wind_subjectief  || null,
+        richting_deg:         melding.richting_deg     ?? null,
+        richting_compass:     melding.richting_compass || null,
+        gezondheidsklachten:  melding.gezondheidsklachten || [],
+        gezondheid_toestemming: melding.gezondheid_toestemming || false,
+        opt_in_buurt:         melding.opt_in_buurt     || false,
+        opt_in_groepen:       melding.opt_in_groepen   || false,
+        activiteiten:         melding.activiteiten     || [],
+        drift_waarneming:     melding.drift_waarneming || [],
+        wind_naar_woning:     melding.wind_naar_woning || null,
+        afstand_woning:       melding.afstand_woning   ?? null,
+        afstand_woning_lat:   melding.afstand_woning_lat ?? null,
+        afstand_woning_lng:   melding.afstand_woning_lng ?? null,
+        natura2000:           melding.natura2000       || null,
+        kwetsbare_locaties:   melding.kwetsbare_locaties || [],
+        client_hash:          melding.hash             || null,
+        rfc3161:              melding.rfc3161          || null,
+        melder_email:         melderEmailHash,
+        bedrijfsnaam:         melding.bedrijfsnaam     || null,
+        perceelnummer:        melding.perceelnummer    || null,
+        gemeente:             melding.gemeente         || null,
+        provincie:            melding.provincie        || null,
+        gewas:                melding.gewas            || null,
+        sync_status:          'synced',
+        warnings:             melding.warnings         || [],
+        deleted:              false
+      };
+    }));
+  } catch (e) {
+    console.error('[Supabase] Batch record bouwen mislukt:', e.message);
+    return meldingen.map(() => false);
+  }
+
+  const { error } = await sb.from('entries').upsert(records, { onConflict: 'id' });
+  if (error) {
+    console.error('[Supabase] Batch entry sync mislukt:', error.message);
+    return meldingen.map(() => false);
+  }
+  return meldingen.map(() => true);
+}
+
 // Komt overeen met laadVanSupabase() — UI-feedback (toonSyncBalk/toast/
 // renderTimeline/updateDashboard) is hier weggelaten; de aanroeper (de
 // useSupabaseSync-hook) krijgt een resultaat terug en regelt zelf de UI.
@@ -94,20 +160,32 @@ export async function laadVanSupabase(user, force = false) {
   const lokaalMap = new Map(lokaal.map(m => [m.id, m]));
   let nieuw = 0, bijgewerkt = 0;
 
-  for (const entry of entries) {
+  // Bepaal welke entries bijgewerkt worden en welke bijlagen nodig hebben
+  const teBijwerken = entries.filter((entry) => {
+    const bestaand = lokaalMap.get(entry.id);
+    if (bestaand && !force) {
+      const cloudUpdated  = entry.updated_at || entry.created_at;
+      const lokaalUpdated = bestaand?.sync_at;
+      const cloudIsNieuwer = !lokaalUpdated || new Date(cloudUpdated) > new Date(lokaalUpdated);
+      if (!cloudIsNieuwer) return false;
+    }
+    return true;
+  });
+
+  // Één batch-query voor alle benodigde bijlagen (i.p.v. N seriële queries)
+  const idsZonderLokaaleBijlagen = teBijwerken
+    .filter((e) => !lokaalMap.get(e.id)?.bestanden?.length)
+    .map((e) => e.id);
+  const bijlagenBatch = await laadBijlagenMetadataBatch(idsZonderLokaaleBijlagen, user);
+
+  for (const entry of teBijwerken) {
     const bestaand = lokaalMap.get(entry.id);
 
     const cloudUpdated  = entry.updated_at || entry.created_at;
-    const lokaalUpdated = bestaand?.sync_at;
-    const cloudIsNieuwer = !bestaand || !lokaalUpdated ||
-      new Date(cloudUpdated) > new Date(lokaalUpdated);
-
-    // Bij force: altijd bijwerken; anders alleen als cloud nieuwer is
-    if (bestaand && !cloudIsNieuwer && !force) continue;
 
     const bestanden = bestaand?.bestanden?.length
       ? bestaand.bestanden
-      : await laadBijlagenVanSupabase(entry.id, user);
+      : (bijlagenBatch.get(entry.id) || []);
 
     const tsLocal = entry.timestamp_local || entry.created_at;
     const melding = {
