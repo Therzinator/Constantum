@@ -174,7 +174,10 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
 
       <div className="card p-4">
         {!formOpen && (
-          <button type="button" className="btn-primary groepen-knop" onClick={openFormulier}>Nieuwe groep aanmaken</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button type="button" className="btn-primary groepen-knop" onClick={openFormulier}>Nieuwe groep aanmaken</button>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Klik hier om een privé/openbare groep te starten.</span>
+          </div>
         )}
         {formOpen && (
           <form onSubmit={handleAanmaken} className="groepen-formulier">

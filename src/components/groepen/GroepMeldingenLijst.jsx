@@ -89,23 +89,11 @@ export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId, u
           <div
             key={m.id}
             className="card melding-card melding-card-klikbaar"
-            style={{ position: 'relative' }}
             role="button"
             tabIndex={0}
             onClick={() => setGeopend(m)}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setGeopend(m); }}
           >
-            {isBeheerder && (
-              <button
-                type="button"
-                className="btn-outline"
-                style={{ position: 'absolute', top: 8, right: 8, fontSize: '0.65rem', padding: '2px 8px', minHeight: 0, color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                disabled={verwijderenId === m.id}
-                onClick={(e) => handleVerwijder(e, m.id)}
-              >
-                {verwijderenId === m.id ? '...' : '✕'}
-              </button>
-            )}
             <div className="melding-card-body">
               <div className="melding-card-top">
                 <div className="melding-card-badges">
@@ -134,6 +122,19 @@ export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId, u
                 </div>
               )}
             </div>
+            {isBeheerder && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 6, borderTop: '1px solid var(--border)', marginTop: 6 }}>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  style={{ fontSize: '0.65rem', padding: '2px 10px', minHeight: 0, color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                  disabled={verwijderenId === m.id}
+                  onClick={(e) => handleVerwijder(e, m.id)}
+                >
+                  {verwijderenId === m.id ? 'Verwijderen...' : '✕ Verwijderen'}
+                </button>
+              </div>
+            )}
           </div>
         );
       })}

@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { laadBijlagenVanSupabase } from '../../lib/supabase/bijlagen.js';
 import { melderCode } from '../../utils/format.js';
 import { Lightbox } from '../melding/Lightbox.jsx';
 import './GroepMeldingDetailModal.css';
+
+const DriftZoneKaart = lazy(() => import('../melding/DriftZoneKaart.jsx').then((m) => ({ default: m.DriftZoneKaart })));
 
 const TYPE_LABEL = {
   spuitactiviteit: '🚜 Spuitactiviteit',
@@ -46,6 +48,8 @@ export function GroepMeldingDetailModal({ melding, toon, isEigen, user, onClose 
 
   const datum = new Date(melding.timestamp_local).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
   const regio = toon.grofweLocatie ? [melding.gemeente, melding.provincie].filter(Boolean).join(', ') : null;
+  // DriftZoneKaart verwacht melding.gps.lat/lng, groep-meldingen hebben gps_lat/gps_lng
+  const meldingVoorKaart = melding.gps_lat != null ? { ...melding, gps: { lat: melding.gps_lat, lng: melding.gps_lng } } : null;
 
   return (
     <div className="detail-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -62,24 +66,12 @@ export function GroepMeldingDetailModal({ melding, toon, isEigen, user, onClose 
           <div className="section-label mb-2">Wanneer &amp; waar</div>
           <div className="detail-mono-block">{datum}</div>
           {regio && <div className="detail-mono-block mt-1">{regio}</div>}
-          {toon.exacteLocatie && melding.gps_lat != null && melding.gps_lng != null && (
+          {toon.exacteLocatie && meldingVoorKaart && (
             <>
+              <Suspense fallback={<div className="export-card-beschrijving mt-2">Kaart laden...</div>}>
+                <DriftZoneKaart melding={meldingVoorKaart} hoogte={200} />
+              </Suspense>
               <div className="hash-display mt-1">{melding.gps_lat.toFixed(5)}, {melding.gps_lng.toFixed(5)}</div>
-              <a
-                href={`https://www.openstreetmap.org/?mlat=${melding.gps_lat}&mlon=${melding.gps_lng}&zoom=15`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="export-card-beschrijving mt-1"
-                style={{ display: 'inline-block', color: 'var(--accent)' }}
-              >
-                Bekijk op kaart →
-              </a>
-              {melding.richting_compass && (
-                <div className="export-card-beschrijving mt-1">
-                  Windrichting: {melding.richting_compass}{melding.weather?.wind_speed != null ? ` · ${melding.weather.wind_speed} km/h` : ''}
-                  {melding.geur_intensiteit != null ? ` · Geursterkte ${melding.geur_intensiteit}/5` : ''}
-                </div>
-              )}
             </>
           )}
           {!toon.grofweLocatie && !toon.exacteLocatie && (
