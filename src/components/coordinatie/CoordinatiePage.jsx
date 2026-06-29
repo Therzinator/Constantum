@@ -6,17 +6,13 @@ import {
   haalAlleProfielenAdmin,
   zetTrustScoreAdmin,
   zetVisibilityAdmin,
-  haalEntriesZonderPostcode,
-  zetPostcodeAdmin,
   haalEntriesZonderGemeente,
   zetGemeenteProvincieAdmin
 } from '../../lib/supabase/admin.js';
-import { zoekPostcodePDOK, zoekGemeenteProvinciePDOK } from '../../lib/pdok/postcode.js';
+import { zoekGemeenteProvinciePDOK } from '../../lib/pdok/postcode.js';
 import { perceelStatistieken, windrichtingPerPerceel } from '../../lib/meldingen/statistieken.js';
 import { BuurtrapportGenerator } from './BuurtrapportGenerator.jsx';
-import { KNMIInstellingen } from '../export/KNMIInstellingen.jsx';
 import {
-  meldersPerPostcode,
   trustScoreVerdeling,
   meldersOverzicht,
   meldingenOnderReview,
@@ -47,8 +43,6 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
   const [profielen, setProfielen] = useState(null);
   const [fout, setFout] = useState(null);
   const [bezigId, setBezigId] = useState(null);
-  const [backfillBezig, setBackfillBezig] = useState(false);
-  const [backfillStatus, setBackfillStatus] = useState(null);
   const [gemeenteBackfillBezig, setGemeenteBackfillBezig] = useState(false);
   const [gemeenteBackfillStatus, setGemeenteBackfillStatus] = useState(null);
   const [filterProvincie, setFilterProvincie] = useState('');
@@ -80,7 +74,6 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
   if (fout) return <div className="p-4"><div className="card p-4" style={{ color: 'var(--danger)' }}>Laden mislukt: {fout}</div></div>;
   if (!entries || !profielen) return <div className="p-4">Laden...</div>;
 
-  const perPostcode = meldersPerPostcode(entries);
   const verdeling = trustScoreVerdeling(profielen);
   const provincieOpties = provincies(entries);
   const gemeenteOpties = gemeentenInProvincie(entries, filterProvincie);
@@ -107,19 +100,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
     }
   }
 
-  // Meest voorkomende 4-cijferige postcode-prefix binnen het filter — vult
-  // het postcodegebied-veld van BuurtrapportGenerator voor (die werkt zelf
-  // op postcode, niet op gemeente/provincie, zie BuurtrapportGenerator.jsx).
-  let voorgeselecteerdPostcodegebied = '';
-  if (filterProvincie) {
-    const tellingen = {};
-    entriesGefilterd.forEach((e) => {
-      const prefix = e.postcode?.slice(0, 4);
-      if (prefix) tellingen[prefix] = (tellingen[prefix] || 0) + 1;
-    });
-    const gesorteerd = Object.entries(tellingen).sort((a, b) => b[1] - a[1]);
-    voorgeselecteerdPostcodegebied = gesorteerd[0]?.[0] || '';
-  }
+  const voorgeselecteerdGemeente = filterGemeente || (filterProvincie ? gemeenteOpties[0] || '' : '');
 
   const handleTrustScore = async (userId, waarde) => {
     setBezigId(userId);
@@ -155,33 +136,6 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
       await laad();
     } finally {
       setBezigId(null);
-    }
-  };
-
-  // Backfill (Fase 1-4) — historische meldingen van vóór migratie 0004
-  // missen postcode (geen DEFAULT, dus niet automatisch ingevuld zoals
-  // opt_in_buurt/visibility). Loopt sequentieel om de PDOK Locatieserver
-  // niet te overbelasten.
-  const handleBackfillPostcode = async () => {
-    setBackfillBezig(true);
-    try {
-      const teBackfillen = await haalEntriesZonderPostcode();
-      let gelukt = 0;
-      for (let i = 0; i < teBackfillen.length; i++) {
-        const e = teBackfillen[i];
-        setBackfillStatus(`${i + 1} / ${teBackfillen.length}`);
-        const postcode = await zoekPostcodePDOK(e.gps_lat, e.gps_lng).catch(() => null);
-        if (postcode) {
-          await zetPostcodeAdmin(e.id, postcode);
-          gelukt++;
-        }
-      }
-      setBackfillStatus(`Klaar: ${gelukt} / ${teBackfillen.length} meldingen aangevuld`);
-      await laad();
-    } catch (err) {
-      setBackfillStatus(`Mislukt: ${err.message}`);
-    } finally {
-      setBackfillBezig(false);
     }
   };
 
@@ -224,7 +178,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
         <div className="export-card-beschrijving mb-3">
           Filtert perceel-analyse, windroos, melder-overzicht en onder
           review/shadow hieronder, centreert Buurtgebied tekenen op de
-          regio en vult het postcodegebied van Buurtrapport genereren voor.
+          regio en vult de gemeente van Buurtrapport genereren voor.
           Meldingen zonder provincie/gemeente (van vóór migratie 0013)
           vallen buiten elk filter, eenmalig aanvullen via PDOK.
         </div>
@@ -287,24 +241,6 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
             </div>
           </div>
         ))}
-      </Collapsible>
-
-      <Collapsible icoon="📮" titel="Opt-in-melders per postcode" badge={perPostcode.length || null}>
-        {perPostcode.length === 0 && <div className="export-card-beschrijving">Geen opt-in-meldingen met postcode gevonden.</div>}
-        {perPostcode.map((r) => (
-          <div key={r.postcode} className="export-info-rij">
-            <span>{r.postcode}</span>
-            <span>{r.aantalMelders} melder{r.aantalMelders === 1 ? '' : 's'}</span>
-          </div>
-        ))}
-        <div className="export-card-beschrijving mt-2">
-          Historische meldingen (vóór de postcode-koppeling) missen dit
-          veld nog, eenmalig aanvullen via PDOK.
-        </div>
-        <button type="button" className="btn-outline coordinatie-knop mt-2" disabled={backfillBezig} onClick={handleBackfillPostcode}>
-          {backfillBezig ? `⏳ Bezig... ${backfillStatus || ''}` : '📮 Postcode backfillen'}
-        </button>
-        {!backfillBezig && backfillStatus && <div className="export-card-beschrijving mt-2">{backfillStatus}</div>}
       </Collapsible>
 
       <Collapsible icoon="🛡️" titel="Trust-score-verdeling">
@@ -399,9 +335,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
             <BuurtgebiedTekenaar thuislocatie={filterCentrum || thuislocatie} meldingen={entriesGefilterd} user={user} gebruikerRol={gebruikerRol} />
           </Suspense>
 
-          <BuurtrapportGenerator user={user} voorgeselecteerdPostcodegebied={voorgeselecteerdPostcodegebied} />
-
-          <KNMIInstellingen />
+          <BuurtrapportGenerator user={user} voorgeselecteerdGemeente={voorgeselecteerdGemeente} />
         </div>
       </Collapsible>
     </div>

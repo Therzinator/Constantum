@@ -1,79 +1,59 @@
-import { haversineAfstand } from '../geo/haversine.js';
+// Historische weerdata via Open-Meteo (gratis, geen API-key) als vervanging
+// van de KNMI EDR API. Open-Meteo gebruikt ERA5-reanalyse + KNMI-stations
+// voor Nederland. Uurresolutie (vs. 10-min KNMI). Archief tot 1940.
+// Dezelfde interface als de oude KNMI-implementatie zodat bestaande aanroepen
+// zonder wijziging blijven werken.
 
-const SLEUTEL = 'spuitlog_knmi_key';
-
-export function laadKNMIKey() {
+export async function haalKNMIWeerdata(lat, lng, isoDatetime) {
   try {
-    return localStorage.getItem(SLEUTEL) || '';
-  } catch {
-    return '';
-  }
-}
-
-export function slaKNMIKeyOp(key) {
-  try {
-    if (key) localStorage.setItem(SLEUTEL, key);
-    else localStorage.removeItem(SLEUTEL);
-  } catch { /* localStorage niet beschikbaar */ }
-}
-
-// Komt overeen met haalKNMIWeerdata() uit docs/index.html — EDR API:
-// dichtstbijzijnd station + observaties rond het opgegeven tijdstip.
-// `apiKey` wordt expliciet meegegeven (i.p.v. direct uit localStorage
-// gelezen) zodat dit een pure, testbare functie blijft.
-export async function haalKNMIWeerdata(lat, lng, isoDatetime, apiKey) {
-  if (!apiKey) return null;
-  const key = apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`;
-
-  try {
-    const locUrl = `https://api.dataplatform.knmi.nl/edr/collections/10-minute-in-situ-meteorological-observations/locations?bbox=${lng - 0.5},${lat - 0.5},${lng + 0.5},${lat + 0.5}`;
-    const locRes = await fetch(locUrl, { headers: { Authorization: key } });
-    if (!locRes.ok) return null;
-    const locData = await locRes.json();
-    const stations = locData.features || [];
-    if (!stations.length) return null;
-
-    let dichtstbij = null;
-    let minDist = Infinity;
-    stations.forEach((s) => {
-      const [sLng, sLat] = s.geometry.coordinates;
-      const d = haversineAfstand(lat, lng, sLat, sLng);
-      if (d < minDist) { minDist = d; dichtstbij = s; }
-    });
-    if (!dichtstbij) return null;
-
-    const stationId = dichtstbij.id;
-    const stationNaam = dichtstbij.properties?.name || stationId;
-    const stationAfst = Math.round((minDist / 1000) * 10) / 10; // km
-
     const dt = new Date(isoDatetime);
-    const van = new Date(dt.getTime() - 10 * 60000).toISOString().replace('.000Z', 'Z');
-    const tot = new Date(dt.getTime() + 10 * 60000).toISOString().replace('.000Z', 'Z');
-    const obsUrl = `https://api.dataplatform.knmi.nl/edr/collections/10-minute-in-situ-meteorological-observations/locations/${stationId}?datetime=${van}/${tot}&parameter-name=wind_speed,wind_direction,air_temperature,relative_humidity,precipitation_duration`;
-    const obsRes = await fetch(obsUrl, { headers: { Authorization: key } });
-    if (!obsRes.ok) return null;
-    const obsData = await obsRes.json();
+    const daysAgo = (Date.now() - dt.getTime()) / (24 * 60 * 60 * 1000);
 
-    const params = obsData.ranges || {};
-    const getValue = (param) => {
-      const vals = params[param]?.values;
-      return vals?.length ? vals[vals.length - 1] : null;
-    };
+    const gemeenschappelijk = `latitude=${lat.toFixed(6)}&longitude=${lng.toFixed(6)}&hourly=windspeed_10m,winddirection_10m,temperature_2m,relativehumidity_2m,precipitation&wind_speed_unit=ms&timezone=Europe%2FAmsterdam`;
 
+    let url;
+    if (daysAgo < 6) {
+      const pastDays = Math.min(92, Math.ceil(daysAgo) + 2);
+      url = `https://api.open-meteo.com/v1/forecast?${gemeenschappelijk}&past_days=${pastDays}&forecast_days=0`;
+    } else {
+      const datumStr = dt.toISOString().slice(0, 10);
+      url = `https://archive-api.open-meteo.com/v1/archive?${gemeenschappelijk}&start_date=${datumStr}&end_date=${datumStr}`;
+    }
+
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+
+    const times = data.hourly?.time || [];
+    if (!times.length) return null;
+
+    const dtMs = dt.getTime();
+    let closestIdx = 0;
+    let minDiff = Infinity;
+    times.forEach((t, i) => {
+      const diff = Math.abs(new Date(t).getTime() - dtMs);
+      if (diff < minDiff) { minDiff = diff; closestIdx = i; }
+    });
+
+    const h = data.hourly;
     return {
-      station: stationNaam,
-      stationId,
-      afstand_km: stationAfst,
-      windsnelheid: getValue('wind_speed'),
-      windrichting: getValue('wind_direction'),
-      temperatuur: getValue('air_temperature'),
-      luchtvochtigheid: getValue('relative_humidity'),
-      neerslag: getValue('precipitation_duration'),
-      bron: 'KNMI Open Data (CC BY 4.0)',
+      station: 'Open-Meteo / ERA5',
+      stationId: 'open-meteo',
+      afstand_km: null,
+      windsnelheid: h.windspeed_10m?.[closestIdx] ?? null,
+      windrichting: h.winddirection_10m?.[closestIdx] ?? null,
+      temperatuur: h.temperature_2m?.[closestIdx] ?? null,
+      luchtvochtigheid: h.relativehumidity_2m?.[closestIdx] ?? null,
+      neerslag: h.precipitation?.[closestIdx] ?? null,
+      bron: 'Open-Meteo ERA5 (CC BY 4.0)',
       tijdstip: isoDatetime
     };
   } catch (e) {
-    console.warn('[KNMI] Weerdata ophalen mislukt:', e.message);
+    console.warn('[Weerdata] Historische lookup mislukt:', e.message);
     return null;
   }
 }
+
+// No-ops voor achterwaartse compatibiliteit — API-key is niet meer nodig.
+export function laadKNMIKey() { return 'open-meteo'; }
+export function slaKNMIKeyOp() {}

@@ -27,7 +27,6 @@ export function entryNaarExportMelding(entry) {
     richting_compass: entry.richting_compass || null,
     bedrijfsnaam: entry.bedrijfsnaam || null,
     perceelnummer: entry.perceelnummer || null,
-    postcode: entry.postcode || null,
     gemeente: entry.gemeente || null,
     provincie: entry.provincie || null,
     gewas: entry.gewas || null,

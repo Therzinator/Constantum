@@ -12,15 +12,15 @@ import {
   bewijswaardescore
 } from '../../lib/meldingen/buurtrapport.js';
 import { genereerBuurtrapportHTML, openBuurtrapportPDF } from '../../lib/export/buurtrapportPdf.js';
-import { laadKNMIKey, haalKNMIWeerdata } from '../../lib/weather/knmi.js';
+import { haalKNMIWeerdata } from '../../lib/weather/knmi.js';
 
 // Coordinatie & Admin systeem, Fase 6/7 — buurtrapport-generator. Leeft in
 // CoordinatiePage (admin-only). KNMI-dekking is een best-effort LIVE check
 // (loopt door de gefilterde meldingen heen en checkt per stuk of er een
 // KNMI-station beschikbaar is) — wordt niet historisch bijgehouden, dus
 // elke generatie controleert opnieuw en kan een paar seconden duren.
-export function BuurtrapportGenerator({ user, voorgeselecteerdPostcodegebied }) {
-  const [postcodegebied, setPostcodegebied] = useState('');
+export function BuurtrapportGenerator({ user, voorgeselecteerdGemeente }) {
+  const [gemeente, setGemeente] = useState('');
   const [periodeVan, setPeriodeVan] = useState('');
   const [periodeTot, setPeriodeTot] = useState('');
   const [bezig, setBezig] = useState(false);
@@ -29,28 +29,22 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdPostcodegebied }) 
 
   useEffect(() => { haalBuurtdossiers().then(setDossiers).catch(() => {}); }, []);
 
-  // Vult het veld voor met het dominante postcodegebied uit het provincie/
-  // gemeente-filter op CoordinatiePage (zelf werkt deze generator nog op
-  // postcode, niet op gemeente — zie module-comment hierboven). Afgeleide
-  // waarde i.p.v. een effect dat de state zelf overschrijft: zodra de
-  // gebruiker zelf typt wint postcodegebied, anders de voorgestelde
-  // waarde — geen risico op het overschrijven van actieve invoer.
-  const weergegevenPostcodegebied = postcodegebied || voorgeselecteerdPostcodegebied || '';
+  const weergegevenGemeente = gemeente || voorgeselecteerdGemeente || '';
 
   const handleGenereer = async () => {
-    const postcodegebiedVoorAanvraag = weergegevenPostcodegebied;
-    if (!/^\d{4}$/.test(postcodegebiedVoorAanvraag)) {
-      setFout('Vul een geldig 4-cijferig postcodegebied in (bv. 1234)');
+    const gemeenteVoorAanvraag = weergegevenGemeente.trim();
+    if (!gemeenteVoorAanvraag) {
+      setFout('Vul een gemeente in');
       return;
     }
     setFout(null);
     setBezig(true);
     try {
-      const ruweEntries = await haalEntriesVoorBuurtrapport(postcodegebiedVoorAanvraag);
-      const entries = filterVoorBuurtrapport(ruweEntries, postcodegebiedVoorAanvraag, periodeVan, periodeTot);
+      const ruweEntries = await haalEntriesVoorBuurtrapport(gemeenteVoorAanvraag);
+      const entries = filterVoorBuurtrapport(ruweEntries, gemeenteVoorAanvraag, periodeVan, periodeTot);
 
       if (!entries.length) {
-        setFout('Geen opt-in-meldingen gevonden voor dit postcodegebied/periode');
+        setFout('Geen opt-in-meldingen gevonden voor deze gemeente/periode');
         setBezig(false);
         return;
       }
@@ -58,17 +52,14 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdPostcodegebied }) 
       const aantalMelders = new Set(entries.map((e) => e.user_id)).size;
       const rfc3161Percentage = Math.round((entries.filter((e) => e.rfc3161).length / entries.length) * 100);
 
-      const knmiKey = laadKNMIKey();
       let knmiPercentage = null;
-      if (knmiKey) {
-        let gevonden = 0;
-        for (const e of entries) {
-          if (e.gps_lat == null || e.gps_lng == null) continue;
-          const data = await haalKNMIWeerdata(e.gps_lat, e.gps_lng, e.timestamp_local, knmiKey).catch(() => null);
-          if (data) gevonden++;
-        }
-        knmiPercentage = Math.round((gevonden / entries.length) * 100);
+      let gevonden = 0;
+      for (const e of entries) {
+        if (e.gps_lat == null || e.gps_lng == null) continue;
+        const data = await haalKNMIWeerdata(e.gps_lat, e.gps_lng, e.timestamp_local).catch(() => null);
+        if (data) gevonden++;
       }
+      knmiPercentage = entries.length ? Math.round((gevonden / entries.length) * 100) : null;
 
       const profielen = await haalAlleProfielenAdmin();
       const profielMap = new Map(profielen.map((p) => [p.id, p]));
@@ -87,7 +78,7 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdPostcodegebied }) 
       });
 
       const rapport = {
-        postcodegebied: postcodegebiedVoorAanvraag,
+        postcodegebied: gemeenteVoorAanvraag,
         periodeVan: periodeVan || null,
         periodeTot: periodeTot || null,
         aantalMelders,
@@ -113,20 +104,17 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdPostcodegebied }) 
     <div className="card p-4">
       <div className="section-label mb-3">📋 Buurtrapport genereren</div>
       <div className="export-card-beschrijving mb-3">
-        Geanonimiseerd collectief rapport over een postcodegebied. Alleen
-        meldingen met opt_in_buurt=true tellen mee.
+        Geanonimiseerd collectief rapport per gemeente. Alleen meldingen
+        met opt_in_buurt=true tellen mee. Weerverificatie via Open-Meteo (geen API-key nodig).
       </div>
 
       <label className="export-info-rij">
-        <span>Postcodegebied (4 cijfers)</span>
+        <span>Gemeente</span>
         <input
           type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={4}
-          value={weergegevenPostcodegebied}
-          onChange={(e) => setPostcodegebied(e.target.value)}
-          placeholder="1234"
+          value={weergegevenGemeente}
+          onChange={(e) => setGemeente(e.target.value)}
+          placeholder="bijv. Westland"
         />
       </label>
       <label className="export-info-rij">

@@ -7,7 +7,7 @@ import {
   wordLidVanOpenbareGroep,
   wijzigDeelvoorkeur
 } from '../../lib/groepen/groepen.js';
-import { zoekPostcodePDOK } from '../../lib/pdok/postcode.js';
+import { zoekGemeenteProvinciePDOK } from '../../lib/pdok/postcode.js';
 import { Toast } from '../ui/Toast.jsx';
 import { Collapsible } from '../ui/Collapsible.jsx';
 import './GroepenPage.css';
@@ -88,13 +88,13 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
     return () => { actief = false; };
   }, [user]);
 
-  // Standaardnaam "Groep {postcode}" (sectie 2) — postcode van de
-  // thuislocatie van de hoofdbeheerder, direct aanpasbaar.
+  // Standaardnaam "Groep {gemeente}" — gemeente van de thuislocatie van de
+  // hoofdbeheerder, direct aanpasbaar.
   const openFormulier = async () => {
     setFormOpen(true);
     if (naam || !thuislocatie?.lat || !thuislocatie?.lng) return;
-    const postcode = await zoekPostcodePDOK(thuislocatie.lat, thuislocatie.lng).catch(() => null);
-    if (postcode) setNaam(`Groep ${postcode.slice(0, 4)}`);
+    const r = await zoekGemeenteProvinciePDOK(thuislocatie.lat, thuislocatie.lng).catch(() => null);
+    if (r?.gemeente) setNaam(`Groep ${r.gemeente}`);
   };
 
   // Optimistisch bijwerken i.p.v. volledig herladen — direct visuele

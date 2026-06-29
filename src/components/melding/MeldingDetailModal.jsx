@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { degToCompass, spuitWindOordeel } from '../../lib/drift/oordeel.js';
 import { idbGetBijlagen } from '../../lib/storage/indexedDB.js';
 import { melderCode } from '../../utils/format.js';
-import { laadKNMIKey, haalKNMIWeerdata } from '../../lib/weather/knmi.js';
+import { haalKNMIWeerdata } from '../../lib/weather/knmi.js';
 import { perceelStatistieken } from '../../lib/meldingen/statistieken.js';
 import { analyseerSpuitpatroon } from '../../lib/meldingen/spuitpatroon.js';
 import { DriftZoneKaart } from './DriftZoneKaart.jsx';
@@ -48,13 +48,12 @@ export function MeldingDetailModal({ melding, alleMeldingen, onClose }) {
   const [driftZoneOpen, setDriftZoneOpen] = useState(false);
   const [knmiData, setKnmiData] = useState(null);
   const [knmiBezig, setKnmiBezig] = useState(false);
-  const knmiKey = laadKNMIKey();
 
   const haalKNMIOp = async () => {
     if (!melding.gps?.lat || !melding.gps?.lng) return;
     setKnmiBezig(true);
     try {
-      const data = await haalKNMIWeerdata(melding.gps.lat, melding.gps.lng, melding.timestamp_local, knmiKey);
+      const data = await haalKNMIWeerdata(melding.gps.lat, melding.gps.lng, melding.timestamp_local);
       setKnmiData(data || { leeg: true });
     } finally {
       setKnmiBezig(false);
@@ -236,24 +235,22 @@ export function MeldingDetailModal({ melding, alleMeldingen, onClose }) {
               );
             })()}
 
-            {knmiKey && (
-              <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                {!knmiData ? (
-                  <button type="button" className="btn-outline px-2 py-1" style={{ fontSize: '0.6rem' }} onClick={haalKNMIOp} disabled={knmiBezig}>
-                    {knmiBezig ? '⏳ Ophalen...' : '🌦️ Officiële KNMI-data ophalen'}
-                  </button>
-                ) : knmiData.leeg ? (
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Geen KNMI-stationsdata gevonden voor dit tijdstip/locatie</div>
-                ) : (
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontFamily: 'var(--mono)' }}>
-                    <div style={{ color: 'var(--accent)', fontWeight: 700, marginBottom: 4 }}>✓ KNMI station: {knmiData.station} ({knmiData.afstand_km} km)</div>
-                    <div>Wind: {knmiData.windsnelheid} m/s · {knmiData.windrichting}°</div>
-                    <div>Temperatuur: {knmiData.temperatuur}°C · Vochtigheid: {knmiData.luchtvochtigheid}%</div>
-                    <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{knmiData.bron}</div>
-                  </div>
-                )}
-              </div>
-            )}
+            <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+              {!knmiData ? (
+                <button type="button" className="btn-outline px-2 py-1" style={{ fontSize: '0.6rem' }} onClick={haalKNMIOp} disabled={knmiBezig}>
+                  {knmiBezig ? '⏳ Ophalen...' : '🌦️ Verificeer met archief-weerdata'}
+                </button>
+              ) : knmiData.leeg ? (
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Geen weerdata gevonden voor dit tijdstip/locatie</div>
+              ) : (
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontFamily: 'var(--mono)' }}>
+                  <div style={{ color: 'var(--accent)', fontWeight: 700, marginBottom: 4 }}>✓ Weerarchief: {knmiData.station}</div>
+                  <div>Wind: {knmiData.windsnelheid} m/s · {knmiData.windrichting}°</div>
+                  <div>Temperatuur: {knmiData.temperatuur}°C · Vochtigheid: {knmiData.luchtvochtigheid}%</div>
+                  <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{knmiData.bron}</div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

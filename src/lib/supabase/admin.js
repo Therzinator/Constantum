@@ -11,7 +11,7 @@ export async function haalAlleEntriesAdmin() {
 
   const { data, error } = await sb
     .from('entries')
-    .select('id, user_id, melder_email, timestamp_local, type, description, postcode, gemeente, provincie, perceelnummer, opt_in_buurt, visibility, gps_lat, gps_lng, weather')
+    .select('id, user_id, melder_email, timestamp_local, type, description, gemeente, provincie, perceelnummer, opt_in_buurt, visibility, gps_lat, gps_lng, weather')
     .eq('deleted', false)
     .order('timestamp_local', { ascending: false });
 
@@ -82,19 +82,17 @@ export async function zetVisibilityAdmin(entryId, visibility) {
 }
 
 // Coordinatie & Admin systeem, Fase 6/7 — rijkere selectie (weerdata,
-// RFC 3161) voor het buurtrapport, vooraf gefilterd op postcodegebied +
-// opt_in_buurt zodat alleen meldingen waarvoor de melder toestemming gaf
-// in een collectief dossier terechtkomen.
-export async function haalEntriesVoorBuurtrapport(postcodePrefix) {
+// RFC 3161) voor het buurtrapport, gefilterd op gemeente + opt_in_buurt.
+export async function haalEntriesVoorBuurtrapport(gemeente) {
   const sb = sbClient();
   if (!sb) return [];
 
   const { data, error } = await sb
     .from('entries')
-    .select('id, user_id, melder_email, timestamp_local, postcode, perceelnummer, weather, rfc3161, opt_in_buurt, gps_lat, gps_lng')
+    .select('id, user_id, melder_email, timestamp_local, gemeente, perceelnummer, weather, rfc3161, opt_in_buurt, gps_lat, gps_lng')
     .eq('deleted', false)
     .eq('opt_in_buurt', true)
-    .ilike('postcode', `${postcodePrefix}%`)
+    .ilike('gemeente', `${gemeente}%`)
     .order('timestamp_local', { ascending: false });
 
   if (error) throw error;
@@ -134,38 +132,6 @@ export async function haalBuurtdossiers() {
 
   if (error) throw error;
   return data || [];
-}
-
-// Backfill (Fase 1-4) — postcode heeft geen DEFAULT in migratie 0004 (in
-// tegenstelling tot opt_in_buurt/visibility, die Postgres bij ADD COLUMN
-// automatisch met de DEFAULT-waarde backfilt), dus oudere meldingen
-// missen 'm. Vereist een PDOK-lookup per rij, dus geen pure SQL — vandaar
-// hier i.p.v. een migratiebestand.
-export async function haalEntriesZonderPostcode() {
-  const sb = sbClient();
-  if (!sb) return [];
-
-  const { data, error } = await sb
-    .from('entries')
-    .select('id, gps_lat, gps_lng')
-    .is('postcode', null)
-    .not('gps_lat', 'is', null)
-    .not('gps_lng', 'is', null);
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function zetPostcodeAdmin(entryId, postcode) {
-  const sb = sbClient();
-  if (!sb) return;
-
-  const { error } = await sb
-    .from('entries')
-    .update({ postcode })
-    .eq('id', entryId);
-
-  if (error) throw error;
 }
 
 // Coordinatie & Admin systeem — backfill voor het provincie/gemeente-

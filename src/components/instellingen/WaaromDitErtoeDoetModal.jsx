@@ -72,7 +72,7 @@ Neuroloog Jorrit Hoff, gespecialiseerd in Parkinson, stelt ondubbelzinnig dat ve
 PAN Europe en Nederlandse milieuorganisaties voeren momenteel een juridische procedure bij het Europees Hof van Justitie tegen de hergoedkeuring van glyfosaat. Eén van de zeven juridische argumenten is de onvolledigheid van de blootstellingsdata waarop de Europese Commissie haar besluit heeft gebaseerd. Precies het soort data dat SpuitLogger structureel verzamelt.
 
 Wat u deelt, en wat niet:
-Uw naam, adres en e-mailadres worden nooit gedeeld. Wat onderzoekers ontvangen is: datum, type waarneming, windrichting, weerdata en postcodegebied. Geen enkel gegeven is herleidbaar naar u persoonlijk. U kunt deelname op elk moment uitschakelen via Instellingen.`}
+Uw naam, adres en e-mailadres worden nooit gedeeld. Wat onderzoekers ontvangen is: datum, type waarneming, windrichting, weerdata en gemeente. Geen enkel gegeven is herleidbaar naar u persoonlijk. U kunt deelname op elk moment uitschakelen via Instellingen.`}
       </div>
 
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>

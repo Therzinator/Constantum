@@ -3,21 +3,6 @@
 // zodat ze, net als perceelStatistieken() in statistieken.js, los van
 // React en los van Supabase getest kunnen worden.
 
-// Aantal unieke opt-in-melders per postcode — alleen meldingen mét
-// postcode (PDOK-lookup kan mislukken/onbeschikbaar zijn) en mét
-// opt_in_buurt=true tellen mee.
-export function meldersPerPostcode(entries) {
-  const perPostcode = {};
-  entries.forEach((e) => {
-    if (!e.postcode || !e.opt_in_buurt || !e.user_id) return;
-    if (!perPostcode[e.postcode]) perPostcode[e.postcode] = new Set();
-    perPostcode[e.postcode].add(e.user_id);
-  });
-  return Object.entries(perPostcode)
-    .map(([postcode, melders]) => ({ postcode, aantalMelders: melders.size }))
-    .sort((a, b) => b.aantalMelders - a.aantalMelders);
-}
-
 // Trust-scores in buckets van 20 (0-19, 20-39, ..., 80-100) — voor een
 // eenvoudige verdelingsweergave zonder grafiekbibliotheek erbij te halen.
 export function trustScoreVerdeling(profielen) {

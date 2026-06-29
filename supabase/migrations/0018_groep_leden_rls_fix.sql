@@ -30,5 +30,4 @@ CREATE POLICY "groep_leden_select_eigen_of_groepslid_of_admin" ON groep_leden
   FOR SELECT USING (
     user_id = auth.uid()
     OR fn_is_groepslid(groep_id, auth.uid())
-    OR EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin')
-  );
+    OR EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin')Op m

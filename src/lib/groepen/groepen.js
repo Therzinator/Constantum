@@ -141,7 +141,7 @@ export async function haalMeldingenVoorGroep(groepId) {
 
   const { data, error } = await sb
     .from('entries_groepen')
-    .select('gedeeld_op, entries(id, user_id, melder_email, timestamp_local, type, description, postcode, gemeente, provincie, gps_lat, gps_lng, visibility)')
+    .select('gedeeld_op, entries(id, user_id, melder_email, timestamp_local, type, description, gemeente, provincie, gps_lat, gps_lng, visibility)')
     .eq('groep_id', groepId)
     .order('gedeeld_op', { ascending: false });
 

@@ -43,7 +43,7 @@ Let op: Gezondheidsgegevens zijn een bijzondere categorie (AVG art. 9). Wij verw
 Het primaire doel van SpuitLogger is het ondersteunen van bewoners bij het opbouwen van juridisch bewijsmateriaal. Dit belang weegt zwaarder dan het privacy-nadeel omdat: (a) u zich vrijwillig aanmeldt, (b) de data uitsluitend uw eigen meldingen betreft, (c) het alternatief — geen documentatiemogelijkheid — u in een zwakkere positie laat bij juridische procedures.
 
 3.2 Buurtdossier (toestemming)
-Als u actief kiest voor deelname aan het buurtdossier (opt-in), worden uw geanonimiseerde meldingen samengevoegd met die van andere melders in uw postcodegebied. Dit doel vereist uw expliciete toestemming, die u te allen tijde kunt intrekken via Instellingen.
+Als u actief kiest voor deelname aan het buurtdossier (opt-in), worden uw geanonimiseerde meldingen samengevoegd met die van andere melders in uw gemeente. Dit doel vereist uw expliciete toestemming, die u te allen tijde kunt intrekken via Instellingen.
 
 3.3 Wetenschappelijk onderzoek (toestemming, standaard ingeschakeld)
 Geanonimiseerde, geaggregeerde data kan worden gedeeld met academische onderzoekers (zoals WUR, RIVM en IRAS) voor onderzoek naar pesticideblootstelling. Uw identiteit is hierbij volledig beschermd. U kunt dit uitschakelen via Instellingen → Gegevens & Privacy.
