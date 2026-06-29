@@ -84,7 +84,13 @@
   align-items: center;
   justify-content: space-between;
   font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.groepen-kaart-beschrijving {
   margin-bottom: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 .groepen-stat-chips {

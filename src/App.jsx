@@ -6,6 +6,8 @@ import { useMeldingen } from './hooks/useMeldingen.js'
 import { useSupabaseSync } from './hooks/useSupabaseSync.js'
 import { useThuislocatie } from './hooks/useThuislocatie.js'
 import { useGroepUitnodigingToken } from './hooks/useGroepUitnodigingToken.js'
+import { useNotificaties } from './hooks/useNotificaties.js'
+import { NotificatiePopup } from './components/ui/NotificatiePopup.jsx'
 import { AppHeader } from './components/layout/AppHeader.jsx'
 import { AuthOverlay } from './components/auth/AuthOverlay.jsx'
 import { SyncStatusBar } from './components/sync/SyncStatusBar.jsx'
@@ -35,6 +37,7 @@ function App() {
     setActieveGroepId(groepId);
   }, []);
   const uitnodiging = useGroepUitnodigingToken(auth.user, onGroepGejoint)
+  const notificaties = useNotificaties(auth.user)
   const [handleidingOpen, setHandleidingOpen] = useState(false)
   const overlayWasZichtbaarRef = useRef(false)
 
@@ -145,6 +148,12 @@ function App() {
       )}
       </main>
 
+      <NotificatiePopup
+        aantalOngelezen={notificaties.aantalOngelezen}
+        groepActiviteit={notificaties.groepActiviteit}
+        markeerAlsGezien={notificaties.markeerAlsGezien}
+        onNavigeerGroep={onGroepGejoint}
+      />
       <BottomNav pagina={pagina} onPaginaChange={naviGeerNaarPagina} gebruikerRol={auth.gebruikerRol} />
     </>
   )

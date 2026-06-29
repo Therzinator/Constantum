@@ -216,6 +216,7 @@ export function GroepenPage({ user, thuislocatie, onOpenGroep }) {
                   <span>{g.naam}</span>
                   <span className={`badge ${g.openbaar ? 'badge-accent' : 'badge-muted'}`}>{g.openbaar ? 'Openbaar' : 'Privé'}</span>
                 </div>
+                {g.beschrijving && <div className="export-card-beschrijving groepen-kaart-beschrijving">{g.beschrijving}</div>}
                 <div className="groepen-stat-chips">
                   <div className="groepen-stat-chip">
                     <span className="groepen-stat-waarde">{stats.aantalLeden ?? '—'}</span>
