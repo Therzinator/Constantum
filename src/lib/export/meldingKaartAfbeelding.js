@@ -90,7 +90,7 @@ function exporteerAlsDataURL(map) {
         mapCanvas.width = size[0];
         mapCanvas.height = size[1];
         const mapContext = mapCanvas.getContext('2d');
-        map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer').forEach((canvas) => {
+        map.getViewport().querySelectorAll('canvas').forEach((canvas) => {
           if (canvas.width === 0) return;
           const opacity = canvas.parentNode.style.opacity || canvas.style.opacity;
           mapContext.globalAlpha = opacity === '' ? 1 : Number(opacity);
