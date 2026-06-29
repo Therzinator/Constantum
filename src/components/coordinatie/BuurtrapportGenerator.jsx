@@ -4,7 +4,8 @@ import {
   haalGroepEntriesVoorBuurtrapport,
   haalAlleProfielenAdmin,
   maakBuurtdossier,
-  haalBuurtdossiers
+  haalBuurtdossiers,
+  telOptInEntriesZonderGemeente
 } from '../../lib/supabase/admin.js';
 import {
   filterVoorBuurtrapport,
@@ -27,8 +28,12 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdGemeente, gemeente
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState(null);
   const [dossiers, setDossiers] = useState([]);
+  const [aantalZonderGemeente, setAantalZonderGemeente] = useState(null);
 
-  useEffect(() => { haalBuurtdossiers().then(setDossiers).catch(() => {}); }, []);
+  useEffect(() => {
+    haalBuurtdossiers().then(setDossiers).catch(() => {});
+    telOptInEntriesZonderGemeente().then(setAantalZonderGemeente).catch(() => {});
+  }, []);
 
   const weergegevenGemeente = gemeente || voorgeselecteerdGemeente || '';
 
@@ -84,7 +89,7 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdGemeente, gemeente
       });
 
       const rapport = {
-        postcodegebied: gemeenteVoorAanvraag,
+        gebied: gemeenteVoorAanvraag,
         periodeVan: periodeVan || null,
         periodeTot: periodeTot || null,
         aantalMelders,
@@ -138,6 +143,12 @@ export function BuurtrapportGenerator({ user, voorgeselecteerdGemeente, gemeente
         <span>Periode tot</span>
         <input type="date" value={periodeTot} onChange={(e) => setPeriodeTot(e.target.value)} />
       </label>
+
+      {aantalZonderGemeente > 0 && (
+        <div className="export-card-beschrijving mt-2" style={{ color: 'var(--text-secondary)' }}>
+          ℹ️ {aantalZonderGemeente} opt-in melding{aantalZonderGemeente !== 1 ? 'en' : ''} {aantalZonderGemeente !== 1 ? 'hebben' : 'heeft'} geen gemeente-data en {aantalZonderGemeente !== 1 ? 'vallen' : 'valt'} buiten dit rapport. Gebruik de backfill-knop hierboven om {aantalZonderGemeente !== 1 ? 'deze' : 'deze'} aan te vullen.
+        </div>
+      )}
 
       {fout && <div className="export-card-beschrijving mt-2" style={{ color: 'var(--danger)' }}>{fout}</div>}
 

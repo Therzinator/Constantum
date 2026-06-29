@@ -151,6 +151,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
       for (let i = 0; i < teBackfillen.length; i++) {
         const e = teBackfillen[i];
         setGemeenteBackfillStatus(`${i + 1} / ${teBackfillen.length}`);
+        if (i > 0) await new Promise(r => setTimeout(r, 200));
         const r = await zoekGemeenteProvinciePDOK(e.gps_lat, e.gps_lng).catch(() => null);
         if (r?.gemeente) {
           await zetGemeenteProvincieAdmin(e.id, r.gemeente, r.provincie);

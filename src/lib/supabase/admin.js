@@ -122,13 +122,13 @@ export async function maakBuurtdossier(dossier, userId) {
   const { data, error } = await sb
     .from('buurtdossiers')
     .insert({
-      postcodegebied: dossier.postcodegebied,
+      postcodegebied: dossier.gebied || dossier.postcodegebied,
       aangemaakt_door: userId,
       periode_van: dossier.periodeVan,
       periode_tot: dossier.periodeTot,
       aantal_melders: dossier.aantalMelders,
       aantal_meldingen: dossier.aantalMeldingen,
-      rapport_json: dossier.rapportJson
+      rapport_json: dossier
     })
     .select()
     .single();
@@ -179,4 +179,19 @@ export async function zetGemeenteProvincieAdmin(entryId, gemeente, provincie) {
     .eq('id', entryId);
 
   if (error) throw error;
+}
+
+export async function telOptInEntriesZonderGemeente() {
+  const sb = sbClient();
+  if (!sb) return 0;
+
+  const { count, error } = await sb
+    .from('entries')
+    .select('*', { count: 'exact', head: true })
+    .eq('deleted', false)
+    .eq('opt_in_buurt', true)
+    .is('gemeente', null);
+
+  if (error) return 0;
+  return count || 0;
 }
