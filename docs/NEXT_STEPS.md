@@ -19,16 +19,11 @@ de code, niet tegen het geheugen van een eerdere sessie.
   effen blokken toont. Als er ooit nieuwe `icon_*`-bestanden aangeleverd
   worden: controleer eerst of ze wél een alphakanaal hebben (PNG color
   type 6), anders is dezelfde fix opnieuw nodig.
-- **Controleren of een coordinator/admin/groepslid-met-hoge-trustscore
-  andermans foto's mag lezen (attachments-tabel + storage-bucket
-  `spuitlog-bijlagen`-RLS).** Nodig voor zowel de "Exporteer meldingen +
-  Dossier-PDF" op Buurtgebied tekenen (CoordinatiePage, bundelt foto's van
-  ALLE melders binnen het getekende gebied) als de melding-detailweergave
-  binnen Groepen (`GroepMeldingDetailModal.jsx`, toont foto's alleen aan
-  leden met "hoog" trust-tier). Niet vanuit de code te verifiëren: geen
-  migratie regelt RLS op `attachments`/storage. Werkt ook zonder (faalt
-  stilletjes terug naar "geen foto's" per melding), maar check of dat het
-  gewenste gedrag is.
+- **Migratie 0030 uitvoeren in Supabase SQL-editor** — regelt RLS op de
+  `attachments`-tabel en Storage-policies voor de `spuitlog-bijlagen`-bucket.
+  Daarna testen: als coordinator/admin een melding van een andere melder
+  openen en controleren of foto's laden; als groepslid met score >= 80
+  een groepsmelding van een ander openen en foto's controleren.
 - **Provincie/gemeente backfillen-knop draaien op CoordinatiePage.**
   Migratie 0013 (`gemeente`/`provincie`-kolommen op `entries`) is
   uitgevoerd — nieuwe meldingen krijgen deze velden automatisch.
