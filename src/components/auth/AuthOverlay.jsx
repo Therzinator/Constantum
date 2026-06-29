@@ -63,8 +63,12 @@ export function AuthOverlay({ auth, uitnodiging }) {
 
         {uitnodiging && (
           <div className="auth-info">
-            👋 Je bent uitgenodigd voor een groep op SpuitLogger. Al een account?
-            Log dan in. Nieuw hier? Registreer — je wordt automatisch lid zodra
+            👋 Je bent uitgenodigd voor een groep op SpuitLogger.{' '}
+            Al een account?{' '}
+            <button type="button" className="auth-consent-link" onClick={() => kiesTab('login')}>
+              Log hier in
+            </button>
+            . Nieuw hier? Registreer — je wordt automatisch lid zodra
             je je e-mailadres bevestigd hebt.
           </div>
         )}

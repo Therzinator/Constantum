@@ -28,6 +28,7 @@ export function GroepPage({ groepId, user, onTerug }) {
   const [beschrijving, setBeschrijving] = useState('');
   const [openbaar, setOpenbaar] = useState(false);
   const [maxBeheerders, setMaxBeheerders] = useState(1);
+  const [trustWaarden, setTrustWaarden] = useState({});
 
   // eslint-disable-next-line react-hooks/purity -- toast-id, geen logica-kritisch gebruik van Date.now(), zelfde patroon als InstellingenPage.jsx/TrustIndicator.jsx
   const toon = (tekst, type = '') => setMelding({ id: Date.now(), tekst, type });
@@ -135,10 +136,18 @@ export function GroepPage({ groepId, user, onTerug }) {
     }
   };
 
-  const handleTrustScore = async (targetUserId, waarde) => {
+  const handleTrustScoreOpslaan = async (targetUserId) => {
+    const waarde = trustWaarden[targetUserId];
+    if (waarde === undefined || waarde === '') return;
+    const num = parseInt(waarde, 10);
+    if (Number.isNaN(num) || num < 0 || num > 100) {
+      toon('Vul een getal in tussen 0 en 100.', 'error');
+      return;
+    }
     try {
-      const gelukt = await wijzigTrustScoreInGroep(groepId, targetUserId, waarde);
+      const gelukt = await wijzigTrustScoreInGroep(groepId, targetUserId, num);
       if (!gelukt) toon('Trust score wijzigen niet gelukt.', 'error');
+      else toon('Trust score opgeslagen.', 'success');
     } catch (err) {
       toon(`Trust score wijzigen mislukt: ${err.message}`, 'error');
     }
@@ -233,17 +242,24 @@ export function GroepPage({ groepId, user, onTerug }) {
           {leden.filter((l) => l.user_id !== user.id).map((l) => (
             <div key={l.user_id} className="export-info-rij">
               <span>{l.user_id.slice(0, 8)}</span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                placeholder="0-100"
-                className="coordinatie-trust-input"
-                onBlur={(e) => {
-                  const waarde = parseInt(e.target.value, 10);
-                  if (!Number.isNaN(waarde)) handleTrustScore(l.user_id, waarde);
-                }}
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="0-100"
+                  className="coordinatie-trust-input"
+                  value={trustWaarden[l.user_id] ?? ''}
+                  onChange={(e) => setTrustWaarden((w) => ({ ...w, [l.user_id]: e.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="btn-outline px-2 py-1"
+                  onClick={() => handleTrustScoreOpslaan(l.user_id)}
+                >
+                  Opslaan
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -271,7 +287,7 @@ export function GroepPage({ groepId, user, onTerug }) {
 
       <div className="card p-4">
         <div className="section-label mb-3">📋 Meldingen in deze groep</div>
-        <GroepMeldingenLijst groepId={groepId} viewerTrustScore={profiel?.trust_score} viewerUserId={user.id} user={user} />
+        <GroepMeldingenLijst groepId={groepId} viewerTrustScore={profiel?.trust_score} viewerUserId={user.id} user={user} isBeheerder={magBeheren} />
       </div>
 
       <Toast melding={melding} />

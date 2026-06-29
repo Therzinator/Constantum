@@ -114,6 +114,16 @@ export function AccountMenu({ user, onNavigeerInstellingen, syncNu, syncBezig, l
           <div className="account-menu-gebruiker">
             {user?.email ? user.email : 'Niet ingelogd'}
           </div>
+          {user?.id && (
+            <button
+              type="button"
+              className="account-menu-gebruiker-id"
+              title="Klik om gebruiker-ID te kopiëren"
+              onClick={() => navigator.clipboard.writeText(user.id).catch(() => {})}
+            >
+              ID: {user.id}
+            </button>
+          )}
 
           <button
             type="button"

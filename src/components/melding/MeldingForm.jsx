@@ -511,6 +511,9 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
       <div className="mf-field" ref={fotosRef}>
         <label className="section-label">Foto's / video's (bewijsmateriaal)</label>
         <p className="mf-foto-privacy-tekst">📍 GPS-locatiegegevens worden automatisch uit je foto's verwijderd vóór opslag, ter bescherming van je privacy.</p>
+        {veld.optInBuurt && (
+          <p className="mf-foto-privacy-tekst mf-foto-privacy-waarschuwing">⚠️ Je deelt deze melding openbaar. Leg de waarneming vast vanuit een niet-herleidbare positie (raam, balkon, openbare weg) — niet direct vanuit je tuin of de exacte locatie van je woning, zodat foto's niet terugkoppelen naar jou.</p>
+        )}
         <div className="mf-foto-buttons">
           <label className="btn-outline px-3 py-2" style={{ cursor: 'pointer', textAlign: 'center', flex: 1 }}>
             📁 Kiezen

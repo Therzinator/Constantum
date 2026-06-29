@@ -2,7 +2,7 @@ import { useState } from 'react';
 import notifIcon from '../../assets/ui-icons/interface_notification.png';
 import './NotificatiePopup.css';
 
-export function NotificatiePopup({ aantalOngelezen, groepActiviteit, markeerAlsGezien, onNavigeerGroep }) {
+export function NotificatiePopup({ aantalOngelezen, groepActiviteit, nieuweGroepLidmaatschappen = [], markeerAlsGezien, onNavigeerGroep }) {
   const [open, setOpen] = useState(false);
 
   if (!aantalOngelezen) return null;
@@ -34,7 +34,22 @@ export function NotificatiePopup({ aantalOngelezen, groepActiviteit, markeerAlsG
             </div>
 
             <div className="notif-panel-inhoud">
-              {groepActiviteit.length === 0 ? (
+              {nieuweGroepLidmaatschappen.map((item) => (
+                <button
+                  key={`lid-${item.groepId}`}
+                  type="button"
+                  className="notif-item"
+                  onClick={() => { onNavigeerGroep(item.groepId); sluit(); }}
+                >
+                  <div className="notif-item-tekst">
+                    <strong className="notif-item-groepnaam">✓ Welkom in {item.groepNaam}</strong>
+                    <span className="notif-item-sub">Je bent lid geworden van deze groep</span>
+                  </div>
+                  <span className="notif-item-pijl">›</span>
+                </button>
+              ))}
+
+              {groepActiviteit.length === 0 && nieuweGroepLidmaatschappen.length === 0 ? (
                 <div className="notif-leeg">Geen nieuwe activiteit.</div>
               ) : (
                 groepActiviteit.map((item) => (

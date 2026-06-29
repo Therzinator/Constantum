@@ -142,6 +142,11 @@
   margin: 0;
 }
 
+.mf-foto-privacy-waarschuwing {
+  color: var(--warning, #f59e0b);
+  margin-top: 4px;
+}
+
 .mf-foto-buttons {
   display: flex;
   gap: 10px;

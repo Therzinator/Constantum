@@ -151,6 +151,7 @@ function App() {
       <NotificatiePopup
         aantalOngelezen={notificaties.aantalOngelezen}
         groepActiviteit={notificaties.groepActiviteit}
+        nieuweGroepLidmaatschappen={notificaties.nieuweGroepLidmaatschappen}
         markeerAlsGezien={notificaties.markeerAlsGezien}
         onNavigeerGroep={onGroepGejoint}
       />

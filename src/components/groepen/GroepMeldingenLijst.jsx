@@ -37,7 +37,7 @@ const NIVEAU_LABEL = { laag: 'Laag', gemiddeld: 'Gemiddeld', hoog: 'Hoog' };
 // hier wordt alleen bepaald welke VELDEN getoond worden, via
 // src/lib/groepen/trustZichtbaarheid.js (config-gebaseerd, zodat nieuwe
 // niveaus later makkelijk toevoegbaar zijn).
-export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId, user }) {
+export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId, user, isBeheerder }) {
   const [meldingen, setMeldingen] = useState(null);
   const [fout, setFout] = useState(null);
   const [geopend, setGeopend] = useState(null);
@@ -50,7 +50,8 @@ export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId, u
     return () => { actief = false; };
   }, [groepId]);
 
-  const niveau = bepaalZichtbaarheidsniveau(viewerTrustScore);
+  // Beheerders krijgen altijd volledige inzage, ongeacht hun eigen trust score.
+  const niveau = isBeheerder ? 'hoog' : bepaalZichtbaarheidsniveau(viewerTrustScore);
   const toon = velden(niveau);
 
   if (fout) return <div className="export-card-beschrijving" style={{ color: 'var(--danger)' }}>Meldingen laden mislukt: {fout}</div>;
@@ -60,7 +61,9 @@ export function GroepMeldingenLijst({ groepId, viewerTrustScore, viewerUserId, u
   return (
     <div>
       <div className="export-card-beschrijving mb-2">
-        Jouw zichtbaarheidsniveau in deze groep: <strong>{NIVEAU_LABEL[niveau] || niveau}</strong>, gebaseerd op je eigen trust score.
+        {isBeheerder
+          ? 'Als beheerder heb je volledige inzage in gedeelde meldingen.'
+          : <>Jouw zichtbaarheidsniveau in deze groep: <strong>{NIVEAU_LABEL[niveau] || niveau}</strong>, gebaseerd op je eigen trust score.</>}
       </div>
       {meldingen.map((m) => {
         const datum = new Date(m.timestamp_local).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
