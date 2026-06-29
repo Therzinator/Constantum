@@ -419,11 +419,21 @@ kiest per groep, trust-score hergebruik).
 
 ## Database-migraties
 
-Alle migraties **0001 t/m 0026 zijn uitgevoerd** (0025:
-spuitregister-brief, client-only placeholder; 0026: CHECK-constraint op
-`user_roles.role` — beperkt tot `'gebruiker'`, `'admin'`, `'coordinator'`,
-gesynchroniseerd met `src/lib/rollen.js`). Nieuwe migraties na 0026
-toevoegen op nummer 0027.
+Alle migraties **0001 t/m 0029 zijn uitgevoerd**:
+- 0025: spuitregister-brief, client-only placeholder
+- 0026: CHECK-constraint op `user_roles.role` (toegestane waarden)
+- 0027: `fn_trust_score_actie_bonus` en `trust_score_events.entry_id`
+  van `bigint` naar `text` — `entries.id` is text (`'DL-…'`), de bigint
+  veroorzaakte "function does not exist" bij elke melding-sync
+- 0028: lokale variabele `delta` → `v_delta` in `fn_trust_score_actie_bonus`
+  — kolom `delta` in `trust_score_events` en variabele `delta` gaven
+  "column reference is ambiguous" bij de `SUM(delta)`-subquery
+- 0029: `fn_entry_zichtbaar_voor_groepslid()` (SECURITY DEFINER) vervangt
+  de directe `entries_groepen`-join in de `entries_select_groepslid` RLS-
+  policy — voorkomt "infinite recursion in policy for entries_groepen" bij
+  DELETE door een groepbeheerder (zelfde patroon als `fn_is_groepslid`)
+
+Nieuwe migraties na 0029 toevoegen op nummer 0030.
 
 ## Dossier/bewijskracht (sinds 2026-06-21)
 
