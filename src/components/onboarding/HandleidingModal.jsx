@@ -44,33 +44,32 @@ export function HandleidingModal({ onSluiten }) {
             <div className="handleiding-icoon">🌿</div>
             <div className="handleiding-titel">Welkom bij Constatum</div>
             <div className="handleiding-tekst">
-              Constatum is een buurtregistratietool waarmee u spuitactiviteiten met
-              gewasbeschermingsmiddelen bij uw woning kunt documenteren. Uw registraties
-              zijn juridisch onderbouwd met tijdstempels, weerdata en locatiegegevens,
-              klaar om als bewijsmateriaal te dienen.
+              {`Constatum is een app waarmee je waarnemingen rond bestrijdingsmiddelen vastlegt — bijvoorbeeld spuitactiviteit, drift, geur, geluid of gezondheidsklachten. De app helpt je om dat moment goed te documenteren, zodat je er later iets mee kunt: een dossier opbouwen, delen met buren, of gebruiken als onderbouwing richting derden.
+
+Constatum is geen overheidsinstrument en handhaaft niet. De app registreert wat jij waarneemt; wat je daarmee doet, bepaal je zelf.`}
             </div>
           </>
         )}
 
         {stap === 1 && (
           <>
-            <div className="handleiding-titel">Zo bouwt u een dossier op</div>
+            <div className="handleiding-titel">Een melding maken</div>
             <div className="handleiding-grid">
               <div className="handleiding-grid-item">
                 <div className="handleiding-grid-icoon">📍</div>
-                <div className="handleiding-grid-label">Markeer de locatie: plaatst een pin op de kaart bij het spuitperceel</div>
-              </div>
-              <div className="handleiding-grid-item">
-                <div className="handleiding-grid-icoon">📸</div>
-                <div className="handleiding-grid-label">Maak beeldmateriaal: voeg foto's toe als visueel bewijs</div>
+                <div className="handleiding-grid-label">Kies een type en zet de pin op de locatie. Het kadastrale perceel is zichtbaar zodat je kunt zien om welk perceel het gaat.</div>
               </div>
               <div className="handleiding-grid-item">
                 <div className="handleiding-grid-icoon">🌤️</div>
-                <div className="handleiding-grid-label">Automatische weerdata: wind, temperatuur en neerslag</div>
+                <div className="handleiding-grid-label">Actuele windrichting en -snelheid worden automatisch opgehaald en getoetst aan de geldende spuitrichtlijn.</div>
               </div>
               <div className="handleiding-grid-item">
-                <div className="handleiding-grid-icoon">📋</div>
-                <div className="handleiding-grid-label">Exporteer uw dossier: genereer een juridisch PDF-dossier met één tik</div>
+                <div className="handleiding-grid-icoon">📸</div>
+                <div className="handleiding-grid-label">Voeg foto's of video toe. Locatiegegevens worden verwijderd; van het origineel wordt een hash berekend.</div>
+              </div>
+              <div className="handleiding-grid-item">
+                <div className="handleiding-grid-icoon">✅</div>
+                <div className="handleiding-grid-label">Sla op. Vanaf dat moment staat er een tijdstempel op die niet meer aan te passen is.</div>
               </div>
             </div>
           </>
@@ -78,59 +77,36 @@ export function HandleidingModal({ onSluiten }) {
 
         {stap === 2 && (
           <>
-            <div className="handleiding-titel">Samen sterker</div>
+            <div className="handleiding-titel">Je dossier</div>
             <div className="handleiding-tekst">
-              {`Constatum is het krachtigst als meerdere bewoners in uw buurt registreren. Een patroon van meldingen over tijd, van meerdere adressen, met consistente weersomstandigheden, staat juridisch veel sterker dan één enkele melding.
+              {`Al je meldingen staan op de tijdlijn, met filter op type, datum of gebied. Je kunt op elk moment een selectie exporteren als PDF-dossier, inclusief kaartweergave en weergegevens. Het dossier bevat een tijdstempel en een digitale hash, zodat de inhoud achteraf niet ongemerkt kan worden aangepast.
 
-Zo werkt buurtregistratie:
-• Elke melder bouwt een eigen privédossier
-• U kiest zelf of u een melding deelt met de buurt (per melding aanpasbaar, zichtbaar binnen uw ingestelde bereik, pseudoniem en 30 minuten vertraagd)
-• Uw identiteit blijft beschermd: u bent zichtbaar als Melder#XXXXXX
-
-Voor gerichter, blijvend samenwerken met een specifieke groep mensen: zie de volgende stap over Groepen.`}
+Voor situaties waarin je wilt weten welk middel er precies is gespoten, kun je vanuit een melding met bekend perceel een kant-en-klare brief genereren om inzage in het spuitregister op te vragen bij de teler.`}
             </div>
           </>
         )}
 
         {stap === 3 && (
           <>
-            <div className="handleiding-titel">👥 Groepen</div>
+            <div className="handleiding-titel">Delen met anderen</div>
             <div className="handleiding-tekst">
-              {`Groepen zijn voor gericht, blijvend samenwerken, bijvoorbeeld met directe buren of een lokaal collectief, los van de bredere, anonieme buurt-deling.
+              {`Delen is altijd je eigen keuze — een melding is standaard alleen voor jou zichtbaar.
 
-Zo werkt het:
-• Start een groep (u kiest zelf een naam) of word lid van een openbare groep
-• Rollen: lid, beheerder of hoofdbeheerder. De hoofdbeheerder kan beheerders aanstellen en groepsinstellingen wijzigen
-• Nodig leden uit met een link, QR-code of deel rechtstreeks via WhatsApp/Signal/e-mail (instelbaar aantal gebruikers en geldigheidsduur)
-• Per groep zet u een schakelaar aan/uit of u uw meldingen daarmee deelt, en bij het melden zelf kiest u nog een keer of die specifieke melding meegaat
-• Hoeveel detail een ander groepslid van uw melding ziet hangt af van diens trust score binnen de groep: hoe vertrouwder het account, hoe meer detail`}
+• Buurt: je kunt aangeven dat een melding zichtbaar mag zijn voor mensen binnen 5 km van hun eigen locatie. Anderen zien dan nooit je naam of e-mailadres, alleen een vaste, anonieme code (Melder#XXXXXX).
+
+• Groepen: je kunt je aansluiten bij of een groep aanmaken (via link of QR-code) en per melding kiezen of je die met die groep deelt. Hoeveel detail andere groepsleden zien hangt af van hun eigen betrouwbaarheidsniveau binnen de app.`}
             </div>
           </>
         )}
 
         {stap === 4 && (
           <>
-            <div className="handleiding-titel">💬 Feedback &amp; vragen</div>
+            <div className="handleiding-titel">Privacy</div>
             <div className="handleiding-tekst">
-              {`Loopt iets niet goed, of heeft u een vraag, opmerking of compliment? Dat kan via Instellingen → Feedback-paneel.
-
-• Technisch probleem: zichtbaar voor alle gebruikers, zo ziet u meteen of een bug al gemeld is
-• Vraag, opmerking of compliment: alleen zichtbaar voor u en de beheerder
-
-Elke melding krijgt een status (🔴 Onbehandeld, 🟡 In behandeling, 🟢 Afgehandeld) en u ziet zelf wanneer en hoe erop gereageerd wordt.`}
-            </div>
-          </>
-        )}
-
-        {stap === 5 && (
-          <>
-            <div className="handleiding-titel">U blijft buiten schot</div>
-            <div className="handleiding-tekst">
-              {`Constatum is gebouwd met privacy als fundament:
-🔐 Uw thuislocatie wordt nooit exact gedeeld, alleen afgerond tot op ~1 km
-📧 Uw e-mailadres wordt versleuteld opgeslagen (SHA-256)
-📷 GPS-coördinaten worden automatisch uit uw foto's verwijderd
-🚫 Niemand ziet uw meldingen tenzij u dat zelf kiest, per melding, per buurt of groep`}
+              {`• Je gegevens zijn standaard alleen voor jezelf zichtbaar.
+• Bij delen zie je nooit iemands echte naam of e-mailadres, alleen een anonieme code.
+• Je kunt instellen of er kwetsbare personen (zoals kinderen) in je huishouden aanwezig zijn. Dit is optioneel, vereist een aparte toestemming, en de details blijven bij je eigen profiel.
+• Je kunt je uitsluiten van het gebruik van je (geanonimiseerde) data voor algemeen onderzoek, via Instellingen.`}
             </div>
             <button type="button" className="handleiding-link-knop" onClick={() => setPrivacyOpen(true)}>
               Lees de volledige privacyverklaring →
@@ -138,12 +114,25 @@ Elke melding krijgt een status (🔴 Onbehandeld, 🟡 In behandeling, 🟢 Afge
           </>
         )}
 
+        {stap === 5 && (
+          <>
+            <div className="handleiding-titel">Rollen</div>
+            <div className="handleiding-tekst">
+              {`De meeste gebruikers hebben geen bijzondere rol. Twee uitzonderingen:
+
+• Coördinator: kan meldingen modereren en heeft toegang tot geaggregeerde overzichten, maar krijgt geen toegang tot het exporteren van persoonsgegevens van anderen.
+
+• Beheerder: volledige toegang, inclusief het herstellen van verwijderde meldingen en het exporteren van buurtgebied-dossiers.`}
+            </div>
+          </>
+        )}
+
         {stap === 6 && (
           <>
-            <div className="handleiding-titel">U bent er klaar voor</div>
+            <div className="handleiding-titel">Vragen of problemen</div>
             <div className="handleiding-tekst">
-              Tip: start of word lid van een Groep (onderaan in de navigatie) en bouw
-              samen met buren of een lokaal collectief een dossier op.
+              Klopt er iets niet, of heb je een vraag over een melding of export?
+              Neem contact op via de contactgegevens in de app onder Instellingen.
             </div>
             <button type="button" className="btn-primary handleiding-cta" onClick={sluiten}>
               Aan de slag →
