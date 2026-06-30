@@ -1,6 +1,6 @@
 ﻿import { useLayoutEffect, useRef } from 'react';
 import { AccountMenu } from './AccountMenu.jsx';
-import headerLogo from '../../assets/app-icon/icon_title.png';
+import headerLogo from '../../assets/app-icon/icon_large.png';
 import './AppHeader.css';
 
 // Vaste headerbalk met het Constatum-logo — de app had voorheen helemaal
