@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { APP_VERSION_CLIENT } from '../../lib/version.js';
 import { RADIUS_OPTIES, laadBereikMeter, slaBereikMeterOp } from '../../lib/notificaties/buurtMelding.js';
+import { melderCode } from '../../utils/format.js';
 import instellingenIcon from '../../assets/ui-icons/icon_instellingen.png';
 import './AccountMenu.css';
 
@@ -114,14 +115,14 @@ export function AccountMenu({ user, onNavigeerInstellingen, syncNu, syncBezig, l
           <div className="account-menu-gebruiker">
             {user?.email ? user.email : 'Niet ingelogd'}
           </div>
-          {user?.id && (
+          {user?.email && (
             <button
               type="button"
               className="account-menu-gebruiker-id"
-              title="Klik om gebruiker-ID te kopiëren"
-              onClick={() => navigator.clipboard.writeText(user.id).catch(() => {})}
+              title="Klik om melder-code te kopiëren"
+              onClick={() => navigator.clipboard.writeText(melderCode(user.email)).catch(() => {})}
             >
-              ID: {user.id}
+              {melderCode(user.email)}
             </button>
           )}
 
