@@ -19,11 +19,16 @@ de code, niet tegen het geheugen van een eerdere sessie.
   effen blokken toont. Als er ooit nieuwe `icon_*`-bestanden aangeleverd
   worden: controleer eerst of ze wél een alphakanaal hebben (PNG color
   type 6), anders is dezelfde fix opnieuw nodig.
-- **Migratie 0030 uitvoeren in Supabase SQL-editor** — regelt RLS op de
-  `attachments`-tabel en Storage-policies voor de `spuitlog-bijlagen`-bucket.
-  Daarna testen: als coordinator/admin een melding van een andere melder
-  openen en controleren of foto's laden; als groepslid met score >= 80
-  een groepsmelding van een ander openen en foto's controleren.
+- **Migraties 0030 t/m 0035 uitvoeren in Supabase SQL-editor** (in volgorde):
+  - **0030**: RLS op `attachments`-tabel + Storage-policies `spuitlog-bijlagen`.
+    Test daarna: coordinator/admin opent melding van ander → foto's laden?
+    Groepslid met score ≥80 opent groepsmelding van ander → foto's laden?
+  - **0031**: `fn_groep_lid_trust_scores` (SECURITY DEFINER).
+  - **0032**: `user_profiles`-aanmaak-trigger + backfill bestaande gebruikers.
+  - **0033**: `groep_leden.groep_trust_score`-kolom ontkoppelen van globale score.
+  - **0034**: kwetsbare groepen (AVG art. 9) profielkolommen.
+  - **0035**: pg_cron-job voor auto-cleanup verlopen uitnodigingslinks (dagelijks
+    04:00 UTC). Controleer na uitvoeren: `SELECT * FROM cron.job WHERE jobname = 'cleanup_verlopen_uitnodigingen';`
 - **Provincie/gemeente backfillen-knop draaien op CoordinatiePage.**
   Migratie 0013 (`gemeente`/`provincie`-kolommen op `entries`) is
   uitgevoerd — nieuwe meldingen krijgen deze velden automatisch.
@@ -54,3 +59,23 @@ de code, niet tegen het geheugen van een eerdere sessie.
   verifiëren binnen deze sessie.
 
 ## Laag
+
+- **Geo-verificatie EXIF implementeren** (optionele trust-score-bonus).
+  Infrastructuur is compleet: `extractEXIF()` leest al `gps_lat`, `gps_lng`
+  en `datetime_original` vóór het strippen. Enige ontbrekende stap:
+  `verifieerEXIFLocatie(exif, meldingLat, meldingLng, meldingTimestamp)`
+  toevoegen in `lib/bewijsmateriaal/exif.js` (haversine-afstand ≤~500m +
+  tijdsverschil ≤15-30 min). Resultaat opslaan als `bestand.exif_verificatie`
+  en als bonus meewegen in trust-score. iOS-kanttekening: iOS verwijdert EXIF
+  vóór overdracht via systeem-share — verificatie werkt dan niet.
+
+- **Domein en externe accounts bijwerken naar constatum.nl**:
+  - DNS constatum.nl koppelen aan Vercel
+  - Vercel project hernoemen / domeinkoppeling instellen
+  - GitHub repo hernoemen van SpuitLogger → Constatum
+  - E-mailadressen `info@constatum.nl` en `privacy@constatum.nl` aanmaken
+  - Drie .docx juridische documenten (spuitregisterbrief, AV, privacy) herschrijven
+
+- **`useToggleableLayer()`-hook voor DashboardKaart.jsx** — de vijf
+  laag-toggle-functies zijn structureel bijna identiek; generalisatie is bewust
+  nog niet gedaan (594 regels, regressierisico zonder browser-test).

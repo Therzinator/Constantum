@@ -4,7 +4,7 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy).
 
 ## Nieuwe features (2026-07-01)
 
@@ -54,6 +54,13 @@ aanwezig**:
 - iOS-kanttekening: iOS verwijdert EXIF vóór overdracht via systeem-share;
   geo-verificatie werkt dan niet (geen GPS in de EXIF). Verificatie is optioneel
   en weegt als bonus mee in de trust-score, niet als vereiste.
+
+### Contactadressen Algemene Voorwaarden en Privacyverklaring bijgewerkt
+- **AlgemeneVoorwaardenModal.jsx** v1.0 → **v1.1** (01-07-2026): artikel 12
+  contactadres `Constatum@protonmail.com` → `info@constatum.nl`.
+- **PrivacyVerklaringModal.jsx** v1.1 → **v1.2** (01-07-2026): alle drie
+  vermeldingen vervangen door `privacy@constatum.nl` (sectie 1 "Wie zijn wij?",
+  artikel 7 inleiding rechten, artikel 7.5 recht van bezwaar).
 
 ### Visibility oude meldingen (onderzoeksresultaat — geen actie nodig)
 Meldingen van vóór de introductie van `opt_in_buurt` zijn **niet zichtbaar voor
