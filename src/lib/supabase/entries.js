@@ -242,6 +242,7 @@ export async function laadVanSupabase(user, force = false) {
       bestanden,
       warnings:            entry.warnings   || [],
       hash:                entry.client_hash || null,
+      rfc3161:             entry.rfc3161 || bestaand?.rfc3161 || null,
       sync_status:         'synced',
       sync_at:             cloudUpdated,
       supabase_id:         entry.id
