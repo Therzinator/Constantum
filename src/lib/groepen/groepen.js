@@ -181,6 +181,31 @@ export async function haalMeldingenVoorGroep(groepId) {
     .map((r) => ({ ...r.entries, gedeeldOp: r.gedeeld_op }));
 }
 
+// Brede variant van haalMeldingenVoorGroep — haalt alle velden op die
+// entryNaarExportMelding() nodig heeft voor een volledig dossier-PDF.
+export async function haalGedeeldeMeldingenVoorGroepExport(groepId) {
+  const sb = sbClient();
+  if (!sb || !groepId) return [];
+
+  const { data, error } = await sb
+    .from('entries_groepen')
+    .select(`gedeeld_op, entries(
+      id, user_id, melder_email, timestamp_local, timestamp_utc, type, types,
+      description, gemeente, provincie, gps_lat, gps_lng, visibility, deleted,
+      weather, richting_deg, richting_compass, geur_intensiteit, wind_subjectief,
+      bedrijfsnaam, perceelnummer, gewas, afstand_woning, afstand_woning_lat,
+      afstand_woning_lng, gezondheidsklachten, gezondheid_toestemming,
+      opt_in_buurt, activiteiten, drift_waarneming, warnings, client_hash, rfc3161
+    )`)
+    .eq('groep_id', groepId)
+    .order('gedeeld_op', { ascending: false });
+
+  if (error) throw error;
+  return (data || [])
+    .filter((r) => r.entries && !r.entries.deleted)
+    .map((r) => ({ ...r.entries, gedeeldOp: r.gedeeld_op }));
+}
+
 export async function verwijderMeldingUitGroep(groepId, entryId) {
   const sb = sbClient();
   if (!sb) return false;

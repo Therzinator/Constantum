@@ -5,12 +5,13 @@
 
 // Trust-scores in buckets van 20 (0-19, 20-39, ..., 80-100) — voor een
 // eenvoudige verdelingsweergave zonder grafiekbibliotheek erbij te halen.
+// Buckets volgen de 4 DB-tiers van migraties 0022/0023/0024:
+// shadow (<20), under_review (20-39), standaard (40-79), vertrouwd (80+).
 export function trustScoreVerdeling(profielen) {
   const buckets = [
     { label: '0-19', min: 0, max: 19, aantal: 0 },
     { label: '20-39', min: 20, max: 39, aantal: 0 },
-    { label: '40-59', min: 40, max: 59, aantal: 0 },
-    { label: '60-79', min: 60, max: 79, aantal: 0 },
+    { label: '40-79', min: 40, max: 79, aantal: 0 },
     { label: '80-100', min: 80, max: 100, aantal: 0 }
   ];
   profielen.forEach((p) => {

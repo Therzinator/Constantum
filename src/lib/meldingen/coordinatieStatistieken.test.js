@@ -10,6 +10,7 @@ import {
 
 // ── trustScoreVerdeling ──────────────────────────────────────────────────────
 
+// Buckets volgen 4 DB-tiers: 0-19 / 20-39 / 40-79 / 80-100 (migraties 0022-0024)
 describe('trustScoreVerdeling', () => {
   it('telt scores in de juiste buckets', () => {
     const profielen = [
@@ -22,30 +23,31 @@ describe('trustScoreVerdeling', () => {
     const result = trustScoreVerdeling(profielen);
     expect(result.find((b) => b.label === '0-19').aantal).toBe(1);
     expect(result.find((b) => b.label === '20-39').aantal).toBe(1);
-    expect(result.find((b) => b.label === '40-59').aantal).toBe(1);
-    expect(result.find((b) => b.label === '60-79').aantal).toBe(1);
+    expect(result.find((b) => b.label === '40-79').aantal).toBe(2);
     expect(result.find((b) => b.label === '80-100').aantal).toBe(1);
   });
 
-  it('grenscases: 0, 19, 20, 79, 80, 100 landen correct', () => {
+  it('grenscases: 0, 19, 20, 39, 40, 79, 80, 100 landen correct', () => {
     const profielen = [
       { trust_score: 0 },
       { trust_score: 19 },
       { trust_score: 20 },
+      { trust_score: 39 },
+      { trust_score: 40 },
       { trust_score: 79 },
       { trust_score: 80 },
       { trust_score: 100 }
     ];
     const result = trustScoreVerdeling(profielen);
     expect(result.find((b) => b.label === '0-19').aantal).toBe(2);
-    expect(result.find((b) => b.label === '20-39').aantal).toBe(1);
-    expect(result.find((b) => b.label === '60-79').aantal).toBe(1);
+    expect(result.find((b) => b.label === '20-39').aantal).toBe(2);
+    expect(result.find((b) => b.label === '40-79').aantal).toBe(2);
     expect(result.find((b) => b.label === '80-100').aantal).toBe(2);
   });
 
-  it('null trust_score valt in 60-79 bucket (default 75 = DB default)', () => {
+  it('null trust_score valt in 40-79 bucket (default 75 = DB default)', () => {
     const result = trustScoreVerdeling([{ trust_score: null }]);
-    expect(result.find((b) => b.label === '60-79').aantal).toBe(1);
+    expect(result.find((b) => b.label === '40-79').aantal).toBe(1);
   });
 
   it('lege lijst geeft alle buckets op 0', () => {
@@ -53,9 +55,9 @@ describe('trustScoreVerdeling', () => {
     expect(result.every((b) => b.aantal === 0)).toBe(true);
   });
 
-  it('geeft altijd 5 buckets terug', () => {
-    expect(trustScoreVerdeling([]).length).toBe(5);
-    expect(trustScoreVerdeling([{ trust_score: 50 }]).length).toBe(5);
+  it('geeft altijd 4 buckets terug', () => {
+    expect(trustScoreVerdeling([]).length).toBe(4);
+    expect(trustScoreVerdeling([{ trust_score: 50 }]).length).toBe(4);
   });
 });
 

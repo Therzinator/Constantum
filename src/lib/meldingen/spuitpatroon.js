@@ -1,3 +1,5 @@
+import { berekenPasquillKlasse } from '../weather/pasquill.js';
+
 // Omstandighedenregister — registreert objectieve weerfeiten en toetst aan
 // juridische normen. Geen spuittypeindicaties — die zijn aanvechtbaar en
 // niet bewijs. De teler is verplicht een spuitregistratie bij te houden
@@ -9,6 +11,7 @@ export function analyseerSpuitpatroon(melding) {
   const rv = weer.humidity ?? weer.relative_humidity ?? 0;
   const wind = weer.wind_speed ?? 0;
   const gusts = weer.wind_gusts ?? 0;
+  const temp = weer.temperature ?? null;
   const uur = new Date(melding.timestamp_local).getHours();
   const isNacht = uur >= 21 || uur <= 5;
 
@@ -54,6 +57,35 @@ export function analyseerSpuitpatroon(melding) {
     indicaties.push({
       label: '🌧️ Recente neerslag',
       reden: `${regen} mm neerslag geregistreerd — spuiten tijdens of direct na neerslag verhoogt afspoeling naar oppervlaktewater (Wm art. 6.3)`,
+      score: 1, kleur: 'info'
+    });
+    risicoScore += 1;
+  }
+
+  if (temp !== null && temp > 25) {
+    indicaties.push({
+      label: '🌡️ Hoge temperatuur',
+      reden: `${temp}°C gemeten — hoge temperatuur vergroot de verdampingssnelheid van gewasbeschermingsmiddelen; werkzame stoffen kunnen langer in de buurtlucht aanwezig blijven (geen wettelijke spuitnorm, wel erkende blootstellingsfactor)`,
+      score: 1, kleur: 'info'
+    });
+    risicoScore += 1;
+  }
+
+  if (rv > 0 && rv < 45) {
+    indicaties.push({
+      label: '🌵 Lage luchtvochtigheid',
+      reden: `${rv}% relatieve luchtvochtigheid — droge lucht versnelt verdamping van middelen van gewas en bodem; concentraties in de directe omgeving nemen daardoor toe`,
+      score: 1, kleur: 'info'
+    });
+    risicoScore += 1;
+  }
+
+  const isDay = weer.is_day !== undefined ? weer.is_day : (uur >= 6 && uur < 21);
+  const pasquill = berekenPasquillKlasse(wind, weer.cloud_cover ?? null, isDay);
+  if (pasquill?.klasse === 'E' || pasquill?.klasse === 'F') {
+    indicaties.push({
+      label: `🌫️ Stabiele atmosfeer (klasse ${pasquill.klasse})`,
+      reden: `Pasquill-klasse ${pasquill.klasse} (${pasquill.label}) — stabiele atmosferische omstandigheden verminderen verticale luchtmenging; spuitnevel en dampen blijven langer laag bij de grond in de woonomgeving`,
       score: 1, kleur: 'info'
     });
     risicoScore += 1;

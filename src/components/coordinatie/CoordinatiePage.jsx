@@ -12,6 +12,7 @@ import {
 import { zoekGemeenteProvinciePDOK } from '../../lib/pdok/postcode.js';
 import { perceelStatistieken, windrichtingPerPerceel } from '../../lib/meldingen/statistieken.js';
 import { BuurtrapportGenerator } from './BuurtrapportGenerator.jsx';
+import { KNMIInstellingen } from '../export/KNMIInstellingen.jsx';
 import {
   trustScoreVerdeling,
   meldersOverzicht,
@@ -20,6 +21,7 @@ import {
   gemeentenInProvincie,
   filterOpRegio
 } from '../../lib/meldingen/coordinatieStatistieken.js';
+import { trustScoreTier } from '../../lib/meldingen/trustScore.js';
 import './CoordinatiePage.css';
 
 // Lazy — trekt OpenLayers mee, alleen nodig zolang dit specifieke onderdeel
@@ -320,7 +322,17 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
               </div>
             )}
             <div className="export-info-rij coordinatie-trust-rij">
-              <span>Trust score</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                Trust score
+                {(() => {
+                  const tier = trustScoreTier(m.trustScore);
+                  return (
+                    <span style={{ fontSize: '0.6rem', padding: '1px 6px', borderRadius: 9, background: tier.kleur, color: '#fff', fontWeight: 600 }}>
+                      {tier.label}
+                    </span>
+                  );
+                })()}
+              </span>
               <input
                 type="number"
                 min="0"
@@ -345,6 +357,8 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
           </Suspense>
 
           <BuurtrapportGenerator user={user} voorgeselecteerdGemeente={voorgeselecteerdGemeente} gemeenteOpties={alleGemeenten} />
+
+          <KNMIInstellingen />
         </div>
       </Collapsible>
     </div>

@@ -4,7 +4,97 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-06-29.
+Laatst bijgewerkt: 2026-06-30 (bugfix-sessie).
+
+## Zes bugfixes (2026-06-30)
+
+- **CheckboxDropdown click-outside** (`components/melding/CheckboxDropdown.jsx`):
+  paneel sluit nu ook bij klik buiten de component via een `mousedown`-listener
+  in een `useEffect`. Eerder sloot het paneel alleen bij herklikken op de
+  triggerknop.
+- **Trust-score-verdeling 4 tiers** (`lib/meldingen/coordinatieStatistieken.js`):
+  buckets aangepast van 5 → 4, in lijn met de DB-tiers uit migraties
+  0022/0023/0024: `0-19`, `20-39`, `40-79`, `80-100`. Tests bijgewerkt.
+- **Melder-overzicht tier-badge** (`components/coordinatie/CoordinatiePage.jsx`):
+  elke melder-rij toont nu een gekleurde badge met tier-label naast het
+  invoerveld. Nieuw gedeeld bestand `lib/meldingen/trustScore.js` bevat
+  `trustScoreTier(score)` (rood/oranje/blauw/groen).
+- **GroepPage trust-score badges** (`components/groepen/GroepPage.jsx`):
+  beheerders/hoofdbeheerders zien per lid een gekleurde badge (score + tier)
+  in de ledenlijst. Data via nieuwe helper `haalTrustScoresVoorLeden(userIds)`
+  in `lib/groepen/groepLeden.js` — werkt via user_profiles RLS (alleen
+  admin/coordinator ziet alle profielen; gewone beheerder ziet alleen eigen).
+- **Groepsdossier-export** (`components/groepen/GroepPage.jsx`): nieuwe
+  Collapsible "📦 Groepsdossier exporteren" zichtbaar voor beheerder/
+  hoofdbeheerder. Gebruikt `haalGedeeldeMeldingenVoorGroepExport()` (brede
+  entry-query, nieuw in `lib/groepen/groepen.js`), `entryNaarExportMelding()`,
+  `laadBijlagenVanSupabase()`, `genereerDossierHTML()`, `openDossierPDF()`.
+  Titel dossier: "Groepsdossier — {groepsnaam}". Rolcontrole via nieuw
+  `magGroepsdossierExporteren()` in `lib/groepen/rollen.js`.
+- **RFC 3161 diagnose** (Taak 6, geen code-wijziging): `rfc3161` staat correct
+  in `laadVanSupabase()`. Scenario (a): opgeslagen in Supabase. De sync-code
+  (`entries.js`) bewaart het volledige `{ token_b64, timestamp, serial, tsa,
+  hash_input }`-object; de display-code verwacht dit formaat en leest het
+  correct terug. Dev-waarschuwing `Geen TSR ontvangen` is normaal: Edge
+  Function draait niet lokaal. Geen fix nodig.
+
+## KNMI weerdata-integratie hersteld (2026-06-30)
+
+- **`lib/weather/knmi.js` herschreven**: primaire bron is nu KNMI Open Data
+  EDR met de nieuwe collectie `10-minute-in-situ-meteorological-observations`
+  (vervangt de gedeprecieerde `observations`-collectie die per 29-09-2025 geen
+  updates meer ontvangt). Authorization header: kale API-sleutel, geen
+  Bearer-prefix. Stationsbepaling via `/locations?bbox=...`, data ophalen via
+  `/locations/{id}?datetime={start}/{eind}`. CoverageJSON-parsing:
+  `coverages[0].ranges.{param}.values`. Parameters: `dd` (windrichting),
+  `ff` (windsnelheid m/s), `ta` (temperatuur), `rh` (luchtvochtigheid),
+  `RH` (neerslag mm/10min).
+- **Fallback ERA5** ingebouwd: als geen API-sleutel aanwezig is, of als KNMI
+  EDR faalt (timeout/fout), valt de functie transparant terug op Open-Meteo
+  ERA5/archief. De fallback gebruikt de actuele parameter-namen
+  (`wind_speed_10m`, `wind_direction_10m`, `relative_humidity_2m`) i.p.v.
+  de verouderde namen die de vorige versie gebruikte.
+- **`laadKNMIKey()`/`slaKNMIKeyOp()`** zijn nu functioneel (localStorage
+  `knmi_api_key`) — waren eerder no-ops waardoor de key-input in de UI niets
+  deed.
+- **`KNMIInstellingen.jsx`** UI bijgewerkt: beschrijft nu het primaire/
+  fallback-pad transparant, geeft feedback of er een sleutel ingesteld is.
+- **AbortController timeout** toegevoegd: 10s voor KNMI EDR, 8s voor ERA5.
+- **Foutlogging verbeterd**: HTTP-status + eerste 120 tekens van het
+  response-body gelogd bij mislukte aanroepen.
+- **Geen wijziging aan `openMeteo.js`** (live invoer bij melden) — die module
+  blijft onafhankelijk (zie DECISIONS.md "Weerdata gesplitst over drie
+  bronnen").
+
+## Verdamping/blootstelling, incrementele sync, dode code (2026-06-30)
+
+- **Verdampings-/blootstellingsrisico-indicator in `lib/meldingen/spuitpatroon.js`**:
+  drie nieuwe indicatoren toegevoegd aan `analyseerSpuitpatroon()`, elk
+  score +1 / kleur `info`:
+  - **Temperatuur > 25°C** — erkende blootstellingsfactor; geen wettelijke
+    spuitnorm maar hoge temperatuur vergroot verdampingssnelheid.
+  - **RV < 45%** — droge lucht versnelt verdamping van middelen van gewas
+    en bodem. Complement op de bestaande RV > 85%-check (trage verdamping).
+  - **Pasquill-klasse E of F** — stabiele atmosfeer (weinig verticale
+    menging); berekend inline via `berekenPasquillKlasse()` op
+    windsnelheid + cloud_cover + is_day uit `melding.weather`. Stabiele
+    klassen houden spuitnevel laag bij de grond in de woonomgeving.
+  Alle drie zijn nadrukkelijk geframed als omstandighedenfeit, niet als
+  normoverschrijding — er is geen wettelijke drempelwaarde voor deze
+  factoren (anders dan de windnorm ≤18 km/h).
+- **`lib/drift/berekening.js` verwijderd** — was een volledige duplicaat
+  van de FOCUS STEP-logica in `driftzone.js` (Leaflet-stijl [lat,lng]-
+  punten i.p.v. OL [lng,lat]), nergens geïmporteerd.
+- **Incrementele sync `laadVanSupabase()`** (`lib/supabase/entries.js`):
+  bij elke succesvolle sync wordt een checkpoint opgeslagen in
+  `localStorage` (`spuitlogger_sync_cp_{user.id}`). Volgende syncs
+  voegen `.gte('updated_at', checkpoint)` toe aan de query, zodat alleen
+  gewijzigde entries worden opgehaald. `force = true` slaat de checkpoint
+  over en haalt alles op (bestaand gedrag). `entries.updated_at` heeft
+  trigger `entries_updated_at` (geverifieerd via `pg_trigger`
+  2026-06-30). De checkpoint wordt vóór de query opgekomen
+  (`syncStartedAt`) zodat een race-conditie (entries gewijzigd tussen
+  query en opslaan) de volgende sync niet benadeelt.
 
 ## Herontwerp Instellingen/Export/Groepen/Coördinatie (sinds 2026-06-24)
 

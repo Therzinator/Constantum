@@ -143,16 +143,32 @@ export async function laadVanSupabase(user, force = false) {
   if (!sb || !user) throw new Error('Niet ingelogd');
   if (!navigator.onLine) throw new Error('Offline');
 
+  // Incrementele sync: haal alleen entries op die zijn bijgewerkt sinds de
+  // laatste succesvolle sync. De checkpoint wordt per user_id opgeslagen om
+  // cross-account contaminatie te voorkomen. force=true negeert de checkpoint
+  // en haalt alles op (gebruikt bij handmatige herlaad of na schema-wijziging).
+  // entries.updated_at heeft een auto-update trigger (entries_updated_at) —
+  // geverifieerd via pg_trigger op 2026-06-30.
+  const checkpointKey = `spuitlogger_sync_cp_${user.id}`;
+  const lastSyncAt = !force ? localStorage.getItem(checkpointKey) : null;
+  const syncStartedAt = new Date().toISOString();
+
   // Privacy: alleen eigen meldingen + meldingen waarvan de melder zelf
   // opt_in_buurt heeft aangezet komen binnen (client-side veiligheidsnet —
   // de eigenlijke afdwinging hoort in de RLS-policy, zie
   // supabase/migrations/0001_dpia_buurt_en_gezondheid.sql)
-  const { data: entries, error } = await sb
+  let query = sb
     .from('entries')
     .select('*')
     .eq('deleted', false)
     .or(`user_id.eq.${user.id},opt_in_buurt.eq.true`)
     .order('timestamp_local', { ascending: false });
+
+  if (lastSyncAt) {
+    query = query.gte('updated_at', lastSyncAt);
+  }
+
+  const { data: entries, error } = await query;
 
   if (error) throw error;
 
@@ -241,5 +257,6 @@ export async function laadVanSupabase(user, force = false) {
     saveMeldingen(gesorteerd);
   }
 
+  localStorage.setItem(checkpointKey, syncStartedAt);
   return { nieuw, bijgewerkt };
 }

@@ -14,6 +14,24 @@ export async function haalGroepLeden(groepId) {
   return data || [];
 }
 
+// Haalt trust_score op voor een lijst user-IDs via user_profiles.
+// Voor admin/coordinator: alle profielen zichtbaar (RLS 0011).
+// Voor gewone beheerder: alleen eigen profiel — rest wordt niet teruggegeven.
+// Retourneert een Map userId → trust_score (null als onbekend).
+export async function haalTrustScoresVoorLeden(userIds) {
+  const sb = sbClient();
+  if (!sb || !userIds.length) return new Map();
+
+  const { data } = await sb
+    .from('user_profiles')
+    .select('id, trust_score')
+    .in('id', userIds);
+
+  const map = new Map();
+  (data || []).forEach((p) => map.set(p.id, p.trust_score ?? null));
+  return map;
+}
+
 // Alleen de hoofdbeheerder (fn_groep_rol_wijzigen bewaakt dit + de
 // max_beheerders-limiet, zie migratie 0015) — wijzigt nooit naar/van
 // 'hoofdbeheerder'.

@@ -86,24 +86,27 @@ Dit is een veelvoorkomende verwarring, dus expliciet uitgeschreven:
    CURRENT_STATE.md.
 
 `lib/weather/pasquill.js` (Pasquill-stabiliteitsklasse-berekening) wordt
-nog gebruikt door de live spuitrichtlijn-beoordeling (#1) — niet verwijderd.
+gebruikt door de live spuitrichtlijn-beoordeling (#1): zowel als label in
+de melding-UI, als analytisch in `lib/meldingen/spuitpatroon.js`
+(`analyseerSpuitpatroon()`) — stabiele klasse E/F triggert een
+blootstellingsindicator in het omstandighedenregister.
 
 ## Rollenmodel — wat de code daadwerkelijk doet
 
-`user_roles.role` is een **vrije tekstkolom**, geen database-enum (het
-schema wordt handmatig beheerd, zie "Database-schema" in root-CLAUDE.md —
-er is geen CREATE TABLE met CHECK-constraint terug te vinden in de
-migraties). Bevestigde, daadwerkelijk gecontroleerde waarden in code
-(`src/lib/rollen.js`):
+`user_roles.role` heeft een **CHECK-constraint** (migratie 0026) die
+toegestane waarden afdwingt. Bevestigde, daadwerkelijk gecontroleerde
+waarden in code (`src/lib/rollen.js`):
 
 - `'gebruiker'` — default, ook wanneer er geen rij in `user_roles` bestaat
   of de rol-lookup faalt.
 - `'admin'` — volledige toegang (RLS-bypass + CoördinatiePage +
-  Heatmap-toggle + Prullenbak-herstel).
-- `'coordinator'` — **sinds 2026-06-21** gelijkgesteld aan `admin` voor de
-  Heatmap-toggle (`isCoordinatorOfAdmin()`), maar **niet** voor
-  CoördinatiePage of de RLS-policies (die kennen alleen `'admin'`). Zie
-  bekende beperking in CURRENT_STATE.md.
+  Heatmap-toggle + Prullenbak-herstel + buurtgebied-export).
+- `'coordinator'` — **sinds 2026-06-21** gelijkgesteld aan `admin` voor:
+  CoördinatiePage-toegang, Heatmap-toggle, en de RLS-policies op entries/
+  user_profiles/buurtdossiers (migratie 0011). **Niet** gelijkgesteld aan
+  admin voor: Prullenbak-herstel en buurtgebied-CSV/Dossier-PDF-export
+  (die zijn admin-only, zie DECISIONS.md). Er is nog geen account met de
+  rol `'coordinator'` aangemaakt — zie NEXT_STEPS.md.
 
 Er bestaan **geen** rollen `moderator`, `beheerder` of `onderzoeker` in de
 code op dit moment — als die ooit nodig zijn, is dat een nieuwe

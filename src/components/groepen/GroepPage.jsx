@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import { haalGroep, haalGroepStatistieken, wijzigGroepInstellingen, wijzigDeelvoorkeur } from '../../lib/groepen/groepen.js';
-import { haalGroepLeden, wijzigRol, verwijderLid, verlaatGroep, wijzigTrustScoreInGroep } from '../../lib/groepen/groepLeden.js';
-import { isGroepBeheerder, isGroepHoofdbeheerder } from '../../lib/groepen/rollen.js';
+import { haalGroepLeden, wijzigRol, verwijderLid, verlaatGroep, wijzigTrustScoreInGroep, haalTrustScoresVoorLeden } from '../../lib/groepen/groepLeden.js';
+import { isGroepBeheerder, isGroepHoofdbeheerder, magGroepsdossierExporteren } from '../../lib/groepen/rollen.js';
+import { haalGedeeldeMeldingenVoorGroepExport } from '../../lib/groepen/groepen.js';
 import { haalGebruikersProfiel } from '../../lib/supabase/profiel.js';
+import { trustScoreTier } from '../../lib/meldingen/trustScore.js';
 import { TrustIndicator } from '../export/TrustIndicator.jsx';
+import { entryNaarExportMelding } from '../../lib/meldingen/regioExport.js';
+import { laadBijlagenVanSupabase } from '../../lib/supabase/bijlagen.js';
+import { genereerDossierHTML, openDossierPDF } from '../../lib/export/pdf.js';
+import { Collapsible } from '../ui/Collapsible.jsx';
 import { GroepUitnodigingKaart } from './GroepUitnodigingKaart.jsx';
 import { GroepMeldingenLijst } from './GroepMeldingenLijst.jsx';
 import { Toast } from '../ui/Toast.jsx';
@@ -29,6 +35,8 @@ export function GroepPage({ groepId, user, onTerug }) {
   const [openbaar, setOpenbaar] = useState(false);
   const [maxBeheerders, setMaxBeheerders] = useState(1);
   const [trustWaarden, setTrustWaarden] = useState({});
+  const [ledenTrustScores, setLedenTrustScores] = useState(new Map());
+  const [exportBezig, setExportBezig] = useState(false);
 
   // eslint-disable-next-line react-hooks/purity -- toast-id, geen logica-kritisch gebruik van Date.now(), zelfde patroon als InstellingenPage.jsx/TrustIndicator.jsx
   const toon = (tekst, type = '') => setMelding({ id: Date.now(), tekst, type });
@@ -49,6 +57,11 @@ export function GroepPage({ groepId, user, onTerug }) {
       setBeschrijving(g?.beschrijving || '');
       setOpenbaar(Boolean(g?.openbaar));
       setMaxBeheerders(g?.max_beheerders || 1);
+      const eigenLidRol = l.find((lid) => lid.user_id === user.id)?.rol;
+      if (isGroepBeheerder(eigenLidRol)) {
+        const scores = await haalTrustScoresVoorLeden(l.map((lid) => lid.user_id));
+        setLedenTrustScores(scores);
+      }
     } catch (err) {
       setFout(err.message);
     } finally {
@@ -77,6 +90,11 @@ export function GroepPage({ groepId, user, onTerug }) {
         setBeschrijving(g?.beschrijving || '');
         setOpenbaar(Boolean(g?.openbaar));
         setMaxBeheerders(g?.max_beheerders || 1);
+        const eigenLidRol = l.find((lid) => lid.user_id === user.id)?.rol;
+        if (isGroepBeheerder(eigenLidRol)) {
+          const scores = await haalTrustScoresVoorLeden(l.map((lid) => lid.user_id));
+          if (actief) setLedenTrustScores(scores);
+        }
       } catch (err) {
         if (actief) setFout(err.message);
       } finally {
@@ -162,6 +180,23 @@ export function GroepPage({ groepId, user, onTerug }) {
     }
   };
 
+  const handleGroepsdossierExporteren = async () => {
+    setExportBezig(true);
+    try {
+      const entries = await haalGedeeldeMeldingenVoorGroepExport(groepId);
+      const meldingen = entries.map(entryNaarExportMelding);
+      for (let i = 0; i < meldingen.length; i++) {
+        meldingen[i].bestanden = await laadBijlagenVanSupabase(meldingen[i].id, user).catch(() => []);
+      }
+      const html = await genereerDossierHTML(meldingen, `Groepsdossier — ${groep.naam}`);
+      openDossierPDF(html);
+    } catch (err) {
+      toon(`Export mislukt: ${err.message}`, 'error');
+    } finally {
+      setExportBezig(false);
+    }
+  };
+
   return (
     <div className="p-4 groepen-page">
       <button type="button" className="btn-outline px-3 py-1" onClick={onTerug}>← Terug naar Groepen</button>
@@ -216,7 +251,18 @@ export function GroepPage({ groepId, user, onTerug }) {
         <div className="section-label mb-3">👥 Leden{magBeheren ? ' (beheer)' : ''}</div>
         {leden.map((l) => (
           <div key={l.user_id} className="export-info-rij">
-            <span>{l.user_id === user.id ? 'Jij' : l.user_id.slice(0, 8)} · {ROL_LABEL[l.rol]}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {l.user_id === user.id ? 'Jij' : l.user_id.slice(0, 8)} · {ROL_LABEL[l.rol]}
+              {magBeheren && ledenTrustScores.has(l.user_id) && (() => {
+                const score = ledenTrustScores.get(l.user_id);
+                const tier = trustScoreTier(score);
+                return (
+                  <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 8, background: tier.kleur, color: '#fff', fontWeight: 600 }}>
+                    {score ?? 75} · {tier.label}
+                  </span>
+                );
+              })()}
+            </span>
             {magBeheren && l.user_id !== user.id && l.rol !== 'hoofdbeheerder' && (
               <div className="flex gap-2">
                 {isHoofdbeheerder && (
@@ -266,6 +312,24 @@ export function GroepPage({ groepId, user, onTerug }) {
       )}
 
       {magBeheren && <GroepUitnodigingKaart groepId={groepId} userId={user.id} groepNaam={groep.naam} />}
+
+      {magGroepsdossierExporteren(eigenRol) && (
+        <Collapsible icoon="📦" titel="Groepsdossier exporteren">
+          <div className="export-card-beschrijving mb-3">
+            Exporteer alle meldingen die met deze groep gedeeld zijn als één PDF-dossier
+            met tijdstempel, weerstatus en (indien beschikbaar) bijlagen. Geschikt voor
+            juridisch gebruik.
+          </div>
+          <button
+            type="button"
+            className="btn-primary px-4 py-2"
+            disabled={exportBezig}
+            onClick={handleGroepsdossierExporteren}
+          >
+            {exportBezig ? 'Bezig met exporteren…' : '📄 Groepsdossier openen'}
+          </button>
+        </Collapsible>
+      )}
 
       <div className="card p-4">
         <div className="section-label mb-3">📤 Meldingen delen met deze groep</div>

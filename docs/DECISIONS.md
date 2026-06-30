@@ -43,6 +43,10 @@ aparte modules in plaats van één met fallback.
 ### Impact
 `lib/weather/openMeteo.js` en `lib/weather/knmi.js` blijven losse,
 onafhankelijke modules. Een wijziging aan de ene mag de andere niet raken.
+`knmi.js` heeft intern een Open-Meteo ERA5-fallback ingebouwd — dat is
+niet hetzelfde als de live Open-Meteo aanroep in `openMeteo.js`, maar
+een aparte historische-archief-aanroep voor het geval KNMI EDR
+niet beschikbaar is. De twee modules delen geen code.
 
 ---
 
@@ -389,8 +393,9 @@ worden.
   `fn_trust_score_kwartaalbonus()`-functie, scheduling (`pg_cron` of
   handmatig) is een aparte, door de gebruiker zelf te nemen
   Supabase-dashboard-actie.
-- Migratie 0014 is **geschreven, nog niet uitgevoerd** — zie
-  NEXT_STEPS.md.
+- Migratie 0014 is later **vervangen en uitgebreid** door migraties
+  0022/0023/0024 (trust-score tier-systeem compleet, actie-bonussen,
+  verwijdering legacy-triggers) — alle drie uitgevoerd.
 
 ---
 
@@ -403,8 +408,8 @@ migratie 0007) volledig vervangen door een volwaardige Groepenfunctie:
 groepen met leden/rollen (`lid`/`beheerder`/`hoofdbeheerder`), eigen
 uitnodigingen (link + QR, instelbaar aantal gebruikers/verlooptijd),
 openbare groepen, en een melder-gestuurde keuze om een melding met
-specifieke groep(en) te delen (`entries_groepen`, migratie 0015 — **nog
-niet uitgevoerd**, zie NEXT_STEPS.md). Twee expliciete keuzes daarbinnen,
+specifieke groep(en) te delen (`entries_groepen`, migratie 0015 —
+**uitgevoerd**, net als migraties 0016, 0018, 0020, 0021). Twee expliciete keuzes daarbinnen,
 bevestigd door de gebruiker vóór implementatie:
 - Een melder kiest **per groep** welke meldingen hij deelt — geen
   automatisch alles-delen zodra je lid wordt.

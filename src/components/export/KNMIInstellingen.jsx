@@ -21,9 +21,11 @@ export function KNMIInstellingen() {
 
   return (
     <div className="card p-4">
-      <div className="section-label mb-2">🌦️ KNMI Weerdata</div>
+      <div className="section-label mb-2">🌦️ Weerdata voor dossier</div>
       <div className="export-card-beschrijving mb-3">
-        Officiële KNMI-stationsdata versterkt het juridische dossier. Gratis API-key aanvragen via{' '}
+        Met een KNMI API-sleutel worden officiële meetstationsdata gebruikt (10-minuten resolutie,
+        CC BY 4.0 © KNMI) — sterker voor juridisch dossiergebruik. Zonder sleutel: ERA5-reanalyse
+        via Open-Meteo (uurresolutie, ook CC BY 4.0). Sleutel aanvragen via{' '}
         <a href="https://dataplatform.knmi.nl" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
           dataplatform.knmi.nl
         </a>.
@@ -33,7 +35,7 @@ export function KNMIInstellingen() {
           type="password"
           className="form-input px-3 py-2"
           style={{ flex: 1 }}
-          placeholder="KNMI API key"
+          placeholder="KNMI API-sleutel (optioneel)"
           value={key}
           onChange={(e) => setKey(e.target.value)}
         />
@@ -44,8 +46,8 @@ export function KNMIInstellingen() {
           {status.tekst}
         </div>
       )}
-      <div className="export-card-beschrijving mt-2">
-        Wordt gebruikt bij meldingdetails en export voor gecertificeerde weerdata (CC BY 4.0 © KNMI).
+      <div className="export-card-beschrijving mt-2" style={{ color: 'var(--text-muted)' }}>
+        {key ? '✓ Sleutel ingesteld — KNMI meetstations worden gebruikt met ERA5 als terugval.' : 'Geen sleutel — Open-Meteo ERA5 wordt gebruikt.'}
       </div>
     </div>
   );

@@ -9,3 +9,7 @@ export function isGroepBeheerder(groepRol) {
 export function isGroepHoofdbeheerder(groepRol) {
   return groepRol === 'hoofdbeheerder';
 }
+
+export function magGroepsdossierExporteren(groepRol) {
+  return isGroepBeheerder(groepRol);
+}
