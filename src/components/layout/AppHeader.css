@@ -46,13 +46,12 @@
 
 .app-header-subtitel {
   font-family: var(--mono);
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   letter-spacing: 0.04em;
   color: var(--text-muted);
   text-transform: uppercase;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
 }
 
 .app-header-acties {
@@ -81,7 +80,7 @@
     font-size: 1.3rem;
   }
   .app-header-subtitel {
-    font-size: 0.8rem;
+    font-size: 0.65rem;
   }
 }
 
