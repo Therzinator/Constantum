@@ -195,3 +195,28 @@ export async function telOptInEntriesZonderGemeente() {
   if (error) return 0;
   return count || 0;
 }
+
+// Gemeenten waar meldingen beschikbaar zijn voor het buurtrapport:
+// opt_in_buurt=true OF gedeeld met een groep (entries_groepen).
+export async function haalBuurtrapportGemeenten() {
+  const sb = sbClient();
+  if (!sb) return [];
+
+  const [{ data: optIn }, { data: groep }] = await Promise.all([
+    sb.from('entries')
+      .select('gemeente')
+      .eq('deleted', false)
+      .eq('opt_in_buurt', true)
+      .not('gemeente', 'is', null),
+    sb.from('entries')
+      .select('gemeente, entries_groepen!inner(groep_id)')
+      .eq('deleted', false)
+      .not('gemeente', 'is', null)
+  ]);
+
+  const gemeenten = new Set([
+    ...(optIn || []).map((e) => e.gemeente),
+    ...(groep || []).map((e) => e.gemeente)
+  ]);
+  return [...gemeenten].filter(Boolean).sort();
+}

@@ -7,7 +7,8 @@ import {
   zetTrustScoreAdmin,
   zetVisibilityAdmin,
   haalEntriesZonderGemeente,
-  zetGemeenteProvincieAdmin
+  zetGemeenteProvincieAdmin,
+  haalBuurtrapportGemeenten
 } from '../../lib/supabase/admin.js';
 import { zoekGemeenteProvinciePDOK } from '../../lib/pdok/postcode.js';
 import { perceelStatistieken, windrichtingPerPerceel } from '../../lib/meldingen/statistieken.js';
@@ -50,6 +51,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
   const [filterProvincie, setFilterProvincie] = useState('');
   const [filterGemeente, setFilterGemeente] = useState('');
   const [trustWaarden, setTrustWaarden] = useState({});
+  const [buurtGemeenten, setBuurtGemeenten] = useState([]);
 
   const laad = async () => {
     try {
@@ -65,8 +67,8 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
     let actief = true;
     (async () => {
       try {
-        const [e, p] = await Promise.all([haalAlleEntriesAdmin(), haalAlleProfielenAdmin()]);
-        if (actief) { setEntries(e); setProfielen(p); }
+        const [e, p, bg] = await Promise.all([haalAlleEntriesAdmin(), haalAlleProfielenAdmin(), haalBuurtrapportGemeenten()]);
+        if (actief) { setEntries(e); setProfielen(p); setBuurtGemeenten(bg); }
       } catch (err) {
         if (actief) setFout(err.message);
       }
@@ -80,7 +82,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
   const verdeling = trustScoreVerdeling(profielen);
   const provincieOpties = provincies(entries);
   const gemeenteOpties = gemeentenInProvincie(entries, filterProvincie);
-  const alleGemeenten = [...new Set(entries.filter((e) => e.opt_in_buurt).map((e) => e.gemeente).filter(Boolean))].sort();
+  const alleGemeenten = [...new Set(entries.map((e) => e.gemeente).filter(Boolean))].sort();
   const entriesGefilterd = filterOpRegio(entries, filterProvincie, filterGemeente);
   const perceelStats = perceelStatistieken(entriesGefilterd);
   const windroosPerPerceel = windrichtingPerPerceel(entriesGefilterd);
@@ -367,7 +369,7 @@ export function CoordinatiePage({ user, thuislocatie, gebruikerRol }) {
             <BuurtgebiedTekenaar thuislocatie={filterCentrum || thuislocatie} meldingen={entriesGefilterd} user={user} gebruikerRol={gebruikerRol} />
           </Suspense>
 
-          <BuurtrapportGenerator user={user} voorgeselecteerdGemeente={voorgeselecteerdGemeente} gemeenteOpties={alleGemeenten} />
+          <BuurtrapportGenerator user={user} voorgeselecteerdGemeente={voorgeselecteerdGemeente} gemeenteOpties={buurtGemeenten} />
 
           <KNMIInstellingen />
         </div>
