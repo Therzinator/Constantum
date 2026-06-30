@@ -29,7 +29,7 @@ export default defineConfig({
             urlPattern: ({ url }) => url.hostname === 'api.open-meteo.com',
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'spuitlog-api',
+              cacheName: 'constatum-api',
               expiration: { maxAgeSeconds: 600 }
             }
           },
@@ -37,7 +37,7 @@ export default defineConfig({
             urlPattern: ({ url }) => url.hostname.includes('tile.openstreetmap.org'),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'spuitlog-tiles',
+              cacheName: 'constatum-tiles',
               expiration: { maxEntries: 500, maxAgeSeconds: 30 * 24 * 60 * 60 }
             }
           }
