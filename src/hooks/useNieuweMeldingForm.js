@@ -18,6 +18,7 @@ import { berekenPasquillKlasse } from '../lib/weather/pasquill.js';
 import { laadDeelVoorkeur, laadDeelVoorkeurGroepen } from '../lib/notificaties/deelvoorkeur.js';
 import { APP_VERSION_CLIENT } from '../lib/version.js';
 import { SUPABASE_ENABLED } from '../lib/supabase/client.js';
+import { useGebruikersProfiel } from './useGebruikersProfiel.js';
 
 const STANDAARD_ACTIVITEITEN = ['tractor', 'spuitmachine'];
 
@@ -83,6 +84,7 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
   const [stap, setStap] = useState(null);
   const [fout, setFout] = useState(null);
   const [weerMelding, setWeerMelding] = useState(null);
+  const profiel = useGebruikersProfiel(user);
 
   const zetVeld = useCallback((naam, waarde) => {
     setVeld((v) => ({ ...v, [naam]: waarde }));
@@ -350,6 +352,7 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
         gezondheid_toestemming: veld.gezondheidToestemming,
         opt_in_buurt: veld.optInBuurt,
         opt_in_groepen: veld.optInGroepen,
+        kwetsbare_groep_aanwezig: profiel?.kwetsbare_groepen_actief === true,
         activiteiten: veld.activiteiten,
         weather: veld.weather
           ? { ...veld.weather, pasquill: berekenPasquillKlasse(veld.weather.wind_speed, veld.weather.cloud_cover, veld.weather.is_day) }
@@ -416,7 +419,7 @@ export function useNieuweMeldingForm({ user, thuislocatie, meldingenApi, syncNu 
       setBusy(false);
       setStap(null);
     }
-  }, [veld, user, meldingenApi, syncNu, reset, windNaarWoning]);
+  }, [veld, user, meldingenApi, syncNu, reset, windNaarWoning, profiel]);
 
   return {
     veld,

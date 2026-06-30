@@ -4,6 +4,7 @@ import { Toast } from '../ui/Toast.jsx';
 import { Collapsible } from '../ui/Collapsible.jsx';
 import { PrullenbakCard } from '../export/PrullenbakCard.jsx';
 import { GegevensPrivacyInstelling } from './GegevensPrivacyInstelling.jsx';
+import { KwetsbareGroepen } from './KwetsbareGroepen.jsx';
 import { TrustIndicator } from '../export/TrustIndicator.jsx';
 import { PrivacyVerklaringModal } from '../onboarding/PrivacyVerklaringModal.jsx';
 import { AlgemeneVoorwaardenModal } from '../onboarding/AlgemeneVoorwaardenModal.jsx';
@@ -54,6 +55,10 @@ export function InstellingenPage({ meldingenApi, gebruikerRol, user, laadVanClou
       <TrustIndicator profiel={profiel} />
 
       <GegevensPrivacyInstelling user={user} meldingenApi={meldingenApi} thuislocatie={thuislocatie} onUitloggen={onUitloggen} />
+
+      <Collapsible icoon="🛡️" titel="Kwetsbare personen in huishouden">
+        <KwetsbareGroepen user={user} />
+      </Collapsible>
 
       <div className="card p-4">
         <div className="section-label mb-3">💬 Feedback &amp; vragen</div>

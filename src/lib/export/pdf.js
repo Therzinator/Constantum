@@ -88,6 +88,11 @@ async function meldingNaarHTML(m, index) {
       <h4>Omschrijving</h4>
       <p>${escapeHTML(m.description)}</p>
 
+      ${m.kwetsbare_groep_aanwezig ? `
+      <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:8px 12px;margin:8px 0;font-size:12px;">
+        <strong>⚠️ Kwetsbare bewoner(s) aanwezig bij deze waarneming</strong><br>
+        <span style="color:#555;">De melder heeft aangegeven dat er kwetsbare personen (kinderen, ouderen, of personen met gezondheidskwetsbaarheden) in het huishouden aanwezig zijn. Dit is een erkende verzwarende omstandigheid bij beoordeling van pesticideblootstelling.</span>
+      </div>` : ''}
       ${m.drift_waarneming?.length ? `<h4>Drift &amp; overlast</h4><p>${m.drift_waarneming.map(escapeHTML).join(' · ')}</p>` : ''}
       ${m.gezondheidsklachten?.length ? `<h4>Gezondheidsklachten (toestemming: ${m.gezondheid_toestemming ? 'ja' : 'nee'})</h4><p>${m.gezondheidsklachten.map(escapeHTML).join(', ')}</p>` : ''}
 

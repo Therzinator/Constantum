@@ -1,7 +1,7 @@
 import { JuridischModal } from './JuridischModal.jsx';
 
-const VERSIE = '1.0';
-const LAATST_GEWIJZIGD = '21-06-2026';
+const VERSIE = '1.1';
+const LAATST_GEWIJZIGD = '30-06-2026';
 
 export function PrivacyVerklaringModal({ onSluiten }) {
   return (
@@ -29,10 +29,13 @@ Toezichthouder: Autoriteit Persoonsgegevens (AP) — autoriteitpersoonsgegevens.
 2.3 Locatiegegevens (thuislocatie)
 Uw thuislocatie wordt uitsluitend gebruikt voor afstandsberekeningen (bijv. afstand tot het spuitperceel). In externe outputs (PDF-dossier, Supabase) wordt deze locatie afgerond op twee decimalen — een nauwkeurigheid van circa 1 kilometer. Uw exacte woonadres is voor niemand zichtbaar.
 
-2.4 Gezondheidsgegevens (bijzondere categorie)
+2.4 Gezondheidsgegevens bij een melding (bijzondere categorie)
 Let op: Gezondheidsgegevens zijn een bijzondere categorie (AVG art. 9). Wij verwerken deze uitsluitend als u ze zelf invult. Door gezondheidsklachten in te voeren geeft u uitdrukkelijke toestemming voor de verwerking hiervan.
 
-2.5 Technische metadata
+2.5 Kwetsbare personen in huishouden (bijzondere categorie)
+Via Instellingen → Kwetsbare personen kunt u aangeven welke categorieën kwetsbare personen (bijv. kinderen, ouderen, personen met bepaalde aandoeningen) in uw huishouden aanwezig zijn. Dit zijn gezondheidsgegevens vallend onder AVG art. 9. Verwerking vindt uitsluitend plaats na uw uitdrukkelijke toestemming. De specifieke categorieën worden opgeslagen in uw eigen profiel en zijn niet zichtbaar voor andere gebruikers of groepsleden. Op meldingsniveau wordt uitsluitend een boolean ('kwetsbare bewoner(s) aanwezig: ja/nee') opgeslagen — zonder vermelding van de specifieke aandoening. U kunt deze toestemming te allen tijde intrekken via Instellingen → Kwetsbare personen → Uitschakelen.
+
+2.6 Technische metadata
 • User agent (apparaattype en browserversie) — opgeslagen in de audit log voor forensische context
 • App-versie op het moment van aanmaken van de melding
 • RFC 3161 tijdstempel token — ontvangen van Freetsa.org, opgeslagen als bewijs van tijdstip
