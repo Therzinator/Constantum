@@ -61,9 +61,11 @@ export function AuthOverlay({ auth, uitnodiging }) {
       <div className="auth-card">
         <div className="auth-branding">
           <img src={appIcon} alt="Constatum" className="auth-app-icon" />
-          <div className="auth-title">Constatum</div>
+          <div className="auth-branding-tekst">
+            <div className="auth-title">Constatum</div>
+            <div className="auth-sub">GEOGRAFISCHE WAARNEMINGEN</div>
+          </div>
         </div>
-        <div className="auth-sub">GEOGRAFISCHE WAARNEMINGEN</div>
 
         {uitnodiging && (
           <div className="auth-info">
