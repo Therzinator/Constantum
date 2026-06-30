@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'Constatum',
         short_name: 'Constatum',
-        description: 'Juridisch dossieropbouw systeem voor pesticiden drift en spuitactiviteiten registratie',
+        description: 'Geografische Waarnemingen',
         start_url: '/',
         display: 'standalone',
         background_color: '#010510',
