@@ -4,7 +4,64 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-06-30 (a11y-fixes, RFC 3161 sync-fix, Melder#-code in account-menu).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner).
+
+## Nieuwe features (2026-07-01)
+
+### Post-COVID / Long COVID toegevoegd aan kwetsbare groepen (`KwetsbareGroepen.jsx`)
+- `{ id: 'post_covid', label: 'Post-COVID / Long COVID' }` toegevoegd aan de
+  `SUBSTANTIEEL`-array — naast de 5 bestaande categorieën (diabetes, nierfalen,
+  immunosuppressie, neurologisch, MCS). Geen DB-schema-aanpassing nodig:
+  `user_profiles.kwetsbare_groepen` is JSONB (vrije array van string-IDs).
+
+### Auto-cleanup verlopen uitnodigingslinks (`lib/groepen/uitnodigingen.js` + migratie 0035)
+- **Client-side** (in `haalGroepUitnodigingen()`): na het ophalen worden
+  ingetrokken of langer dan 24u verlopen uitnodigingen asynchroon verwijderd
+  via `sb.from('groep_uitnodigingen').delete().in('id', [...])` (best-effort,
+  niet-geblokkeerd). De returnwaarde bevat alleen nog actieve links.
+- **Server-side** (migratie 0035): pg_cron-job `cleanup_verlopen_uitnodigingen`
+  draait dagelijks om 04:00 UTC — verwijdert `ingetrokken=true` en
+  `verloopt_op < NOW() - INTERVAL '24 hours'`. **Nog uit te voeren in Supabase.**
+
+### Logout → terugkeer naar inlogscherm (`hooks/useAuth.js`)
+- `logout()` roept nu ook `setAuthOverlayVisible(true)` aan — de `AuthOverlay`
+  werd eerder niet opnieuw zichtbaar na uitloggen. Geen andere wijzigingen nodig:
+  `AuthOverlay` is altijd gemount in `App.jsx` en reageerde al op de visibility-flag.
+
+### PWA install-banner (`components/pwa/InstallBanner.jsx`)
+- Nieuwe component die detecteert of de app als browser (niet standalone) wordt
+  gebruikt. Toont een afwijsbare banner ("📲 Installeer Constatum als app…").
+- Op Android/Chrome/desktop: `beforeinstallprompt` wordt gecaptured →
+  "Installeren"-knop roept `event.prompt()` aan.
+- Op iOS/Firefox (geen `beforeinstallprompt`): banner toont na 2s zonder
+  installatieknop (informatieve mededeling).
+- Afwijzing opgeslagen in `localStorage['constatum_pwa_banner_dismissed']`.
+- Geïntegreerd in `App.jsx` direct onder `<UpdateBanner />`.
+
+### Geo-verificatie EXIF (onderzoeksresultaat — geen implementatie)
+De infrastructuur voor geo-verificatie van foto/video-bewijs is **al volledig
+aanwezig**:
+- `extractEXIF()` (`lib/bewijsmateriaal/exif.js:55-200`) leest al `gps_lat`,
+  `gps_lng` én `datetime_original` (lokale tijd `"YYYY-MM-DDTHH:MM:SS"`).
+- De aanroepvolgorde in `useNieuweMeldingForm.js` is correct:
+  `hashFile()` → `extractEXIF()` → `stripEXIFGPS()` — GPS al geëxtraheerd
+  vóór het strippen, hash al berekend op het origineel.
+- EXIF-data zit al in `melding.bestanden[n].exif` (regel ~274 en ~366).
+- **Wat nog ontbreekt**: vergelijkingsfunctie `verifieerEXIFLocatie()` in
+  `exif.js` (haversine-afstand GPS-punt vs. `melding.gps` ≤~500m + tijdsverschil
+  `datetime_original` vs. `melding.timestamp_local` ≤15-30 min) en opslaan als
+  `bestand.exif_verificatie` + trust-score-bonus. Geen externe library nodig.
+- iOS-kanttekening: iOS verwijdert EXIF vóór overdracht via systeem-share;
+  geo-verificatie werkt dan niet (geen GPS in de EXIF). Verificatie is optioneel
+  en weegt als bonus mee in de trust-score, niet als vereiste.
+
+### Visibility oude meldingen (onderzoeksresultaat — geen actie nodig)
+Meldingen van vóór de introductie van `opt_in_buurt` zijn **niet zichtbaar voor
+anderen**. De query in `entries.js:164` filtert `.or('user_id.eq.X,opt_in_buurt.eq.true')`;
+PostgreSQL matcht `eq.true` niet op `null` of `false`. Historische meldingen
+hebben `opt_in_buurt = null` (nooit gesync) of `false` (fallback via
+`|| false` in `sbSyncMelding`) — beide buiten het filter. RLS op DB-niveau
+(migratie 0001) vormt de eigenlijke afdwinging.
 
 ## Accessibility-fixes, RFC 3161 sync-fix, UX (2026-06-30)
 

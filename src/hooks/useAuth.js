@@ -145,6 +145,7 @@ export function useAuth() {
     if (sb) await sb.auth.signOut();
     setUser(null);
     setGebruikerRol('gebruiker');
+    setAuthOverlayVisible(true);
   }, []);
 
   return {

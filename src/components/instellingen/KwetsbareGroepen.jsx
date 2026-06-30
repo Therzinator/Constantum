@@ -16,6 +16,7 @@ const SUBSTANTIEEL = [
   { id: 'immunosuppressie', label: 'Immunosuppressieve behandeling' },
   { id: 'neurologisch', label: 'Neurologische aandoening (Parkinson, MS, ALS)' },
   { id: 'mcs', label: 'Multipele chemische sensitiviteit (MCS)' },
+  { id: 'post_covid', label: 'Post-COVID / Long COVID' },
 ];
 
 const ALLE_IDS = [...STERK, ...SUBSTANTIEEL].map((c) => c.id);

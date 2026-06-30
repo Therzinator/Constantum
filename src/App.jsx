@@ -13,6 +13,7 @@ import { AuthOverlay } from './components/auth/AuthOverlay.jsx'
 import { SyncStatusBar } from './components/sync/SyncStatusBar.jsx'
 import { OnlineIndicator } from './components/sync/OnlineIndicator.jsx'
 import { UpdateBanner } from './components/pwa/UpdateBanner.jsx'
+import { InstallBanner } from './components/pwa/InstallBanner.jsx'
 import { MeldingForm } from './components/melding/MeldingForm.jsx'
 import { DashboardPage } from './components/dashboard/DashboardPage.jsx'
 import { TijdlijnPage } from './components/meldingen/TijdlijnPage.jsx'
@@ -82,6 +83,7 @@ function App() {
       <OnlineIndicator />
       <SyncStatusBar syncBezig={sync.syncBezig} syncStatus={sync.syncStatus} />
       <UpdateBanner />
+      <InstallBanner />
 
       <main className="app-inhoud">
       {pagina === 'dashboard' && (

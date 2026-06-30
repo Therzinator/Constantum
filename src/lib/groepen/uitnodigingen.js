@@ -38,7 +38,24 @@ export async function haalGroepUitnodigingen(groepId) {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  if (!data?.length) return [];
+
+  // Verwijder uitnodigingen die ingetrokken zijn of langer dan 24u verlopen.
+  // Niet-awaited: falen is acceptabel; server-side pg_cron doet hetzelfde dagelijks.
+  const nu = Date.now();
+  const VIERENTWINTIG_UUR = 24 * 60 * 60 * 1000;
+  const teVerwijderen = data
+    .filter((u) => u.ingetrokken || new Date(u.verloopt_op).getTime() < nu - VIERENTWINTIG_UUR)
+    .map((u) => u.id);
+
+  if (teVerwijderen.length) {
+    sb.from('groep_uitnodigingen').delete().in('id', teVerwijderen)
+      .then(({ error: e }) => { if (e) console.warn('[Uitnodigingen] Auto-cleanup mislukt:', e.message); });
+  }
+
+  return data.filter((u) =>
+    !u.ingetrokken && new Date(u.verloopt_op).getTime() >= nu - VIERENTWINTIG_UUR
+  );
 }
 
 export async function trekUitnodigingIn(uitnodigingId) {

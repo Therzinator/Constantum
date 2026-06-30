@@ -1,0 +1,35 @@
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #131929;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.install-banner-tekst {
+  flex: 1;
+  min-width: 0;
+}
+
+.install-banner-knop {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+}
+
+.install-banner-sluiten {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.install-banner-sluiten:hover { color: var(--danger); }
