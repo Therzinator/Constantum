@@ -34,7 +34,7 @@ export function AppHeader({ user, onNavigeerInstellingen, syncNu, syncBezig, laa
       <img src={headerLogo} alt="Constatum" className="app-header-logo" />
       <div className="app-header-tekst">
         <span className="app-header-titel">Constatum</span>
-        <span className="app-header-subtitel">Geografische Waarnemingen Logboek</span>
+        <span className="app-header-subtitel">Geografisch Logboek</span>
       </div>
       <div className="app-header-acties">
         <AccountMenu

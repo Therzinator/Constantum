@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'Constatum',
         short_name: 'Constatum',
-        description: 'Geografische Waarnemingen Logboek',
+        description: 'Geografisch Logboek',
         start_url: '/',
         display: 'standalone',
         background_color: '#0a0e17',
