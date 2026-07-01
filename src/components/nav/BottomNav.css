@@ -94,12 +94,16 @@
    (bijna) tegen elkaar aan komen of afgekapt worden. */
 @media (max-width: 420px) {
   .bottom-nav-tab {
-    padding: 12px 2px;
+    padding: 12px 0px;
     /* Was 0.612rem — zelfde font-size-xs-ondergrens als de basisregel
        hierboven; controleer visueel op zeer smalle schermen of labels
-       nog passen (zie comment daar). */
+       nog passen (zie comment daar). Letter-spacing hier iets krapper
+       dan de basisregel (-0.05em i.p.v. -0.03em) + padding naar 0 —
+       loste bij 320px + 6 tabs (coordinator/admin-rol, "Moderatie"
+       erbij) een net-niet-passend label op, zonder het lettertype
+       zelf te verkleinen. */
     font-size: var(--font-size-xs);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.05em;
   }
   .bottom-nav-icoon-img {
     width: 44px;

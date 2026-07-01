@@ -4,7 +4,22 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix).
+
+## Opruiming en BottomNav-smalscherm-fix (2026-07-01)
+
+- **Vier ongebruikte icon-/logo-bestanden verwijderd**: `public/icons/icon_small.png`,
+  `public/icons/header-logo.png`, `public/favicon.svg`, `public/icons.svg` —
+  geverifieerd dat geen enkele nog gerefereerd werd (alleen een historische
+  kleur-herkomst-comment in `theme.css` noemde `header-logo.png`, geen
+  functionele referentie).
+- **BottomNav-labels bij 320px + 6 tabs (coordinator/admin-rol met
+  "Moderatie" erbij) knipten net af** (`scrollWidth > clientWidth`,
+  geverifieerd met Playwright op 320/360/375/390/414px). Opgelost door bij
+  de `max-width: 420px`-media-query de letter-spacing te verkrappen
+  (-0.03em → -0.05em) en de horizontale padding naar 0 te zetten — geen
+  labels ingekort, geen font-size verkleind (blijft op het
+  `--font-size-xs`-token, zie typografie-audit).
 
 ## Algemene Voorwaarden v2.0 + neutrale terminologie in Handleiding (2026-07-01)
 
