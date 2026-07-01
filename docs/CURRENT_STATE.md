@@ -6,7 +6,7 @@ grep), niet blind vertrouwen op een oude snapshot.
 
 Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix, Dashboard-groepsfilter herzien naar DashboardKaart, vercel.json-rewrite-bug voor statische bestanden gefixt, WhatsApp-preview-onderzoek: apex-domein-redirect, deel-app-knop in header, gebeurtenissen-clustering-bug in Groepen gefixt, clustering.js perceel/GPS-OR-bug gefixt, BottomNav-iconen gevuld i.p.v. lijnstijl, Instellingen/Delen-iconen ook gevuld, uitnodigingstekst appnaam, rollen-uitleg uit handleiding, AV/privacy-akkoord-vinkje onthouden).
 
-## Preventieve rate-limiting + offline-batch-fix (migratie 0037, nog NIET uitgevoerd)
+## Preventieve rate-limiting + offline-batch-fix (migratie 0037, uitgevoerd 2026-07-01)
 
 `fn_entries_set_visibility` (BEFORE INSERT) heeft een nieuwe check: ≥15
 meldingen van dezelfde gebruiker binnen 1 uur (zowel `created_at` als
@@ -18,8 +18,10 @@ blokkade. Daarnaast fix van een bestaand gat: de nieuw-account-
 daglimiet en de perceel-spamcheck (beide uit migratie 0005) telden
 alleen op `created_at` (sync-moment) — een offline-catch-up-sync van
 meerdere dagen kon zo ten onrechte als volumemisbruik tellen. Beide
-checks vereisen nu ook een recente `timestamp_local`. **Nog uit te
-voeren in Supabase, zie NEXT_STEPS.md.**
+checks vereisen nu ook een recente `timestamp_local`. **Uitgevoerd en
+bevestigd in productie** (Supabase-MCP: `live_burst_aantal`-check
+aanwezig in `fn_entries_set_visibility`). Live-burst-drempel (15/uur) is
+een schatting — zie NEXT_STEPS.md voor monitoren/bijstellen.
 
 ## Bug gefixt: verwijderde meldingen kwamen terug na een volgende sync (2026-07-01)
 
