@@ -36,7 +36,7 @@ export function GegevensPrivacyInstelling({ user, meldingenApi, thuislocatie, on
     const meldingen = meldingenApi.meldingen;
     if (!meldingen.length) { toon('Geen gegevens om te exporteren', 'error'); return; }
     const backup = await meldingenNaarJSONBackup(meldingen, thuislocatie?.label);
-    downloadFile(JSON.stringify(backup, null, 2), `spuitlog_gegevens_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+    downloadFile(JSON.stringify(backup, null, 2), `constatum_gegevens_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
     toon('✓ Gegevens gedownload', 'success');
   };
 

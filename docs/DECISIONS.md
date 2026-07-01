@@ -662,3 +662,18 @@ wijziging — een grotere, aparte beslissing.
   datamodel** (kolomnamen, variabelen) — die zijn hier bewust NIET
   gewijzigd, alleen de zichtbare tekst in twee specifieke, puur
   tekstuele componenten (AV, Handleiding).
+
+### Herzien (2026-07-01): teruggedraaid naar Melding/Dossier/Buurtdossier
+De gebruiker heeft deze keuze teruggedraaid: geen uitrol elders in de UI
+(de bijbehorende NEXT_STEPS-taak is komen te vervallen), en de AV +
+Handleiding zijn beide teruggezet naar de v1.1-terminologie
+(**Waarneming → Melding**, **Logboek → Dossier**, **Gebiedsdossier →
+Buurtdossier**, **Betrokkene → Teler**) zodat ze weer aansluiten bij de
+rest van de app (BottomNav-tab "Melding", enz.). De "Coördinator"-
+definitie is uit de AV verwijderd (los verzoek, geen onderdeel van deze
+terminologie-mapping — de rol zelf blijft ongewijzigd bestaan in de
+app). De bredere, neutrale productbeschrijving die tegelijk met v2.0
+werd geïntroduceerd (bv. "geografisch registratieplatform voor het
+documenteren van omgevingsmeldingen", scope breder dan alleen
+spuitactiviteit) is **wel** behouden — alleen de vier gedefinieerde
+kernbegrippen zijn teruggedraaid, niet de volledige v1.1-tekst.

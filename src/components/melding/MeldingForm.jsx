@@ -214,9 +214,9 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
             type="text"
             className="form-input"
             readOnly
-            placeholder="Klik op het spuitperceel in de kaart ↑"
+            placeholder="Klik op de kaart voor de locatie van de melding ↑"
             value={veld.perceelnummer || ''}
-            style={{ color: veld.perceelnummer ? 'var(--text-primary)' : 'var(--text-muted)' }}
+            style={{ color: veld.perceelnummer ? 'var(--text-primary)' : '#fff' }}
           />
         </div>
         {veld.perceelStatus && <div className="locatie-kaart-status">{veld.perceelStatus}</div>}

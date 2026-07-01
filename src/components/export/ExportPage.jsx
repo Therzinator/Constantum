@@ -29,7 +29,7 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
   const handleExportCSV = () => {
     if (!meldingen.length) { toon('Geen meldingen om te exporteren', 'error'); return; }
     const csv = meldingenNaarCSV(meldingen);
-    downloadFile(csv, `spuitlog_export_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+    downloadFile(csv, `constatum_export_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
     toon('✓ CSV gedownload', 'success');
   };
 
@@ -49,7 +49,7 @@ export function ExportPage({ meldingenApi, thuislocatie }) {
     if (!meldingen.length) { toon('Geen meldingen om te exporteren', 'error'); return; }
     toon('JSON backup voorbereiden...', 'success');
     const backup = await meldingenNaarJSONBackup(meldingen, thuislocatie?.label);
-    downloadFile(JSON.stringify(backup, null, 2), `spuitlog_backup_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+    downloadFile(JSON.stringify(backup, null, 2), `constatum_backup_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
     toon("✓ JSON backup gedownload (incl. foto's)", 'success');
   };
 

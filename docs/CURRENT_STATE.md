@@ -151,6 +151,12 @@ oplevert.
   Twee opties liggen bij de gebruiker, zie NEXT_STEPS.md: apex-domein
   primair maken (geen redirect meer nodig), of bewust altijd de
   www-link delen/aanraden.
+- **Praktisch opgelost via de deel-app-knop (2026-07-01)**: met
+  `navigator.share()` (zie hieronder) deelt de gebruiker de link via het
+  systeem-deelmenu i.p.v. te vertrouwen op WhatsApp's eigen crawler op
+  een geplakte URL. Bevestigd door de gebruiker dat dit het praktische
+  mobiele probleem verhelpt — de onderliggende apex/www-redirect-vraag
+  blijft theoretisch bestaan maar is geen actiepunt meer.
 
 ## Echte oorzaak "verdwenen" deel-icoon: vercel.json-rewrite ving ook statische bestanden (2026-07-01)
 
@@ -526,7 +532,8 @@ PDOK/BAG-koppelingen of Supabase-schema aangeraakt.
   niet-geblokkeerd). De returnwaarde bevat alleen nog actieve links.
 - **Server-side** (migratie 0035): pg_cron-job `cleanup_verlopen_uitnodigingen`
   draait dagelijks om 04:00 UTC — verwijdert `ingetrokken=true` en
-  `verloopt_op < NOW() - INTERVAL '24 hours'`. **Nog uit te voeren in Supabase.**
+  `verloopt_op < NOW() - INTERVAL '24 hours'`. **Uitgevoerd en bevestigd in
+  productie (2026-07-01, Supabase-MCP: job aanwezig en `active`).**
 
 ### Logout → terugkeer naar inlogscherm (`hooks/useAuth.js`)
 - `logout()` roept nu ook `setAuthOverlayVisible(true)` aan — de `AuthOverlay`
