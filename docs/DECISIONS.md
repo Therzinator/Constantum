@@ -457,3 +457,94 @@ architectuurwissel.
 - Toekomstige uitbreiding van de trust-tier-indeling (nieuwe niveaus
   tussen laag/gemiddeld/hoog) kan in `trustZichtbaarheid.js` zonder de
   aanroepende code aan te passen — bewust config-gebaseerd opgezet.
+
+---
+
+## Font-size-tokensysteem — alle tekst via `--font-size-*`-variabelen, geen losse hardcoded waarden meer
+
+### Keuze
+Op 2026-07-01 is een typografie-audit (`src/audit/typografie-audit-2026-07-01.md`)
+uitgevoerd op mobiele leesbaarheid, met als resultaat een nieuw
+`--font-size-xs`(12px)/`sm`(14px)/`base`(16px)/`md`(18px)/`lg`(20px)/
+`xl`(24px)/`2xl`(32px)-tokensysteem in `theme.css`. Vrijwel alle
+hardcoded `font-size`/`fontSize`-waarden onder 14px in `src/` zijn
+vervangen door deze tokens, plus een `--text-muted`-contrastfix
+(`#4a5d78` → `#77839c`, 2,9:1 → ~5,1:1) en een contrastfix voor de
+trust-tier-badges (witte tekst → donker).
+
+### Waarom
+De app wordt primair buiten, op een telefoon, onder tijdsdruk gebruikt
+(bewoner die een melding doet) — de norm hiervoor (WCAG 2.1 AA, Apple
+HIG, Material 3, NNG) ligt hoger dan de destijds gekozen compacte
+UI-waarden (vaak 9-11px). Bijna 4 op de 5 van alle font-size-declaraties
+in de app zaten onder 14px.
+
+### Impact
+- **Nieuwe regel voor alle toekomstig werk**: font-sizes altijd via een
+  `--font-size-*`-token instellen, nooit een los getal. Mono-metadata
+  (hashes, timestamps, melder-codes, coördinaten) mag `--font-size-xs`
+  zijn; tekst die de gebruiker actief moet lezen (labels, foutmeldingen,
+  beschrijvingen, juridische tekst) minimaal `--font-size-sm`.
+- Bewust behouden kleine uitzondering: het versie-/copyright-voetnootje
+  in `JuridischModal.css` (`.juridisch-modal-footer`) — expliciet
+  "kleine print", de contrastfix dekt dat al af.
+- **`#00d4aa`(oude teal)-consolidatie naar `var(--accent)`
+  bewust NIET gedaan** — zie de eigen beslissing hieronder
+  ("Kaart-/drift-/grafiek-kleuren blijven los van het CSS-thema").
+
+---
+
+## Kaart-/drift-/grafiek-kleuren blijven los van het CSS-thema (`var(--accent)`)
+
+### Keuze
+Hardcoded kleurwaarden in kaart-markers, driftzone-/windanimatie en de
+maandgrafiek (`DashboardKaart.jsx`, `LocatieKaart.jsx`/`.css`,
+`BuurtgebiedTekenaar.jsx`, `lib/pdok/perceelLaag.js`,
+`lib/drift/windAnimatieLaag.js`, `lib/drift/oordeel.js`,
+`MaandGrafiek.jsx` — het oude teal `#00d4aa`, van vóór de latere
+`--accent`-wijzigingen naar nylon-groen en daarna cyaan) worden **niet**
+gesynchroniseerd met de huidige `var(--accent)` (theme.css, nu
+`#04e6d9`). Dit is nu drie keer bevestigd: bij de eerdere
+kleurwissels (`--accent`: teal → nylon-groen → cyaan, zie
+`CURRENT_STATE.md` "Navigatie/thema-herontwerp") én opnieuw op
+2026-07-01 (typografie-audit Prioriteit 3), toen de gebruiker expliciet
+koos dit niet alsnog te consolideren.
+
+### Waarom
+Dit raakt kaart-/drift-/grafiek-render-logica (OpenLayers-stijlen,
+Chart.js), niet alleen UI-tekst/CSS-thema — een bredere en risicovollere
+wijziging dan de scope van een typografie- of thema-aanpassing. Zonder
+een expliciete, aparte productbeslissing om deze kleuren mee te laten
+lopen met het UI-accent, blijven ze bewust apart.
+
+### Impact
+Een toekomstige `--accent`-wijziging (thema-kleur) werkt **niet** door
+in kaartmarkers/driftzone-kleuren/grafiek — die blijven het oude teal
+tonen, tenzij een aparte, expliciete beslissing dit verandert. Niet
+per ongeluk "meeliften" als onderdeel van een CSS-thema- of
+typografietaak.
+
+---
+
+## Browser-favicon blijft het handgemaakte icoon, niet auto-gegenereerd uit `icon_large.png`
+
+### Keuze
+Bij het vernieuwen van de PWA/app-iconen (2026-07-01, uit
+`src/assets/app-icon/icon_large.png` via `sharp`) is de browser-tab-
+favicon (16px/32px) bewust **niet** meegenomen in de automatische
+regeneratie. `index.html` verwijst naar de bestaande, met de hand
+gemaakte `public/icons/icon_16px.png`/`icon_32px.png`.
+
+### Waarom
+`icon_large.png` is niet vierkant (621×664) en een automatische
+contain-fit-crop op 16-32px gaf een duidelijk andere, minder leesbare
+compositie dan het bestaande kleine icoon — op verzoek van de gebruiker
+teruggedraaid nadat dit zichtbaar werd.
+
+### Impact
+Bij een toekomstige logo-wijziging: de favicon (`icon_16px.png`/
+`icon_32px.png`) moet apart, met de hand of met een op kleine formaten
+geoptimaliseerd proces bijgewerkt worden — niet automatisch meegenomen
+door simpelweg `icon_large.png` opnieuw te downscalen. De overige
+PWA-iconen (Apple touch-icons, Android 48-512px, maskable) volgen wél
+gewoon `icon_large.png`.

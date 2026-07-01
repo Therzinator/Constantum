@@ -4,7 +4,7 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum).
 
 ## Typografie-audit en font-size-tokensysteem (2026-07-01)
 
@@ -40,15 +40,25 @@ PDOK/BAG-koppelingen of Supabase-schema aangeraakt.
   vervangen door donker (`#0a0e17`) i.p.v. wit → 5–10:1 op alle vier
   tiers, plus font-size van 8,8–9,6px naar `--font-size-xs` (12px).
 - **BottomNav-tab-labels**: van 12,2px (9,8px op schermen < 420px) naar
-  `--font-size-xs` (12px) op beide breakpoints. Let op: dit was eerder
-  bewust verkleind om labeloverlap te voorkomen (zie comment in
-  `BottomNav.css`) — visueel controleren op zeer smalle schermen of
-  labels nog passen; zo niet, labels inkorten, niet verder verkleinen.
-- Volledige lijst met bevindingen en de vóór/na-waarden staat in
-  `src/audit/typografie-audit-2026-07-01.md`. Prioriteit 3 uit dat
-  rapport (exhaustieve `--text-muted`-doorlichting, hardcoded
-  `#00d4aa`/oude-teal-consolidatie) is **niet** uitgevoerd — blijft
-  aanbeveling.
+  `--font-size-xs` (12px) op beide breakpoints, plus `font-weight: 700`
+  (op expliciet verzoek van de gebruiker, los van het auditrapport) voor
+  betere leesbaarheid. Let op: het formaat was eerder bewust verkleind om
+  labeloverlap te voorkomen (zie comment in `BottomNav.css`) — visueel
+  controleren op zeer smalle schermen of labels nog passen; zo niet,
+  labels inkorten, niet verder verkleinen.
+- **Restant-fix na de audit**: 5 losse decoratieve icoon-chevrons/emoji
+  (`.cd-chevron`, `.mf-standaardzin-chip-emoji`, `.mf-photo-remove`,
+  `.mf-teler-chevron`, `.collapsible-chevron`) die de eerste implementatie-
+  ronde miste, zijn alsnog naar de tokens omgezet.
+- **Prioriteit 3 uit het auditrapport — afgehandeld**: de
+  `--text-muted`-doorlichting is voltooid (zie vorige bullet). De
+  hardcoded `#00d4aa`/oude-teal → `var(--accent)`-consolidatie is
+  **bewust niet doorgevoerd** — bij navraag bleek dit 7 bestanden te
+  raken (kaart-markers, drift-/windvisualisatie, maandgrafiek), dus
+  render-logica i.p.v. alleen UI-tekst, en `docs/CURRENT_STATE.md`
+  documenteerde al twee eerdere keren de bewuste keuze om die kleuren
+  los te houden van het CSS-thema. De gebruiker heeft expliciet gekozen
+  dit zo te laten — zie ook DECISIONS.md.
 
 ## Nieuwe features (2026-07-01)
 
@@ -66,10 +76,29 @@ PDOK/BAG-koppelingen of Supabase-schema aangeraakt.
   verouderde `#010510` naar `#0a0e17` — gelijk aan `--bg-primary`
   (`theme.css`), dat al sinds 2026-06-23 dit exacte donkerblauw gebruikt;
   de manifest-kleur was toen niet meegenomen.
-- **Oude, nu ongebruikte bestanden** (bewust niet verwijderd, ter beoordeling):
-  `public/icons/icon_16px.png`, `icon_32px.png`, `icon_small.png`,
-  `header-logo.png`, `public/favicon.svg`, `public/icons.svg` — geen van
-  alle nog gerefereerd in code/config na deze wijziging.
+- **Browser-favicon (16/32px) bewust NIET vervangen**: een eerste versie
+  genereerde ook de favicon automatisch uit `icon_large.png`
+  (contain-fit + achtergrondkleur), maar dat gaf een andere crop dan het
+  bestaande, met de hand gemaakte kleine icoon (`public/icons/icon_16px.png`/
+  `icon_32px.png`, oorspronkelijk uit `src/assets/app-icon/`) en was
+  minder leesbaar op klein formaat. Op verzoek van de gebruiker
+  teruggedraaid: `index.html` verwijst weer naar die twee originele
+  bestanden. Alle overige, wél vervangen iconen (Apple touch-icons,
+  Android/PWA-formaten 48-512px, maskable-varianten) zijn ongewijzigd
+  gebleven.
+- **Nu écht ongebruikte bestanden** (bewust niet verwijderd, ter
+  beoordeling): `public/icons/icon_small.png`, `header-logo.png`,
+  `public/favicon.svg`, `public/icons.svg`.
+
+### Kopij en repository
+- Tekst "Geografische Waarnemingen" → "**Geografische Waarnemingen
+  Logboek**" op de drie plekken waar die voorkwam: `AppHeader.jsx`
+  (zichtbare subtitel onder het logo), `vite.config.js`
+  (PWA-manifest-description) en `index.html` (meta-description).
+- **GitHub-repository hernoemd** van `Therzinator/SpuitLogger` naar
+  `Therzinator/Constatum` (buiten deze sessie om gedaan, ontdekt bij het
+  pushen — GitHub redirect't automatisch). De lokale `origin`-remote-URL
+  is bijgewerkt naar `https://github.com/Therzinator/Constatum.git`.
 
 ## Overige features (2026-07-01)
 

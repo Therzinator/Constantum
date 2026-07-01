@@ -72,9 +72,21 @@ de code, niet tegen het geheugen van een eerdere sessie.
 - **Domein en externe accounts bijwerken naar constatum.nl**:
   - DNS constatum.nl koppelen aan Vercel
   - Vercel project hernoemen / domeinkoppeling instellen
-  - GitHub repo hernoemen van SpuitLogger → Constatum
   - E-mailadressen `info@constatum.nl` en `privacy@constatum.nl` aanmaken
   - Drie .docx juridische documenten (spuitregisterbrief, AV, privacy) herschrijven
+
+- **BottomNav-tab-labels visueel controleren op smalle schermen** (< 420px
+  breed). Reden: labels gingen op 2026-07-01 van 9,8-12,2px naar 12px +
+  vetgedrukt (typografie-audit + leesbaarheidsverzoek) — dit was eerder
+  bewust klein gehouden om overlap tussen tabs te voorkomen (zie comment
+  in `BottomNav.css`). Controleren of alle 5-6 tabs nog passen; zo niet,
+  labels inkorten, niet het lettertype weer verkleinen.
+
+- **Opruimen van nu ongebruikte icon-/logo-bestanden** (ontdekt tijdens de
+  app-icoon-vernieuwing van 2026-07-01, niet automatisch verwijderd):
+  `public/icons/icon_small.png`, `public/icons/header-logo.png`,
+  `public/favicon.svg`, `public/icons.svg`. Geen van alle nog
+  gerefereerd in code/config.
 
 - **`useToggleableLayer()`-hook voor DashboardKaart.jsx** — de vijf
   laag-toggle-functies zijn structureel bijna identiek; generalisatie is bewust
