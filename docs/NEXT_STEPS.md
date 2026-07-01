@@ -6,6 +6,20 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
+- **Migratie 0037 nog uitvoeren in Supabase SQL-editor** (preventieve
+  rate-limiting + offline-batch-fix in bestaande misbruikdetectie).
+  Vervangt `fn_entries_set_visibility` en `fn_entries_misbruikdetectie`
+  door versies met dezelfde logica plus: (1) een nieuwe live-burst-check
+  (≥15 meldingen/uur met zowel recente `created_at` als recente
+  `timestamp_local` → direct `shadow`, ongeacht trust-tier), (2) een fix
+  van een bestaand gat waarbij een offline-catch-up-sync van meerdere
+  dagen (bv. 14 meldingen in één batch) ten onrechte als volumemisbruik
+  kon tellen omdat de bestaande checks alleen op `created_at`
+  (sync-moment) filterden, niet op `timestamp_local` (waarnemingsmoment).
+  Niet urgent in de zin van "breekt iets" (zoals migratie 0036 dat was) —
+  tot uitvoering blijft de bestaande, minder precieze detectie actief.
+  Drempel (15/uur) is een schatting, geen gemeten waarde — in de gaten
+  houden en bijstellen als 'm in de praktijk te streng/soepel blijkt.
 - **Achteraf-delen-met-groep (2026-07-01) testen met een echte
   gesynchroniseerde melding + groepslidmaatschap.** Kon niet lokaal
   geverifieerd worden (geen Supabase-sessie in dev). Controleer: de
@@ -38,11 +52,6 @@ de code, niet tegen het geheugen van een eerdere sessie.
   de live site (of gebruik `Sentry.captureException(new Error('test'))`
   tijdelijk in de devtools-console op de live URL) en controleer of hij
   verschijnt in het Sentry-project.
-- **API-niveau rate limiting tegen volumetrisch misbruik.** Reden: de
-  huidige misbruikdetectie (migraties 0003/0005) is reactief (markeert
-  achteraf als under_review/shadow), niet preventief. Vereist een
-  Supabase Edge Function-deploy — operationele actie die de gebruiker
-  zelf moet doen, een agent kan dit niet namens hen uitvoeren.
 - **`useToggleableLayer()`-hook voor DashboardKaart.jsx.** De vijf
   laag-toggle-functies (luchtfoto/drift/Natura2000/percelen/heatmap) zijn
   structureel bijna identiek. De PDOK-fetch-duplicatie is al opgelost

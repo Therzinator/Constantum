@@ -710,3 +710,65 @@ meegestuurd worden bij elke gerapporteerde fout.
 - `captureFout()` (niet rechtstreeks `Sentry.captureException`) is de
   enige aanroep-plek in de rest van de code — zo blijft `SENTRY_ENABLED`
   de enige plek die weet of Sentry actief is.
+
+---
+
+## Preventieve rate-limiting via een zachte DB-trigger, niet via een Edge Function
+
+### Keuze
+Op 2026-07-01 is voor "API-niveau rate limiting tegen volumetrisch
+misbruik" (oorspronkelijk in NEXT_STEPS.md omschreven als iets dat een
+Supabase Edge Function-deploy zou vereisen) gekozen voor een lichtere
+aanpak: uitbreiding van de bestaande `fn_entries_set_visibility`
+(BEFORE INSERT-trigger, migratie 0037) met een nieuwe check — ≥15
+meldingen van dezelfde gebruiker binnen 1 uur (zowel `created_at` als
+`timestamp_local` recent) zet de nieuwe melding direct op `visibility =
+'shadow'`, ongeacht trust-tier. Geen exception, geen geweigerde insert.
+
+### Waarom
+Nieuwe meldingen worden niet los ingevoegd maar in een **batch-upsert**
+(`sbSyncMeldingenBatch()`, `lib/supabase/entries.js`) — alle nog niet
+gesynchroniseerde meldingen in één transactie. Een harde blokkade (een
+trigger die een exception gooit, of een aparte Edge Function die een
+insert zou weigeren) zou bij overschrijding de HELE batch laten falen,
+inclusief de legitieme meldingen die toevallig in dezelfde sync-ronde
+zitten. Erger: de client markeert bij een mislukte batch alles als
+"niet gesynchroniseerd" en probeert het bij de volgende gelegenheid
+gewoon opnieuw — zonder logica om de batch op te splitsen zou dit een
+gebruiker permanent kunnen laten vastlopen (elke volgende sync-poging
+faalt weer op dezelfde drempel). Een zachte trigger die de insert altijd
+laat slagen maar 'm meteen op `shadow` zet, ontwijkt dit risico volledig
+en blijft daarnaast binnen een migratie — geen Edge Function-deploy of
+wijziging aan de client-schrijfflow nodig.
+
+### `timestamp_local` + `created_at`-dubbele voorwaarde
+Dezelfde offline-batch-realiteit maakte een **bestaand** gat in migratie
+0005 zichtbaar: `fn_entries_set_visibility` (nieuw-account-daglimiet) en
+`fn_entries_misbruikdetectie` (perceel-spamcheck) telden recente
+meldingen alleen op `created_at` (sync-moment). Iemand die een paar
+dagen offline is en dan in één keer synct, laat al zijn meldingen
+vrijwel gelijktijdig `created_at` krijgen — ook al zijn de eigenlijke
+waarnemingsmomenten (`timestamp_local`) over dagen verspreid. Migratie
+0037 fixt dit door beide bestaande tijdvensters (en de nieuwe
+burst-check) een dubbele voorwaarde te geven: een melding telt alleen
+mee als hij zowel recent is aangemaakt ALS recent waargenomen.
+`timestamp_local` wordt door de client gezet op het moment van opslaan
+en is niet via enig UI-element aan te passen — met de app zelf dus niet
+vrij te vervalsen. Een aanvaller die rechtstreeks de Supabase-API omzeilt
+zou dit sowieso al kunnen (die kan elk veld verzinnen), dus dit is geen
+nieuwe zwakte t.o.v. de oude `created_at`-only-aanpak, alleen een minder
+valse-positieven-gevoelige.
+
+### Impact
+- De drempel (15/uur) is een schatting, geen gemeten waarde — zie
+  NEXT_STEPS.md, bijstellen als 'm in de praktijk te streng/soepel
+  blijkt.
+- Dit is bewust GEEN vervanging van "echte" API-rate-limiting (bv. een
+  Vercel Edge Middleware of Supabase Edge Function die verzoeken vóór de
+  database al afwijst) — het blijft, net als de rest van migratie 0005,
+  een DB-trigger die pas ná ontvangst reageert. Het verschil met de oude
+  situatie is dat de reactie nu direct (bij dezelfde insert) plaatsvindt
+  i.p.v. pas bij een latere handmatige review.
+- Toekomstige volumechecks op `entries` moeten dezelfde
+  `created_at`-EN-`timestamp_local`-dubbele-voorwaarde gebruiken, anders
+  keert dit offline-batch-probleem terug.
