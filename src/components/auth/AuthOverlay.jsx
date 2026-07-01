@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { PrivacyVerklaringModal } from '../onboarding/PrivacyVerklaringModal.jsx';
 import { AlgemeneVoorwaardenModal } from '../onboarding/AlgemeneVoorwaardenModal.jsx';
+import { laadAkkoordVoorkeur, slaAkkoordVoorkeurOp } from '../../lib/onboarding/akkoordVoorkeur.js';
 import appIcon from '../../assets/app-icon/icon_large.png';
 import './AuthOverlay.css';
 
@@ -19,7 +20,13 @@ export function AuthOverlay({ auth, uitnodiging }) {
   // Verplichte acceptatie vóór eerste gebruik (registreren óf lokaal
   // overslaan) — bestaande gebruikers die inloggen hebben dit al bij hun
   // oorspronkelijke registratie geaccepteerd, dus die knop blijft ongated.
-  const [akkoord, setAkkoord] = useState(false);
+  // Onthoudt de vorige keuze (akkoordVoorkeur.js) zodat het vinkje niet
+  // bij elk bezoek aan dit scherm opnieuw aangezet hoeft te worden.
+  const [akkoord, setAkkoordState] = useState(laadAkkoordVoorkeur);
+  const setAkkoord = (waarde) => {
+    setAkkoordState(waarde);
+    slaAkkoordVoorkeurOp(waarde);
+  };
 
   const {
     authOverlayVisible,
