@@ -4,7 +4,75 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding).
+
+## Algemene Voorwaarden v2.0 + neutrale terminologie in Handleiding (2026-07-01)
+
+- **`AlgemeneVoorwaardenModal.jsx` bijgewerkt naar v2.0** (aangeleverd
+  door de gebruiker als `docs/Constatum-AlgemeneVoorwaarden-v2.0.docx`,
+  geëxtraheerd via de docx-XML — geen conversietool nodig). Inhoudelijke
+  kern van v2.0: de gedefinieerde termen zijn generieker/neutraler
+  gemaakt — **Melding → Waarneming**, **Dossier → Logboek**,
+  **Buurtdossier → Gebiedsdossier**, **Teler → Betrokkene** (natuurlijk
+  persoon óf rechtspersoon, niet meer specifiek "de agrarische
+  ondernemer"). Overal waar de v1.1-tekst impliciet alleen over
+  bestrijdingsmiddelen/spuitactiviteit sprak, spreekt v2.0 neutraal over
+  "omgevingswaarnemingen"/"activiteiten en situaties in de
+  buitenomgeving". Artikel 3 (verboden gebruik) spreekt nu over
+  "personen of organisaties" i.p.v. specifiek "individuele telers".
+- **`HandleidingModal.jsx` volgt dezelfde neutrale terminologie**, op
+  expliciet verzoek van de gebruiker, MET het bewuste risico dat dit
+  (voorlopig) niet aansluit bij de rest van de app-UI: Tijdlijn,
+  Dashboard, Export, Groepen-pagina's, `MeldingForm.jsx` (het
+  teler-/bedrijfsnaam-veld) en de database-kolommen gebruiken nog steeds
+  "melding"/"dossier"/"buurtdossier"/"teler" — dat is bewust NIET
+  meegenomen in deze wijziging (zie DECISIONS.md). Letterlijke
+  UI-strings die niet zijn hernoemd (bv. de `Melder#XXXXXX`-code) zijn
+  in de handleidingtekst ongewijzigd gelaten, om niet iets te beschrijven
+  dat niet overeenkomt met wat er daadwerkelijk op het scherm staat.
+
+## App-iconen opnieuw gegenereerd uit icon_background.png (2026-07-01)
+
+- **Oorzaak "dikke witte rand" op het mobiele app-icoon gevonden**: de
+  vorige bron `icon_large.png` is NIET volledig ondoorzichtig
+  (`sharp(...).stats().isOpaque === false`) — de transparante marge rond
+  het logo werd door iOS bij "Zet op beginscherm" als wit ingevuld. De
+  nieuwe, door de gebruiker aangeleverde `src/assets/app-icon/
+  icon_background.png` is wél volledig ondoorzichtig en veel strakker
+  gecomponeerd (cirkel vult vrijwel het hele canvas).
+- Alle PWA/Android/Apple-iconen (`public/icons/icon-*.png`,
+  `apple-touch-icon.png`, maskable-varianten) opnieuw gegenereerd vanuit
+  dit bestand, met `trim()` (zachte gloed-marge wegsnijden) + `fit:
+  'cover'` (i.p.v. eerder `'contain'`) zodat het logo écht randvullend
+  is, en `flatten()` tegen `--bg-primary` om restanttransparantie
+  definitief uit te sluiten. Browser-favicon (16/32px) bewust
+  ongewijzigd, zoals eerder besloten (zie DECISIONS.md).
+- **Open Graph-deelicoon** (zichtbaar bij het delen van de link in
+  WhatsApp/Telegram/Discord/Slack/iMessage e.d.) is hetzelfde bestand
+  (`/icons/icon-512.png`, `index.html`'s `og:image`) — automatisch
+  meegenomen door bovenstaande regeneratie. `index.html` kreeg ook
+  `og:title`/`og:description`/`og:type` + `twitter:*`-varianten, die
+  ontbraken — zonder `og:title` renderen sommige chat-apps helemaal geen
+  preview-kaart.
+
+## Achteraf melding delen met groep vanuit persoonlijke Tijdlijn (2026-07-01)
+
+- **Nieuwe kaart "📤 Delen met groep"** in `MeldingDetailModal.jsx`
+  (nieuw component `src/components/melding/DeelMetGroepenKaart.jsx`) —
+  toont per groep waar "Deel mijn meldingen met deze groep"
+  (`groep_leden.deel_meldingen`) aanstaat een aan/uit-checkbox, los van
+  de bestaande checkbox bij het melden zelf die alleen op dát moment
+  gold (migratie 0016). Alleen zichtbaar voor eigen, al gesynchroniseerde
+  meldingen (niet voor andermans buurt-gedeelde melding die toevallig in
+  dezelfde modal geopend wordt).
+- **Geen nieuwe migratie nodig** — de RLS-insert-policy
+  `entries_groepen_insert_eigen_melding_lid` (migratie 0015: eigen
+  melding + lid van de groep) bestond al, maar werd nooit vanuit de UI
+  gebruikt sinds de automatische deel-bij-melden-koppeling (migratie
+  0016) de eerdere handmatige aanpak verving.
+- Nieuwe functies `deelMeldingMetGroep()`/`haalGedeeldeGroepenVoorMelding()`
+  in `lib/groepen/groepen.js`; `verwijderMeldingUitGroep()` (bestond al)
+  hergebruikt voor het weer intrekken.
 
 ## Crash bij uitloggen + ErrorBoundary (2026-07-01)
 

@@ -6,6 +6,13 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
+- **Beslissen of de neutrale AV-v2.0-terminologie (Waarneming/Logboek/
+  Gebiedsdossier/Betrokkene) ook elders in de UI moet komen, of dat AV +
+  Handleiding de enige twee plekken blijven.** Nu bewust beperkt tot die
+  twee bestanden (zie DECISIONS.md) — Tijdlijn, Dashboard, Export,
+  Groepen-pagina's, `MeldingForm.jsx` (teler-veld) en `melderCode()`
+  zeggen nog steeds "melding"/"dossier"/"teler". Dit is een expliciete
+  productbeslissing, geen automatische vervolgtaak.
 - **Crash-bij-uitloggen (2026-07-01) verifiëren tegen een echte,
   ingelogde Supabase-sessie.** Reden: de exacte oorzaak kon niet met
   zekerheid herleid worden uit de geminificeerde productie-stacktrace
@@ -21,6 +28,18 @@ de code, niet tegen het geheugen van een eerdere sessie.
   dropdown "Filter op groep" op Dashboard, trust-tier-redactie in beide
   weergaven (Recent/Tijdlijn), en dat clustering (`GroepClusterKaart`)
   zich normaal gedraagt bij meerdere meldingen op hetzelfde perceel.
+- **Achteraf-delen-met-groep (2026-07-01) testen met een echte
+  gesynchroniseerde melding + groepslidmaatschap.** Kon niet lokaal
+  geverifieerd worden (geen Supabase-sessie in dev). Controleer: de
+  "📤 Delen met groep"-kaart in `MeldingDetailModal.jsx` toont alleen
+  groepen met `deel_meldingen` aan, de checkbox-toggle voegt/verwijdert
+  daadwerkelijk een `entries_groepen`-rij, en de melding verschijnt
+  daarna in de `GroepMeldingenLijst` van die groep.
+- **App-icoon (2026-07-01) op een echt mobiel toestel controleren** na
+  regeneratie uit `icon_background.png` — geverifieerd dat de PNG's
+  zelf volledig ondoorzichtig zijn (`sharp isOpaque: true`), maar het
+  "Zet op beginscherm"-resultaat zelf is niet op een fysiek toestel
+  getest.
 - **Een gebruiker een `coordinator`-rol toekennen om te testen.** Reden:
   migraties 0008-0011 zijn op 2026-06-21 uitgevoerd (bevestigd, geen
   foutmeldingen), maar er is nog geen account met de rol `coordinator`;

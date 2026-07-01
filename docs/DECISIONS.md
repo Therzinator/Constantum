@@ -618,3 +618,47 @@ de persoonlijke componenten.
   fout te riskeren) — alleen stats + de hergebruikte `GroepMeldingenLijst`.
   Een eventuele kaartweergave voor groepen vereist een eigen, groepsveilige
   variant — zie NEXT_STEPS.md.
+
+---
+
+## Neutrale juridische terminologie (AV v2.0) — bewust alleen in AV + Handleiding, nog niet in de rest van de app
+
+### Keuze
+Op 2026-07-01 is de Algemene Voorwaarden bijgewerkt naar v2.0, aangeleverd
+door de gebruiker, met generieke/neutrale kernbegrippen i.p.v. de
+pesticide-/spuit-specifieke termen uit v1.1: **Melding → Waarneming**,
+**Dossier → Logboek**, **Buurtdossier → Gebiedsdossier**, **Teler →
+Betrokkene**. Op expliciet verzoek van de gebruiker is `HandleidingModal.jsx`
+hierop aangepast om dezelfde terminologie te gebruiken. De rest van de
+app (UI-labels op Tijdlijn/Dashboard/Export/Groepen-pagina's,
+`MeldingForm.jsx`'s teler-/bedrijfsnaam-veld, database-kolomnamen,
+`melderCode()`/`Melder#XXXXXX`) is **bewust niet meegenomen** — de
+gebruiker koos expliciet voor "ook de nieuwe termen overnemen in de
+handleiding", wetend dat dit een tijdelijke terminologie-mismatch met de
+rest van de app oplevert.
+
+### Waarom
+De AV is een juridisch document dat zijn eigen gedefinieerde begrippen
+onafhankelijk van de productcopy mag hanteren — maar de gebruiker wilde
+dat de handleiding (het eerste wat een nieuwe gebruiker leest) daar
+terminologisch bij aansluit, ook al loopt de rest van de UI daar nu op
+achter. Een volledige UI-brede hernoeming (Tijdlijn-labels, Export-tab,
+Groepen-pagina's, databasekolommen) was expliciet buiten scope van deze
+wijziging — een grotere, aparte beslissing.
+
+### Impact
+- **Tijdelijke inconsistentie is bewust, niet vergeten**: een toekomstige
+  sessie die "melding"/"dossier" in de Handleiding tegenkomt terwijl de
+  rest van de app ook nog steeds "melding"/"dossier" zegt, mag dit niet
+  zomaar terugdraaien naar de oude AV-taal — controleer eerst of de AV
+  inmiddels weer gewijzigd is.
+- Als de gebruiker ooit besluit de terminologie ook elders in de UI door
+  te voeren: dat raakt substantieel meer bestanden (BottomNav-tab
+  "Melding", ExportPage "Dossier", GroepPage "Groepsdossier",
+  `melderCode()`) en is een eigen, expliciet af te stemmen taak — niet
+  automatisch afleiden uit deze AV/Handleiding-wijziging.
+- Root-CLAUDE.md's regel "gebruik Nederlandse namen voor domeinlogica
+  (perceel, spuitdatum, melding, etc.)" gaat over de **code/het
+  datamodel** (kolomnamen, variabelen) — die zijn hier bewust NIET
+  gewijzigd, alleen de zichtbare tekst in twee specifieke, puur
+  tekstuele componenten (AV, Handleiding).
