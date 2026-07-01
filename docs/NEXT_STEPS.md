@@ -151,18 +151,3 @@ de code, niet tegen het geheugen van een eerdere sessie.
   - E-mailadressen `info@constatum.nl` en `privacy@constatum.nl` aanmaken
   - Drie .docx juridische documenten (spuitregisterbrief, AV, privacy) herschrijven
 
-- **`useToggleableLayer()`-hook voor DashboardKaart.jsx** — de vijf
-  laag-toggle-functies zijn structureel bijna identiek; generalisatie is bewust
-  nog niet gedaan (594 regels, regressierisico zonder browser-test).
-
-- **Kaartweergave groepsfilter (2026-07-01) testen met echte
-  groepsdata.** `GroepDashboardKaart.jsx` (nieuw, lazy-loaded) is
-  toegevoegd aan `GroepMeldingenLijst.jsx` — verschijnt dus zowel op het
-  Dashboard-groepsfilter als op de Groepen-detailpagina. Getest met
-  nepdata via een tijdelijk testharnas (markers plotten correct,
-  klikken roept `onMeldingSelecteren` met de juiste melding aan, geen
-  console-fouten, hoofdbundel blijft ~895KB dankzij lazy-loading) —
-  niet getest met een echte, gesynchroniseerde groep. Controleer ook
-  dat een melding zonder zichtbare locatie (lage trust-tier) terecht
-  niet op de kaart verschijnt, en dat bij nul zichtbare locaties de
-  leeg-melding getoond wordt i.p.v. een kale kaart.
