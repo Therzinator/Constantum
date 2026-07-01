@@ -21,7 +21,7 @@ const kanNatiefDelen = typeof navigator !== 'undefined' && typeof navigator.shar
 
 function bouwDeelTekst(groepNaam, token) {
   const url = uitnodigingUrl(token);
-  return { url, tekst: `Je bent uitgenodigd voor de Constatum groep ${groepNaam}, klik hier om deel te nemen: ${url}` };
+  return { url, tekst: `Je bent uitgenodigd voor de Constatum: Geografisch Logboek groep ${groepNaam}, klik hier om deel te nemen: ${url}` };
 }
 
 function urenResterend(verloopOp) {
