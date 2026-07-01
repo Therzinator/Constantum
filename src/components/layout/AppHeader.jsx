@@ -1,5 +1,6 @@
 ﻿import { useLayoutEffect, useRef } from 'react';
 import { AccountMenu } from './AccountMenu.jsx';
+import { DeelAppKnop } from './DeelAppKnop.jsx';
 import headerLogo from '../../assets/app-icon/icon_large.png';
 import './AppHeader.css';
 
@@ -48,6 +49,7 @@ export function AppHeader({ user, onNavigeerInstellingen, syncNu, syncBezig, laa
           onOpenHandleiding={onOpenHandleiding}
           onNavigeerFeedback={onNavigeerFeedback}
         />
+        <DeelAppKnop />
       </div>
     </header>
   );

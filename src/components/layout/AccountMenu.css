@@ -13,7 +13,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  /* Was 2px — samen met het iets kleinere icoon hieronder strakker tegen
+     het label aan, zodat er onder deze knop ruimte overblijft voor de
+     deel-knop (DeelAppKnop.jsx) in dezelfde .app-header-acties-kolom. */
+  gap: 1px;
 }
 .account-menu-knop:hover { color: var(--accent); }
 
@@ -23,8 +26,10 @@
 }
 
 .account-menu-knop-icoon-img {
-  width: 54px;
-  height: 54px;
+  /* Was 54px — iets kleiner zodat de knop als geheel compacter is, zie
+     comment bij .account-menu-knop hierboven. */
+  width: 44px;
+  height: 44px;
   background-color: currentColor;
   -webkit-mask-size: contain;
   mask-size: contain;

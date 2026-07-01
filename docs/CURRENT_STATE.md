@@ -4,7 +4,31 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix, Dashboard-groepsfilter herzien naar DashboardKaart, vercel.json-rewrite-bug voor statische bestanden gefixt, WhatsApp-preview-onderzoek: apex-domein-redirect).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix, Dashboard-groepsfilter herzien naar DashboardKaart, vercel.json-rewrite-bug voor statische bestanden gefixt, WhatsApp-preview-onderzoek: apex-domein-redirect, deel-app-knop in header).
+
+## Deel-app-knop in header (2026-07-01)
+
+Alternatief voor het onbetrouwbare OG-linkpreview-op-WhatsApp-vraagstuk
+(zie hierboven): een directe manier om de juiste app-link te delen,
+i.p.v. te vertrouwen op dat de gedeelde link zelf een goede preview
+oplevert.
+
+- **Nieuw `DeelAppKnop.jsx`/`.css`** (`src/components/layout/`) — knop
+  onder Instellingen in `.app-header-acties` (`AppHeader.jsx`). Deelt
+  altijd de hardcoded `https://www.constatum.nl/` (nooit
+  `window.location.href`) — omzeilt bewust het kale-domein-redirect-
+  probleem, ongeacht welk domein de gebruiker zelf net bezocht of welke
+  Vercel-domeinkeuze later gemaakt wordt.
+- Zelfde `navigator.share()`-met-klembord-fallback-patroon als
+  `GroepUitnodigingKaart.jsx` — systeem-deelkeuze op mobiel, kopieert
+  de kale link + toont een Toast op desktop/waar `navigator.share`
+  ontbreekt.
+- **`AccountMenu.css`**: Instellingen-icoon 54px → 44px, gap 2px → 1px
+  — maakt ruimte voor de nieuwe knop eronder in dezelfde kolom, zonder
+  de header buitensporig hoger te maken.
+- Getest met Playwright (geen `navigator.share` in die omgeving, dus
+  bewust de klembord-fallback-pad getest): klik kopieert exact
+  `https://www.constatum.nl/`, toast verschijnt.
 
 ## OG-preview werkt op Signal/Discord, nog niet op WhatsApp — vermoedelijke oorzaak: apex-domein-redirect (2026-07-01)
 

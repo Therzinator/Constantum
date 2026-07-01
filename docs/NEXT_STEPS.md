@@ -6,6 +6,11 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
+- **Deel-app-knop (2026-07-01) op een echt mobiel toestel testen.**
+  Lokaal/Playwright heeft geen `navigator.share`, dus alleen het
+  klembord-kopieer-pad is getest. Controleer op een telefoon dat de
+  systeem-deelkeuze verschijnt en dat "Delen" in die keuze een
+  bruikbare link doorgeeft.
 - **Beslissen of de neutrale AV-v2.0-terminologie (Waarneming/Logboek/
   Gebiedsdossier/Betrokkene) ook elders in de UI moet komen, of dat AV +
   Handleiding de enige twee plekken blijven.** Nu bewust beperkt tot die
