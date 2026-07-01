@@ -6,20 +6,6 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
-- **Migratie 0036 URGENT uitvoeren in Supabase SQL-editor vóór deploy**
-  (EXIF-geoverificatie-bonus: `exif_verificatie`-kolom op `attachments`,
-  `exif_geverifieerd`-actie in `fn_trust_score_actie_bonus`, trigger
-  `trg_attachments_exif_bonus`). De client (`bijlagen.js`, `sbSyncBijlagen()`)
-  stuurt vanaf nu bij elke insert een `exif_verificatie`-veld mee. Zolang
-  de kolom er niet is, faalt de `attachments`-insert met een Postgres-fout
-  ("column exif_verificatie does not exist") — de melding zelf blijft
-  opgeslagen (`entries`-insert is een aparte call), maar **alle nieuwe
-  foto/video-bijlagen worden dan niet opgeslagen** (silent, alleen een
-  `console.error`, geen zichtbare foutmelding voor de gebruiker) totdat
-  deze migratie is uitgevoerd. Voer dus uit vóór (of direct na, met een
-  korte onderbreking van bijlage-uploads) de eerstvolgende deploy.
-  Controleer na uitvoeren:
-  `SELECT column_name FROM information_schema.columns WHERE table_name = 'attachments' AND column_name = 'exif_verificatie';`
 - **Achteraf-delen-met-groep (2026-07-01) testen met een echte
   gesynchroniseerde melding + groepslidmaatschap.** Kon niet lokaal
   geverifieerd worden (geen Supabase-sessie in dev). Controleer: de

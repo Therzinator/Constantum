@@ -29,16 +29,15 @@ systeem-deelsheet binnenkomen (EXIF is dan al gestript vóór overdracht).
 resultaat op `bestand.exif_verificatie`; `lib/supabase/bijlagen.js`
 (`sbSyncBijlagen()`) stuurt dit veld mee bij de `attachments`-insert.
 
-**Migratie 0036 (nog NIET uitgevoerd, zie NEXT_STEPS.md — urgent)**:
+**Migratie 0036 (uitgevoerd en bevestigd in productie, 2026-07-01)**:
 voegt de `exif_verificatie`-kolom toe aan `attachments`, breidt
 `fn_trust_score_actie_bonus` (migratie 0023, laatst gewijzigd in 0028)
 uit met een `exif_geverifieerd`-actie (+2, eenmalig per entry via de
 bestaande dedupe-guard) en voegt een trigger toe die de bonus toekent
-zodra een bijlage met `overeenkomst: true` wordt ingevoegd. **Zolang
-deze migratie niet is uitgevoerd, faalt elke nieuwe `attachments`-insert**
-(onbekende kolom) — bijlagen worden dan niet opgeslagen totdat de
-migratie draait; de melding zelf (tabel `entries`) is een aparte insert
-en blijft wel werken.
+zodra een bijlage met `overeenkomst: true` wordt ingevoegd. Kolom en
+trigger geverifieerd via Supabase-MCP (`exif_verificatie` in
+`information_schema.columns`, `trg_attachments_exif_bonus` in
+`pg_trigger`).
 
 ## BottomNav-iconen: gevulde stijl i.p.v. lijnstijl (2026-07-01, experiment)
 
