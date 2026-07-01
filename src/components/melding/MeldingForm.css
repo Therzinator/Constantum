@@ -79,7 +79,9 @@
   gap: 6px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  color: var(--text-secondary);
+  /* Was --text-secondary — op verzoek van de gebruiker (2026-07-01)
+     lichter, stak te donker af tegen de kaartachtergrond. */
+  color: var(--text-primary);
   border-radius: 8px;
   padding: 7px 10px;
   font-family: var(--sans);
@@ -140,8 +142,23 @@
 
 .mf-foto-privacy-tekst {
   font-size: var(--font-size-sm);
-  color: var(--text-muted);
+  /* Was --text-muted — op verzoek van de gebruiker (2026-07-01) lichter,
+     stak te donker af tegen de kaartachtergrond. */
+  color: var(--text-primary);
   margin: 0;
+}
+
+/* Op verzoek van de gebruiker (2026-07-01): specifieke hulpteksten in dit
+   formulier (gezondheidsklachten-toestemming, delen-omschrijving/
+   -checkboxes) staken te donker af met de gedeelde --text-secondary-
+   basisklassen (.mf-checkbox-label/.export-card-beschrijving — die
+   klassen zelf blijven ongewijzigd, worden ook elders gebruikt, bv.
+   DeelMetGroepenKaart.jsx/TijdlijnPage.jsx/ExportPage.jsx). Aanvullende
+   klasse i.p.v. de basisklasse aan te passen, gecombineerde selector
+   voor gegarandeerde voorrang ongeacht bron-volgorde in de CSS. */
+.mf-checkbox-label.mf-tekst-licht,
+.export-card-beschrijving.mf-tekst-licht {
+  color: var(--text-primary);
 }
 
 .mf-foto-privacy-waarschuwing {

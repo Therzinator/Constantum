@@ -456,7 +456,7 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
 
       <div className="mf-field mf-gezondheid-toestemming">
         <label className="section-label">Gezondheidsklachten registratie</label>
-        <label className="mf-checkbox-label">
+        <label className="mf-checkbox-label mf-tekst-licht">
           <input
             type="checkbox"
             checked={veld.gezondheidToestemming}
@@ -479,11 +479,11 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
 
       <div className="mf-field mf-buurt-opt-in">
         <label className="section-label">🤝 Delen</label>
-        <div className="export-card-beschrijving mb-2">
+        <div className="export-card-beschrijving mf-tekst-licht mb-2">
           Kies per melding of je deze privé, openbaar of met jouw groepen
           deelt. Je laatste keuze wordt automatisch onthouden.
         </div>
-        <label className="mf-checkbox-label">
+        <label className="mf-checkbox-label mf-tekst-licht">
           <input
             type="checkbox"
             checked={veld.optInBuurt}
@@ -495,7 +495,7 @@ export function MeldingForm({ user, thuislocatie, meldingenApi, syncNu, onOpgesl
           Deel deze melding met de buurt (zichtbaar voor andere melders
           binnen hun ingestelde bereik, pseudoniem en 30 minuten vertraagd)
         </label>
-        <label className="mf-checkbox-label">
+        <label className="mf-checkbox-label mf-tekst-licht">
           <input
             type="checkbox"
             checked={veld.optInGroepen}
