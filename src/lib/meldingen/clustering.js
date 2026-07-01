@@ -1,10 +1,20 @@
 import { haversineAfstand } from '../geo/haversine.js';
 
 const MAX_TIJDms = 8 * 60 * 60 * 1000; // 8 uur
-const MAX_AFSTAND = 300; // meter, voor meldingen zonder perceelnummer
+const MAX_AFSTAND = 300; // meter
 
-// Groepeert meldingen op: zelfde perceel (of GPS-radius 300m) + tijdvenster 8u —
-// komt overeen met clusterMeldingen() uit docs/index.html.
+// Groepeert meldingen op: zelfde perceel OF GPS-radius 300m (niet
+// exclusief!) + tijdvenster 8u — komt overeen met clusterMeldingen() uit
+// docs/index.html.
+//
+// Bug gevonden 2026-07-01: dit was voorheen een if/else — als BEIDE
+// meldingen een perceelnummer hadden, werd ALLEEN op perceelnummer
+// gematcht en de GPS-afstand niet meer gecontroleerd. Een spuitbeurt die
+// over de grens van twee aangrenzende kadastrale percelen loopt (heel
+// gewoon in de landbouw) kreeg daardoor twee verschillende
+// perceelnummers en werd nooit gekoppeld, ook al lagen de meldingen maar
+// een paar honderd meter uit elkaar. Nu een OR: verschillend perceel
+// mag, zolang de meldingen dicht genoeg bij elkaar liggen.
 export function clusterMeldingen(meldingen) {
   const gesorteerd = [...meldingen].sort(
     (a, b) => new Date(a.timestamp_local) - new Date(b.timestamp_local)
@@ -18,13 +28,12 @@ export function clusterMeldingen(meldingen) {
       const huidigeMst = new Date(melding.timestamp_local).getTime();
       if (huidigeMst - laatsteMst > MAX_TIJDms) return false;
 
-      if (c.perceelnummer && melding.perceelnummer) {
-        return c.perceelnummer === melding.perceelnummer;
-      }
-      if (c.lat && c.lng && melding.gps?.lat && melding.gps?.lng) {
-        return haversineAfstand(c.lat, c.lng, melding.gps.lat, melding.gps.lng) <= MAX_AFSTAND;
-      }
-      return false;
+      const zelfdePerceel = Boolean(c.perceelnummer && melding.perceelnummer && c.perceelnummer === melding.perceelnummer);
+      const dichtbij = Boolean(
+        c.lat && c.lng && melding.gps?.lat && melding.gps?.lng &&
+        haversineAfstand(c.lat, c.lng, melding.gps.lat, melding.gps.lng) <= MAX_AFSTAND
+      );
+      return zelfdePerceel || dichtbij;
     });
 
     if (cluster) {

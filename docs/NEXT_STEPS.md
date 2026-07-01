@@ -6,23 +6,23 @@ de code, niet tegen het geheugen van een eerdere sessie.
 
 ## Hoog
 
-- **Gebeurtenissen-clustering-fix in Groepen (2026-07-01) testen met
-  echte groepsdata.** Kon niet lokaal geverifieerd worden (geen
-  Supabase-sessie/groepen in dev — wel bevestigd met een geïsoleerde
-  test van de kernlogica). Controleer met een niet-beheerder-lid (of
-  trust score < 80): meerdere meldingen op hetzelfde perceel binnen 8u
-  moeten nu als 1 gebeurtenis in de "🔗 Tijdlijn"-weergave verschijnen,
-  i.p.v. losse kaarten. Controleer ook dat er geen exacte locatie/
-  perceelnummer lekt voor zo'n lager-trust-lid (moet nog steeds
-  verborgen blijven, alleen de koppeling zelf is gefixt).
-- **Als gebeurtenissen-clustering op de persoonlijke Tijdlijn ook nog
-  niet goed aanvoelt na de Groepen-fix hierboven, concrete voorbeeld-
-  meldingen (perceel, tijdstip) van de gebruiker opvragen.** De
-  kernlogica (`clusterMeldingen()`) is los getest en groepeert correct
-  bij zelfde perceel/GPS binnen 300m + tijdvenster van 8u — als dat op
-  de Tijdlijn niet zo aanvoelt, ligt het waarschijnlijk aan de
-  specifieke testdata (ander perceel, verder dan 300m, of meer dan 8u
-  ertussen) i.p.v. een codefout.
+- **Gebeurtenissen-clustering (2026-07-01, twee fixes) in de app zelf
+  controleren.** De kernlogica is dubbel geverifieerd: eerst met
+  synthetische data, daarna met de EXACTE echte productiedata van
+  vandaag (rechtstreeks via SQL opgevraagd) — beide keren clusteren de
+  meldingen nu correct. Nog niet gecontroleerd via de daadwerkelijke
+  UI:
+  - Persoonlijke Tijdlijn: de gebruiker se eigen 2 meldingen van
+    vandaag (W-543/W-303, 110m/25min uit elkaar) moeten nu als 1
+    gebeurtenis in "🔗 Gebeurtenissen" verschijnen.
+  - Groepen, met een niet-beheerder-lid (of trust score < 80): meerdere
+    meldingen op hetzelfde/aangrenzend perceel binnen 8u moeten als 1
+    gebeurtenis verschijnen, zonder dat exacte locatie/perceelnummer
+    voor zo'n lager-trust-lid alsnog zichtbaar wordt (alleen de
+    koppeling is gefixt, niet de redactie).
+  - Groepen met meldingen van meerdere leden: moeten ook combineren tot
+    1 gebeurtenis (`aantalMelders` > 1) — bevestigd in een losse test,
+    nog niet in de echte UI.
 - **Deel-app-knop (2026-07-01) op een echt mobiel toestel testen.**
   Lokaal/Playwright heeft geen `navigator.share`, dus alleen het
   klembord-kopieer-pad is getest. Controleer op een telefoon dat de

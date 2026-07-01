@@ -4,7 +4,42 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix, Dashboard-groepsfilter herzien naar DashboardKaart, vercel.json-rewrite-bug voor statische bestanden gefixt, WhatsApp-preview-onderzoek: apex-domein-redirect, deel-app-knop in header, gebeurtenissen-clustering-bug in Groepen gefixt).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix, Dashboard-groepsfilter herzien naar DashboardKaart, vercel.json-rewrite-bug voor statische bestanden gefixt, WhatsApp-preview-onderzoek: apex-domein-redirect, deel-app-knop in header, gebeurtenissen-clustering-bug in Groepen gefixt, clustering.js perceel/GPS-OR-bug gefixt).
+
+## Tweede, dieperliggende clustering-bug gevonden: perceelnummer overschreef de GPS-afstandscheck (2026-07-01)
+
+Direct na de vorige clustering-fix (Groepen-redactievolgorde) meldde de
+gebruiker dat 2 echte meldingen van diezelfde dag — onderdeel van 1
+spuitbeurt — nog steeds niet clusterden, ook op de PERSOONLIJKE
+Tijdlijn (die geen trust-redactie heeft, dus de vorige fix loste dit
+niet op).
+
+- **Onderzoek**: rechtstreeks de productie-Supabase-database bevraagd
+  (via de Supabase-MCP-tools) op de twee echte `entries`-rijen van
+  vandaag. Perceelnummers: `W-543` en `W-303` (verschillend!), GPS
+  110,5 meter uit elkaar (`haversineAfstand()`), 25 minuten na elkaar.
+- **Root cause in `lib/meldingen/clustering.js`**: de match-logica was
+  een if/else i.p.v. een OR — als BEIDE meldingen een perceelnummer
+  hadden, werd ALLEEN op perceelnummer gematcht en de GPS-afstand
+  helemaal niet meer gecontroleerd. Een spuitbeurt die de grens van
+  twee aangrenzende kadastrale percelen oversteekt (normaal in de
+  landbouw) kreeg zo altijd 2 verschillende perceelnummers en werd
+  nooit gekoppeld, ongeacht hoe dichtbij de meldingen fysiek lagen.
+  Vermoedelijk een langer bestaande bug (clustering.js zelf niet
+  gewijzigd sinds het origineel, commit e752fc8), nu voor het eerst
+  concreet gerapporteerd met reproduceerbare data.
+- **Fix**: `zelfdePerceel || dichtbij` i.p.v. het exclusieve if/else —
+  een ander perceelnummer mag, zolang de meldingen dicht genoeg bij
+  elkaar liggen (300m) binnen het tijdvenster van 8u.
+- **Multi-gebruiker-koppeling voor Groepen** (expliciete eis van de
+  gebruiker: gezamenlijke meldingen van verschillende leden moeten als
+  1 spuitbeurt combineren) bleek al zonder extra werk te kloppen —
+  `clusterMeldingen()` filtert nooit op `melder_email`/`user_id`, en
+  `cluster.aantalMelders` telt de unieke melders al correct. Bevestigd
+  met een test van 2 verschillende melders op dezelfde locatie/tijd.
+- Geverifieerd met de EXACTE echte productiedata van vandaag (via
+  directe SQL-query): de twee meldingen clusteren nu correct tot 1
+  gebeurtenis.
 
 ## Bug gevonden en gefixt: gebeurtenissen-clustering in Groepen werkte niet voor de meeste leden (2026-07-01)
 
