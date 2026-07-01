@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Toast } from '../ui/Toast.jsx';
+import { IconDelenGevuld } from '../ui/GevuldeIconen.jsx';
 import './DeelAppKnop.css';
 
 // Altijd de www-variant delen, niet window.location.href — het kale
@@ -39,7 +40,7 @@ export function DeelAppKnop() {
   return (
     <>
       <button type="button" className="deel-app-knop" onClick={handleDelen} title="Deel Constatum">
-        <span className="deel-app-knop-icoon">📤</span>
+        <IconDelenGevuld className="deel-app-knop-icoon" />
         <span className="deel-app-knop-label">Delen</span>
       </button>
       <Toast melding={melding} />

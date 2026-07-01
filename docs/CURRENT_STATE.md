@@ -4,7 +4,17 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix, Dashboard-groepsfilter herzien naar DashboardKaart, vercel.json-rewrite-bug voor statische bestanden gefixt, WhatsApp-preview-onderzoek: apex-domein-redirect, deel-app-knop in header, gebeurtenissen-clustering-bug in Groepen gefixt, clustering.js perceel/GPS-OR-bug gefixt, BottomNav-iconen gevuld i.p.v. lijnstijl (experiment)).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix, Dashboard-groepsfilter herzien naar DashboardKaart, vercel.json-rewrite-bug voor statische bestanden gefixt, WhatsApp-preview-onderzoek: apex-domein-redirect, deel-app-knop in header, gebeurtenissen-clustering-bug in Groepen gefixt, clustering.js perceel/GPS-OR-bug gefixt, BottomNav-iconen gevuld i.p.v. lijnstijl, Instellingen/Delen-iconen ook gevuld).
+
+Vervolg op de BottomNav-iconenwissel hierboven: `GevuldeIconen.jsx`
+verplaatst van `nav/` naar `ui/` (gedeelde locatie, nu ook gebruikt
+buiten de BottomNav) en uitgebreid met `IconInstellingenGevuld`
+(tandwiel, opgebouwd uit 8 geroteerde `<rect>`-tanden + cirkel, i.p.v.
+een uit het hoofd gereconstrueerd bezier-pad) en `IconDelenGevuld`
+(klassiek 3-knooppunten-deelicoon, bewust een andere vorm dan
+`IconExportGevuld` om "Delen" niet te verwarren met "Export").
+`AccountMenu.jsx` (Instellingen) en `DeelAppKnop.jsx` (Delen) gebruiken
+deze nu i.p.v. resp. een PNG-mask en een emoji.
 
 ## BottomNav-iconen: gevulde stijl i.p.v. lijnstijl (2026-07-01, experiment)
 

@@ -1,10 +1,12 @@
-// Gevulde (solid/filled) variant van de navigatie-iconen, als experiment
-// t.o.v. de bestaande lijn-iconen (src/assets/ui-icons/*.png, via
-// mask-image). Inline SVG i.p.v. PNG-mask — fill="currentColor" volgt
-// dezelfde actief/inactief-kleurlogica als de labels, zonder losse
-// beeldbestanden. "Uitgesneden" details (plusje/vinkje) gebruiken de
-// vaste kaartachtergrond (--bg-card) i.p.v. currentColor, zodat ze zowel
-// in actieve (accent) als inactieve (grijze) staat zichtbaar blijven.
+// Gevulde (solid/filled) iconen, als vervanging van de eerdere lijn-
+// iconen (src/assets/ui-icons/*.png, via mask-image) — experiment
+// 2026-07-01, ondertussen doorgevoerd op BottomNav.jsx, AccountMenu.jsx
+// (Instellingen) en DeelAppKnop.jsx (Delen). Inline SVG i.p.v. PNG-mask —
+// fill="currentColor" volgt dezelfde actief/inactief-kleurlogica als de
+// omliggende tekst, zonder losse beeldbestanden. "Uitgesneden" details
+// (plusje/vinkje/tandwielgat) gebruiken de vaste kaartachtergrond
+// (--bg-card) i.p.v. currentColor, zodat ze zowel in actieve (accent) als
+// inactieve (grijze) staat zichtbaar blijven.
 const svgProps = { viewBox: '0 0 24 24', xmlns: 'http://www.w3.org/2000/svg' };
 
 export function IconDashboardGevuld(props) {
@@ -77,6 +79,39 @@ export function IconModeratieGevuld(props) {
         strokeLinejoin="round"
         d="M8.3 12.2l2.5 2.5 5-5"
       />
+    </svg>
+  );
+}
+
+// Tandwiel opgebouwd uit 8 rondom het middelpunt geroteerde "tanden" +
+// een gevulde cirkel als lichaam — betrouwbaarder dan een handgetekend
+// tandwiel-pad met veel bezier-punten uit het hoofd reconstrueren.
+const TAND_HOEKEN = [0, 45, 90, 135, 180, 225, 270, 315];
+
+export function IconInstellingenGevuld(props) {
+  return (
+    <svg {...svgProps} {...props}>
+      {TAND_HOEKEN.map((hoek) => (
+        <rect key={hoek} x="10.5" y="0.8" width="3" height="5" rx="1" fill="currentColor" transform={`rotate(${hoek} 12 12)`} />
+      ))}
+      <circle cx="12" cy="12" r="7" fill="currentColor" />
+      <circle cx="12" cy="12" r="3" fill="var(--bg-card)" />
+    </svg>
+  );
+}
+
+// Klassiek "delen"-icoon (drie knooppunten + twee verbindingslijnen) —
+// bewust een andere vorm dan IconExportGevuld (pijl-in-tray), zodat
+// "Delen" (systeemdeelkeuze/klembord, DeelAppKnop.jsx) niet verward
+// wordt met "Export" (dossier downloaden, BottomNav).
+export function IconDelenGevuld(props) {
+  return (
+    <svg {...svgProps} {...props}>
+      <line x1="6.5" y1="12" x2="17" y2="6.2" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" />
+      <line x1="6.5" y1="12" x2="17" y2="17.8" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" />
+      <circle cx="5" cy="12" r="3" fill="currentColor" />
+      <circle cx="18.5" cy="5.5" r="3" fill="currentColor" />
+      <circle cx="18.5" cy="18.5" r="3" fill="currentColor" />
     </svg>
   );
 }

@@ -12,8 +12,12 @@
 .deel-app-knop:hover { color: var(--accent); }
 
 .deel-app-knop-icoon {
-  font-size: 1.4rem;
-  line-height: 1;
+  /* Sinds 2026-07-01 inline SVG (GevuldeIconen.jsx) i.p.v. emoji — zelfde
+     44px als het Instellingen-icoon erboven (AccountMenu.css), zodat
+     beide knoppen in dezelfde .app-header-acties-kolom gelijk wegen. */
+  display: block;
+  width: 44px;
+  height: 44px;
 }
 
 .deel-app-knop-label {

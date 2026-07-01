@@ -7,7 +7,7 @@ import {
   IconGroepenGevuld,
   IconExportGevuld,
   IconModeratieGevuld
-} from './NavIconenGevuld.jsx';
+} from '../ui/GevuldeIconen.jsx';
 import './BottomNav.css';
 
 const TABS = [
