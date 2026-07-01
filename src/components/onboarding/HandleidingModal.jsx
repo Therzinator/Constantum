@@ -44,7 +44,7 @@ export function HandleidingModal({ onSluiten }) {
             <div className="handleiding-icoon">🌿</div>
             <div className="handleiding-titel">Welkom bij Constatum</div>
             <div className="handleiding-tekst">
-              {`Constatum is een app waarmee je waarnemingen rond bestrijdingsmiddelen vastlegt — bijvoorbeeld spuitactiviteit, drift, geur, geluid of gezondheidsklachten. De app helpt je om dat moment goed te documenteren, zodat je er later iets mee kunt: een dossier opbouwen, delen met buren, of gebruiken als onderbouwing richting derden.
+              {`Constatum is een app waarmee je omgevingswaarnemingen vastlegt — bijvoorbeeld spuitactiviteit, drift, geur, geluid of gezondheidsklachten. De app helpt je om dat moment goed te documenteren, zodat je er later iets mee kunt: een logboek opbouwen, delen met buren, of gebruiken als onderbouwing richting derden.
 
 Constatum is geen overheidsinstrument en handhaaft niet. De app registreert wat jij waarneemt; wat je daarmee doet, bepaal je zelf.`}
             </div>
@@ -53,7 +53,7 @@ Constatum is geen overheidsinstrument en handhaaft niet. De app registreert wat 
 
         {stap === 1 && (
           <>
-            <div className="handleiding-titel">Een melding maken</div>
+            <div className="handleiding-titel">Een waarneming vastleggen</div>
             <div className="handleiding-grid">
               <div className="handleiding-grid-item">
                 <div className="handleiding-grid-icoon">📍</div>
@@ -77,11 +77,11 @@ Constatum is geen overheidsinstrument en handhaaft niet. De app registreert wat 
 
         {stap === 2 && (
           <>
-            <div className="handleiding-titel">Je dossier</div>
+            <div className="handleiding-titel">Je logboek</div>
             <div className="handleiding-tekst">
-              {`Al je meldingen staan op de tijdlijn, met filter op type, datum of gebied. Je kunt op elk moment een selectie exporteren als PDF-dossier, inclusief kaartweergave en weergegevens. Het dossier bevat een tijdstempel en een digitale hash, zodat de inhoud achteraf niet ongemerkt kan worden aangepast.
+              {`Al je waarnemingen staan op de tijdlijn, met filter op type, datum of gebied. Je kunt op elk moment een selectie exporteren als PDF-logboek, inclusief kaartweergave en weergegevens. Het logboek bevat een tijdstempel en een digitale hash, zodat de inhoud achteraf niet ongemerkt kan worden aangepast.
 
-Voor situaties waarin je wilt weten welk middel er precies is gespoten, kun je vanuit een melding met bekend perceel een kant-en-klare brief genereren om inzage in het spuitregister op te vragen bij de teler.`}
+Voor situaties waarin je wilt weten welk middel er precies is gespoten, kun je vanuit een waarneming met bekend perceel een kant-en-klare brief genereren om inzage in het spuitregister op te vragen bij de betrokkene.`}
             </div>
           </>
         )}
@@ -90,11 +90,11 @@ Voor situaties waarin je wilt weten welk middel er precies is gespoten, kun je v
           <>
             <div className="handleiding-titel">Delen met anderen</div>
             <div className="handleiding-tekst">
-              {`Delen is altijd je eigen keuze — een melding is standaard alleen voor jou zichtbaar.
+              {`Delen is altijd je eigen keuze — een waarneming is standaard alleen voor jou zichtbaar.
 
-• Buurt: je kunt aangeven dat een melding zichtbaar mag zijn voor mensen binnen 5 km van hun eigen locatie. Anderen zien dan nooit je naam of e-mailadres, alleen een vaste, anonieme code (Melder#XXXXXX).
+• Buurt: je kunt aangeven dat een waarneming zichtbaar mag zijn voor mensen binnen 5 km van hun eigen locatie. Anderen zien dan nooit je naam of e-mailadres, alleen een vaste, anonieme code (Melder#XXXXXX).
 
-• Groepen: je kunt je aansluiten bij of een groep aanmaken (via link of QR-code) en per melding kiezen of je die met die groep deelt. Hoeveel detail andere groepsleden zien hangt af van hun eigen betrouwbaarheidsniveau binnen de app.`}
+• Groepen: je kunt je aansluiten bij of een groep aanmaken (via link of QR-code) en per waarneming kiezen of je die met die groep deelt. Hoeveel detail andere groepsleden zien hangt af van hun eigen betrouwbaarheidsniveau binnen de app.`}
             </div>
           </>
         )}
@@ -120,9 +120,9 @@ Voor situaties waarin je wilt weten welk middel er precies is gespoten, kun je v
             <div className="handleiding-tekst">
               {`De meeste gebruikers hebben geen bijzondere rol. Twee uitzonderingen:
 
-• Coördinator: kan meldingen modereren en heeft toegang tot geaggregeerde overzichten, maar krijgt geen toegang tot het exporteren van persoonsgegevens van anderen.
+• Coördinator: kan waarnemingen modereren en heeft toegang tot geaggregeerde overzichten, maar krijgt geen toegang tot het exporteren van persoonsgegevens van anderen.
 
-• Beheerder: volledige toegang, inclusief het herstellen van verwijderde meldingen en het exporteren van buurtgebied-dossiers.`}
+• Beheerder: volledige toegang, inclusief het herstellen van verwijderde waarnemingen en het exporteren van gebiedsdossiers.`}
             </div>
           </>
         )}
@@ -131,7 +131,7 @@ Voor situaties waarin je wilt weten welk middel er precies is gespoten, kun je v
           <>
             <div className="handleiding-titel">Vragen of problemen</div>
             <div className="handleiding-tekst">
-              Klopt er iets niet, of heb je een vraag over een melding of export?
+              Klopt er iets niet, of heb je een vraag over een waarneming of export?
               Neem contact op via de contactgegevens in de app onder Instellingen.
             </div>
             <button type="button" className="btn-primary handleiding-cta" onClick={sluiten}>
