@@ -22,12 +22,17 @@ de code, niet tegen het geheugen van een eerdere sessie.
   zwart scherm) + `build.sourcemap: true` (leesbare toekomstige
   stacktraces) — controleer of de crash zich nog voordoet, en zo ja,
   gebruik de sourcemap om de echte regel te vinden.
-- **Dashboard-groepsfilter en Groepen Recent/Tijdlijn (2026-07-01)
-  testen met echte groepsdata.** Kon niet visueel geverifieerd worden
-  lokaal (geen Supabase-sessie/groepen beschikbaar in dev). Controleer:
-  dropdown "Filter op groep" op Dashboard, trust-tier-redactie in beide
-  weergaven (Recent/Tijdlijn), en dat clustering (`GroepClusterKaart`)
-  zich normaal gedraagt bij meerdere meldingen op hetzelfde perceel.
+- **Dashboard-groepsfilter (2026-07-01, herzien) en Groepen
+  Recent/Tijdlijn testen met echte groepsdata.** Kon niet volledig
+  visueel geverifieerd worden lokaal (geen Supabase-sessie/groepen
+  beschikbaar in dev; wel getest met een tijdelijk testharnas en
+  nepdata). Controleer: de groepsdropdown in `DashboardKaart.jsx`'s
+  filterbalk toont de juiste groepen, de kaart zelf toont daadwerkelijk
+  de meldingen van de gekozen groep (niet meer eigen+buurt), klikken op
+  een marker opent `GroepMeldingDetailModal` met de juiste trust-tier-
+  redactie, trust-tier-redactie in de Recent/Tijdlijn-lijst eronder, en
+  dat clustering (`GroepClusterKaart`) zich normaal gedraagt bij
+  meerdere meldingen op hetzelfde perceel.
 - **Achteraf-delen-met-groep (2026-07-01) testen met een echte
   gesynchroniseerde melding + groepslidmaatschap.** Kon niet lokaal
   geverifieerd worden (geen Supabase-sessie in dev). Controleer: de

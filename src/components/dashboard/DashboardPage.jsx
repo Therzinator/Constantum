@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { MaandGrafiek } from './MaandGrafiek.jsx';
 import { MeldingCard } from '../meldingen/MeldingCard.jsx';
 import { GroepMeldingenLijst } from '../groepen/GroepMeldingenLijst.jsx';
+import { GroepMeldingDetailModal } from '../groepen/GroepMeldingDetailModal.jsx';
 import { dashboardStatistieken } from '../../lib/meldingen/statistieken.js';
 import { laadGpsCache } from '../../lib/geo/gpsCache.js';
 import { laadBereikMeter } from '../../lib/notificaties/buurtMelding.js';
@@ -10,10 +11,14 @@ import { magAndermansMeldingTonen } from '../../lib/meldingen/buurtVertraging.js
 import { haalMijnGroepen, haalGroepStatistieken } from '../../lib/groepen/groepen.js';
 import { isGroepBeheerder } from '../../lib/groepen/rollen.js';
 import { useGebruikersProfiel } from '../../hooks/useGebruikersProfiel.js';
+import { useGroepMeldingen } from '../../hooks/useGroepMeldingen.js';
 import './DashboardPage.css';
 
 // Lazy geladen — beide trekken OpenLayers (~300-400KB) mee, dat hoeft niet
 // in de hoofdbundel te zitten voor gebruikers die deze pagina niet openen.
+// GroepMeldingDetailModal.jsx is bewust NIET lazy — die is zelf al licht
+// (eigen DriftZoneKaart-import is daarbinnen al lazy), geen aparte
+// code-splitting-winst.
 const DashboardKaart = lazy(() => import('./DashboardKaart.jsx').then((m) => ({ default: m.DashboardKaart })));
 const MeldingDetailModal = lazy(() => import('../melding/MeldingDetailModal.jsx').then((m) => ({ default: m.MeldingDetailModal })));
 
@@ -23,13 +28,13 @@ const MeldingDetailModal = lazy(() => import('../melding/MeldingDetailModal.jsx'
 export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }) {
   const { meldingen } = meldingenApi;
   const [geselecteerdId, setGeselecteerdId] = useState(null);
-  // Filter op een groep waar je lid van bent — toont dan de met die groep
-  // gedeelde meldingen (via GroepMeldingenLijst.jsx, incl. de trust-tier-
-  // gate en de Recent/Tijdlijn-weergave) i.p.v. de eigen+buurt-kaart/lijst
-  // hieronder. Groepsmeldingen van ANDERE gebruikers staan nooit in de
+  // Filter op een groep waar je lid van bent — de KAART (DashboardKaart)
+  // blijft altijd zichtbaar en toont dan de met die groep gedeelde
+  // meldingen i.p.v. eigen+buurt, i.p.v. dat de hele kaartweergave
+  // verdwijnt. Groepsmeldingen van ANDERE gebruikers staan nooit in de
   // lokale meldingen-store (alleen eigen + opt-in-buurt worden gesynct,
-  // zie entries.js) — vandaar een aparte fetch i.p.v. filteren op
-  // `meldingen`.
+  // zie entries.js) — vandaar een aparte fetch (useGroepMeldingen) i.p.v.
+  // filteren op `meldingen`.
   const [mijnGroepen, setMijnGroepen] = useState([]);
   const [groepFilter, setGroepFilter] = useState('');
   const [groepStats, setGroepStats] = useState(null);
@@ -61,6 +66,9 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
   }, [mijnGroepen, groepFilter]);
 
   const geselecteerdeGroep = mijnGroepen.find((g) => g.id === groepFilter) || null;
+  const isBeheerderVanGroep = isGroepBeheerder(geselecteerdeGroep?.eigenRol);
+  const groepData = useGroepMeldingen(groepFilter, { viewerTrustScore: profiel?.trust_score, isBeheerder: isBeheerderVanGroep });
+
   // Zelfde bereik-instelling als Instellingen → account-menu (max 5 km, zie
   // buurtMelding.js) — dit dashboard toont gedeelde meldingen van ANDEREN
   // dus nooit verder weg dan dat ingestelde bereik. Eigen meldingen (incl.
@@ -85,58 +93,70 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
   const recent = [...meldingenInBereik]
     .sort((a, b) => new Date(b.timestamp_local) - new Date(a.timestamp_local))
     .slice(0, 5);
-  const geselecteerd = geselecteerdId ? meldingenInBereik.find((m) => m.id === geselecteerdId) : null;
   // Gecachete laatst bekende GPS-fix (lib/geo/gpsCache.js, gevuld door de
   // dashboardkaart) — geen eigen watchPosition hier nodig voor alleen de
   // afstandsindicatie op de "Recente meldingen"-kaartjes.
   const gpsLocatie = laadGpsCache();
 
+  // Welke dataset de kaart en de detailmodal gebruiken hangt af van het
+  // groepsfilter — de kaart zelf (DashboardKaart) blijft in beide gevallen
+  // hetzelfde component, alleen de gevoede meldingen + het klik-doel
+  // (welke detailmodal) wisselen.
+  const kaartMeldingen = groepFilter ? groepData.meldingen : meldingenInBereik;
+  const geselecteerd = geselecteerdId
+    ? (groepFilter ? groepData.meldingen.find((m) => m.id === geselecteerdId) : meldingenInBereik.find((m) => m.id === geselecteerdId))
+    : null;
+
   return (
     <div className="p-4">
-      {mijnGroepen.length > 0 && (
-        <div className="card p-3 dashboard-section dashboard-groepfilter">
-          <label className="section-label mb-2" htmlFor="dashboard-groepfilter-select">Filter op groep</label>
-          <select
-            id="dashboard-groepfilter-select"
-            className="tijdlijn-select"
-            value={groepFilter}
-            onChange={(e) => setGroepFilter(e.target.value)}
-          >
-            <option value="">Eigen + buurtmeldingen</option>
-            {mijnGroepen.map((g) => (
-              <option key={g.id} value={g.id}>{g.naam}</option>
-            ))}
-          </select>
+      {!groepFilter ? (
+        <div className="dashboard-stats">
+          <div className="card dashboard-stat-card">
+            <div className="dashboard-stat-label">Totaal</div>
+            <div className="dashboard-stat-value">{totaal}</div>
+          </div>
+          <div className="card dashboard-stat-card">
+            <div className="dashboard-stat-label">Deze maand</div>
+            <div className="dashboard-stat-value">{dezeMaand}</div>
+          </div>
+          <div className="card dashboard-stat-card">
+            <div className="dashboard-stat-label">Deze week</div>
+            <div className="dashboard-stat-value">{dezeWeek}</div>
+          </div>
+          <div className="card dashboard-stat-card">
+            <div className="dashboard-stat-label">Primaire windrichting</div>
+            <div className="dashboard-stat-value">{topWind}</div>
+          </div>
+        </div>
+      ) : (
+        <div className="dashboard-stats">
+          <div className="card dashboard-stat-card">
+            <div className="dashboard-stat-label">Leden</div>
+            <div className="dashboard-stat-value">{groepStats?.aantalLeden ?? '—'}</div>
+          </div>
+          <div className="card dashboard-stat-card">
+            <div className="dashboard-stat-label">Meldingen</div>
+            <div className="dashboard-stat-value">{groepStats?.aantalMeldingen ?? '—'}</div>
+          </div>
         </div>
       )}
 
+      <div className="dashboard-section">
+        <Suspense fallback={<div className="dashboard-leeg">Kaart laden...</div>}>
+          <DashboardKaart
+            meldingen={kaartMeldingen}
+            thuislocatie={thuislocatie}
+            gebruikerRol={gebruikerRol}
+            onMeldingSelecteren={setGeselecteerdId}
+            mijnGroepen={mijnGroepen}
+            groepFilter={groepFilter}
+            onGroepFilterChange={setGroepFilter}
+          />
+        </Suspense>
+      </div>
+
       {!groepFilter ? (
         <>
-          <div className="dashboard-stats">
-            <div className="card dashboard-stat-card">
-              <div className="dashboard-stat-label">Totaal</div>
-              <div className="dashboard-stat-value">{totaal}</div>
-            </div>
-            <div className="card dashboard-stat-card">
-              <div className="dashboard-stat-label">Deze maand</div>
-              <div className="dashboard-stat-value">{dezeMaand}</div>
-            </div>
-            <div className="card dashboard-stat-card">
-              <div className="dashboard-stat-label">Deze week</div>
-              <div className="dashboard-stat-value">{dezeWeek}</div>
-            </div>
-            <div className="card dashboard-stat-card">
-              <div className="dashboard-stat-label">Primaire windrichting</div>
-              <div className="dashboard-stat-value">{topWind}</div>
-            </div>
-          </div>
-
-          <div className="dashboard-section">
-            <Suspense fallback={<div className="dashboard-leeg">Kaart laden...</div>}>
-              <DashboardKaart meldingen={meldingenInBereik} thuislocatie={thuislocatie} gebruikerRol={gebruikerRol} onMeldingSelecteren={setGeselecteerdId} />
-            </Suspense>
-          </div>
-
           <div className="card p-3 dashboard-section">
             <div className="section-label mb-2">Meldingen per maand</div>
             <MaandGrafiek meldingen={meldingenInBereik} />
@@ -161,37 +181,35 @@ export function DashboardPage({ meldingenApi, user, gebruikerRol, thuislocatie }
               ))
             )}
           </div>
-
-          {geselecteerd && (
-            <Suspense fallback={null}>
-              <MeldingDetailModal melding={geselecteerd} alleMeldingen={meldingenInBereik} user={user} onClose={() => setGeselecteerdId(null)} />
-            </Suspense>
-          )}
         </>
       ) : (
-        <>
-          <div className="dashboard-stats">
-            <div className="card dashboard-stat-card">
-              <div className="dashboard-stat-label">Leden</div>
-              <div className="dashboard-stat-value">{groepStats?.aantalLeden ?? '—'}</div>
-            </div>
-            <div className="card dashboard-stat-card">
-              <div className="dashboard-stat-label">Meldingen</div>
-              <div className="dashboard-stat-value">{groepStats?.aantalMeldingen ?? '—'}</div>
-            </div>
-          </div>
+        <div className="dashboard-section">
+          <div className="dashboard-section-titel">Meldingen in {geselecteerdeGroep?.naam || 'groep'}</div>
+          <GroepMeldingenLijst
+            groepId={groepFilter}
+            viewerTrustScore={profiel?.trust_score}
+            viewerUserId={user?.id}
+            user={user}
+            isBeheerder={isBeheerderVanGroep}
+            toonKaart={false}
+          />
+        </div>
+      )}
 
-          <div className="dashboard-section">
-            <div className="dashboard-section-titel">Meldingen in {geselecteerdeGroep?.naam || 'groep'}</div>
-            <GroepMeldingenLijst
-              groepId={groepFilter}
-              viewerTrustScore={profiel?.trust_score}
-              viewerUserId={user?.id}
-              user={user}
-              isBeheerder={isGroepBeheerder(geselecteerdeGroep?.eigenRol)}
-            />
-          </div>
-        </>
+      {geselecteerd && (
+        groepFilter ? (
+          <GroepMeldingDetailModal
+            melding={geselecteerd}
+            toon={groepData.toon}
+            isEigen={Boolean(geselecteerd.user_id && geselecteerd.user_id === user?.id)}
+            user={user}
+            onClose={() => setGeselecteerdId(null)}
+          />
+        ) : (
+          <Suspense fallback={null}>
+            <MeldingDetailModal melding={geselecteerd} alleMeldingen={meldingenInBereik} user={user} onClose={() => setGeselecteerdId(null)} />
+          </Suspense>
+        )
       )}
     </div>
   );

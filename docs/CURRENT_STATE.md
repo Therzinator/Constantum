@@ -4,7 +4,41 @@ Momentopname. Dit bestand veroudert sneller dan DOMAIN_KNOWLEDGE.md/
 DECISIONS.md — bij twijfel altijd verifiëren tegen de code (`git log`,
 grep), niet blind vertrouwen op een oude snapshot.
 
-Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix).
+Laatst bijgewerkt: 2026-07-01 (post-COVID kwetsbare groep, auto-cleanup uitnodigingen, logout→loginscherm, PWA install-banner, contactadressen AV/Privacy, app-iconen vernieuwd, typografie-audit + font-size-tokensysteem, GitHub-repo hernoemd naar Constatum, crash-bij-uitloggen gefixt + ErrorBoundary, Dashboard-groepsfilter, Groepen Recent/Tijdlijn, app-iconen opnieuw uit icon_background.png, achteraf melding delen met groep, AV v2.0 + neutrale terminologie in Handleiding, opruiming + BottomNav-smalscherm-fix, kaartweergave groepsfilter, BottomNav-tekst-uitlijning, icoon-marge + OG-image-fix, Dashboard-groepsfilter herzien naar DashboardKaart).
+
+## Dashboard-groepsfilter herzien: kaart blijft altijd zichtbaar (2026-07-01)
+
+Directe gebruikersfeedback op de eerdere implementatie (zelfde dag):
+het groepsfilter liet de hele kaart verdwijnen i.p.v. hem gevuld te
+houden met de groepsmeldingen, en de dropdown stond los bovenaan i.p.v.
+in de bestaande jaar/maand/dag-filterbalk.
+
+- **`DashboardKaart.jsx` toont nu altijd**, ook met een groep
+  geselecteerd — krijgt dan de trust-tier-geredigeerde groepsmeldingen
+  als `meldingen`-prop i.p.v. eigen+buurt. Nieuwe optionele props
+  `mijnGroepen`/`groepFilter`/`onGroepFilterChange` renderen een 4e
+  `<select>` in de bestaande `.dashboard-kaart-filterbalk`
+  (`flex-wrap: wrap` toegevoegd zodat hij op smalle schermen netjes
+  naar een eigen regel valt i.p.v. de andere filters te verdringen).
+- **Nieuwe gedeelde hook `src/hooks/useGroepMeldingen.js`** — bevat nu
+  de fetch- + trust-tier-redactielogica die eerder alleen in
+  `GroepMeldingenLijst.jsx` zat, zodat `DashboardPage.jsx` exact
+  dezelfde geredigeerde data kan voeden aan zowel de kaart als de
+  klik-naar-detail-modal-lookup. `GroepMeldingenLijst.jsx` gebruikt nu
+  ook deze hook (geen gedupliceerde logica meer).
+- **`GroepMeldingenLijst.jsx` kreeg een `toonKaart`-prop** (default
+  `true`) — op de Groepen-detailpagina (`GroepPage.jsx`) toont hij nog
+  steeds zijn eigen, lichte `GroepDashboardKaart.jsx`; vanuit
+  `DashboardPage.jsx` (`toonKaart={false}`) niet meer, want die kaart
+  zit daar al op paginaniveau via `DashboardKaart.jsx`.
+- **Klikken op een marker met een groep geselecteerd** opent
+  `GroepMeldingDetailModal.jsx` (niet lazy, al licht) i.p.v. de
+  persoonlijke `MeldingDetailModal.jsx` — dezelfde hash/RFC3161-lek-
+  afweging als eerder in DECISIONS.md.
+- Getest met een tijdelijk testharnas (nepgroepen/-meldingen, niet
+  gecommit): 4 dropdowns in de filterbalk, groepselectie werkt, marker
+  met nepdata plot correct. Hoofdbundel ongewijzigd (~895KB). Niet
+  getest met echte groepsdata, zie NEXT_STEPS.md.
 
 ## BottomNav-tekst-uitlijning + app-icoon-marge + OG-image-fix (2026-07-01)
 

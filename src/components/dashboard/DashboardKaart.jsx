@@ -145,7 +145,7 @@ function perceelPopupHtml(props, bestemming) {
 // Gemigreerd van Leaflet naar OpenLayers 10 — meldingen worden nu via
 // ol/source/Cluster gegroepeerd (i.p.v. losse markers), met een vectorlaag
 // voor Natura2000-gebieden als extra toggle.
-export function DashboardKaart({ meldingen, thuislocatie, gebruikerRol, onMeldingSelecteren }) {
+export function DashboardKaart({ meldingen, thuislocatie, gebruikerRol, onMeldingSelecteren, mijnGroepen, groepFilter, onGroepFilterChange }) {
   const magHotspotsZien = isCoordinatorOfAdmin(gebruikerRol);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -564,6 +564,19 @@ export function DashboardKaart({ meldingen, thuislocatie, gebruikerRol, onMeldin
           <option value="">Alle dagen</option>
           {DAG_OPTIES.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
+        {mijnGroepen?.length > 0 && (
+          <select
+            className="dashboard-kaart-select"
+            value={groepFilter}
+            onChange={(e) => onGroepFilterChange(e.target.value)}
+            title="Toon alleen meldingen die met deze groep gedeeld zijn"
+          >
+            <option value="">Eigen + buurtmeldingen</option>
+            {mijnGroepen.map((g) => (
+              <option key={g.id} value={g.id}>{g.naam}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {gefiltered.length > MELDINGEN_KAART_LIMIET && (

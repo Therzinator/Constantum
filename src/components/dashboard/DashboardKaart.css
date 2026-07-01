@@ -64,6 +64,7 @@
 .dashboard-kaart-filterbalk {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
 }
